@@ -10,7 +10,7 @@ import type { IUserPreferences } from '@shared/types/preferences'
 import { isLinux, isOsx, isWindows } from '../config'
 import parseArgs from '../cli/parser'
 import { normalizeAndResolvePath } from '../filesystem'
-import { normalizeMarkdownPath } from '../filesystem/markdown'
+import { normalizeDocumentPath } from '../filesystem/document'
 import { confirmAndTrashItem } from '../filesystem/trash'
 import { registerKeyboardListeners } from '../keyboard'
 import { selectTheme } from '../menu/actions/theme'
@@ -89,7 +89,7 @@ class App {
           continue
         }
 
-        const info = normalizeMarkdownPath(path.resolve(workingDirectory, pathname))
+        const info = normalizeDocumentPath(path.resolve(workingDirectory, pathname))
         if (info) {
           buf.push(info as PathInfo)
         }
@@ -206,7 +206,7 @@ class App {
           continue
         }
 
-        const info = normalizeMarkdownPath(pathname)
+        const info = normalizeDocumentPath(pathname)
         if (info) {
           _openFilesCache.push(info as PathInfo)
         }
@@ -220,12 +220,12 @@ class App {
         // Restore based off the previous buffer
         isRestorePathway = true
       } else if (startUpAction === 'folder' && defaultDirectoryToOpen) {
-        const info = normalizeMarkdownPath(defaultDirectoryToOpen)
+        const info = normalizeDocumentPath(defaultDirectoryToOpen)
         if (info) {
           _openFilesCache.unshift(info as PathInfo)
         }
       } else if (startUpAction === 'openLastFolder' && lastOpenedFolder) {
-        const info = normalizeMarkdownPath(lastOpenedFolder)
+        const info = normalizeDocumentPath(lastOpenedFolder)
         if (info) {
           _openFilesCache.unshift(info as PathInfo)
         }
@@ -413,7 +413,7 @@ class App {
 
   openFile = (event: Electron.Event, pathname: string): void => {
     event.preventDefault()
-    const info = normalizeMarkdownPath(pathname)
+    const info = normalizeDocumentPath(pathname)
     if (info) {
       this._openFilesCache.push(info as PathInfo)
 
@@ -694,7 +694,7 @@ class App {
         if (editor) {
           editor.openTabsFromPaths(
             fileList
-              .map((p) => normalizeMarkdownPath(p))
+              .map((p) => normalizeDocumentPath(p))
               .filter((i): i is PathInfo => i !== null && !i.isDir)
               .map((i) => i.path)
           )

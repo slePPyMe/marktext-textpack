@@ -75,6 +75,12 @@ electronLanguages: # Keep Chromium/AppKit locales for the UI languages MarkText 
 asarUnpack:
   - resources/**
 fileAssociations:
+  - ext: textpack
+    name: TextPack
+    description: TextPack document
+    mimeType: application/x-textpack
+    role: Editor
+    icon: icons/md.ico
   - ext: md
     name: Markdown
     description: Markdown document
@@ -158,6 +164,7 @@ linux:
   category: 'Office;TextEditor;Utility'
   mimeTypes:
     - 'text/markdown'
+    - 'application/x-textpack'
   icon: 'static/icon.png'
   desktop:
     entry:
@@ -170,6 +177,9 @@ linux:
     - rpm
     - tar.gz
   fileAssociations:
+    - ext: 'textpack'
+      name: 'TextPack'
+      description: 'TextPack document'
     - ext: 'md'
       name: 'Markdown'
       description: 'Markdown document'
