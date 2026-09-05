@@ -75,6 +75,9 @@ interface FileChangePayload {
     encoding?: IFileState['encoding']
     markdown: string
     filename: string
+    documentKind?: IFileState['documentKind']
+    resourcePath?: string
+    reloadToken?: string
   }
 }
 
@@ -156,9 +159,13 @@ export interface EditorState {
 
 const autoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
-// Sidebar opens record whether the editor should take focus once that pathname
-// finishes loading. Keyed by pathname so concurrent opens keep their own intent.
+// Sidebar opens retain their focus intent until that pathname loads.
 const openIntents = new Map<string, boolean>()
+
+const getDocumentResourcePath = (file: IFileState | null | undefined): string => {
+  if (!file) return ''
+  return file.resourcePath || (file.pathname ? window.path.dirname(file.pathname) : '')
+}
 
 export const useEditorStore = defineStore('editor', {
   state: (): EditorState => ({
@@ -330,7 +337,7 @@ export const useEditorStore = defineStore('editor', {
         if (tab.readOnly)
           void window.electron.ipcRenderer.invoke('mt::set-document-read-only', tab.id, true)
       }
-      window.DIRNAME = currentFile?.pathname ? window.path.dirname(currentFile.pathname) : ''
+      window.DIRNAME = getDocumentResourcePath(currentFile)
       this.UPDATE_LINE_ENDING_MENU()
 
       for (const warning of bufferedEditorState.restoreWarnings) {
@@ -428,9 +435,31 @@ export const useEditorStore = defineStore('editor', {
       })
     },
 
-    loadChange(change: FileChangePayload): void {
+    async loadChange(change: FileChangePayload): Promise<void> {
       const { tabs, currentFile } = this
-      const { data, pathname } = change
+      const { pathname } = change
+      let { data } = change
+      if (data.reloadToken && data.documentKind === 'textpack') {
+        try {
+          const resolved = await window.electron.ipcRenderer.invoke(
+            'mt::resolve-textpack-reload',
+            pathname,
+            data.reloadToken,
+            true
+          )
+          if (!resolved.accepted || !resolved.resourcePath) return
+          data = { ...data, resourcePath: resolved.resourcePath, reloadToken: undefined }
+        } catch (error) {
+          notice.notify({
+            title: t('store.editor.errorLoadingTabTitle'),
+            message: error instanceof Error ? error.message : String(error),
+            type: 'error',
+            time: 20000,
+            showConfirm: false
+          })
+          return
+        }
+      }
       const {
         isMixedLineEndings,
         lineEnding,
@@ -438,7 +467,9 @@ export const useEditorStore = defineStore('editor', {
         trimTrailingNewline,
         encoding,
         markdown,
-        filename
+        filename,
+        documentKind,
+        resourcePath
       } = data
       // Create a new document and update few entires later.
       const newFileState = createDocumentState({
@@ -448,7 +479,9 @@ export const useEditorStore = defineStore('editor', {
         encoding,
         lineEnding,
         adjustLineEndingOnSave,
-        trimTrailingNewline
+        trimTrailingNewline,
+        documentKind,
+        resourcePath
       })
 
       const tab = tabs.find((t) => window.fileUtils.isSamePathSync(t.pathname, pathname))
@@ -519,6 +552,7 @@ export const useEditorStore = defineStore('editor', {
       if (currentFile && pathname === currentFile.pathname) {
         // save current state first
         this.currentFile = tab
+        window.DIRNAME = getDocumentResourcePath(tab)
         const { id, cursor, history, scrollTop, muyaIndexCursor } = tab // Should not use blocks history as this is loaded from disk
         bus.emit('file-changed', {
           id,
@@ -737,14 +771,31 @@ export const useEditorStore = defineStore('editor', {
         }
 
         // SET_PATHNAME
-        const { filename } = fileInfo
-        if (id === this.currentFile?.id && pathname) {
-          window.DIRNAME = window.path.dirname(pathname)
-        }
+        const { filename, documentKind, resourcePath, markdown } = fileInfo
         if (tab) {
+          const matchesSavedSnapshot = 'savedMarkdown' in fileInfo && fileInfo.savedMarkdown === tab.markdown
           Object.assign(tab, { filename, pathname, isPendingCreation: false })
-          if ('savedMarkdown' in fileInfo && fileInfo.savedMarkdown === tab.markdown)
+          if (documentKind) tab.documentKind = documentKind
+          if (resourcePath !== undefined) tab.resourcePath = resourcePath
+          else if (tab.documentKind !== 'textpack') tab.resourcePath = window.path.dirname(pathname)
+          if (matchesSavedSnapshot) {
+            if (typeof markdown === 'string') tab.markdown = markdown
             tab.isSaved = true
+          }
+          if (id === this.currentFile?.id && pathname) {
+            window.DIRNAME = getDocumentResourcePath(tab)
+            if (matchesSavedSnapshot && typeof markdown === 'string') {
+              bus.emit('file-changed', {
+                id,
+                markdown,
+                cursor: tab.cursor,
+                muyaIndexCursor: tab.muyaIndexCursor,
+                renderCursor: true,
+                history: tab.history,
+                scrollTop: tab.scrollTop
+              })
+            }
+          }
           debouncedSendBufferedState()
         }
       })
@@ -981,13 +1032,14 @@ export const useEditorStore = defineStore('editor', {
         if (tab.pathname === src) {
           tab.pathname = dest
           tab.filename = window.path.basename(dest)
+          if (tab.documentKind === 'markdown') tab.resourcePath = window.path.dirname(dest)
         }
       })
       // Keep DIRNAME in sync when the active tab is the one being renamed,
       // so link resolution / dirname-based lookups don't keep using the old
       // folder until the user switches tabs.
       if (this.currentFile != null && this.currentFile.pathname === dest) {
-        window.DIRNAME = window.path.dirname(dest)
+        window.DIRNAME = getDocumentResourcePath(this.currentFile)
       }
       debouncedSendBufferedState()
     },
@@ -996,14 +1048,13 @@ export const useEditorStore = defineStore('editor', {
       const oldCurrentFile = this.currentFile
       let didUpdateCurrentFile = false
       if (oldCurrentFile == null || oldCurrentFile.id !== currentFile.id) {
-        const { id, markdown, cursor, history, pathname, scrollTop, blocks, muyaIndexCursor } =
-          currentFile
+        const { id, markdown, cursor, history, scrollTop, blocks, muyaIndexCursor } = currentFile
         // Must run while `currentFile` still points at the outgoing tab, so its
         // flushed edit is attributed to that tab and not lost on switch (#2938).
         if (oldCurrentFile) {
           this.flushActiveEditor()
         }
-        window.DIRNAME = pathname ? window.path.dirname(pathname) : ''
+        window.DIRNAME = getDocumentResourcePath(currentFile)
         this.currentFile = currentFile
         applyReadOnly(currentFile.readOnly)
         this.selectionWordCount = null
@@ -1196,9 +1247,8 @@ export const useEditorStore = defineStore('editor', {
         this.currentFile = fileState
         this.selectionWordCount = null
         if (fileState && typeof fileState.markdown === 'string') {
-          const { id, markdown, cursor, history, pathname, scrollTop, blocks, muyaIndexCursor } =
-            fileState
-          window.DIRNAME = pathname ? window.path.dirname(pathname) : ''
+          const { id, markdown, cursor, history, scrollTop, blocks, muyaIndexCursor } = fileState
+          window.DIRNAME = getDocumentResourcePath(fileState)
           bus.emit('file-changed', {
             id,
             markdown,
@@ -1290,9 +1340,9 @@ export const useEditorStore = defineStore('editor', {
         this.currentFile = this.tabs[tabIndex] ?? this.tabs[tabIndex - 1] ?? this.tabs[0] ?? null
         this.selectionWordCount = null
         if (this.currentFile && typeof this.currentFile.markdown === 'string') {
-          const { id, markdown, cursor, history, pathname, scrollTop, blocks, muyaIndexCursor } =
+          const { id, markdown, cursor, history, scrollTop, blocks, muyaIndexCursor } =
             this.currentFile
-          window.DIRNAME = pathname ? window.path.dirname(pathname) : ''
+          window.DIRNAME = getDocumentResourcePath(this.currentFile)
           bus.emit('file-changed', {
             id,
             markdown,
@@ -1936,7 +1986,8 @@ export const useEditorStore = defineStore('editor', {
               // that left the content byte-identical) — there is nothing to
               // reload and no reason to warn the user (#1861).
               const newMarkdown = (change as unknown as FileChangePayload).data?.markdown
-              if (typeof newMarkdown === 'string' && newMarkdown === tab.markdown) {
+              const reloadToken = (change as unknown as FileChangePayload).data?.reloadToken
+              if (typeof newMarkdown === 'string' && newMarkdown === tab.markdown && !reloadToken) {
                 if (wasMissing)
                   tab.notifications = tab.notifications.filter(
                     (item) => item.exclusiveType !== 'file_changed'
@@ -1955,7 +2006,7 @@ export const useEditorStore = defineStore('editor', {
                   autoSaveTimers.delete(id)
                 }
 
-                this.loadChange(change as unknown as FileChangePayload)
+                this.loadChange(change as unknown as FileChangePayload).catch(console.error)
                 return
               }
 
@@ -1967,7 +2018,11 @@ export const useEditorStore = defineStore('editor', {
                 exclusiveType: 'file_changed',
                 action: (status) => {
                   if (status) {
-                    this.loadChange(change as unknown as FileChangePayload)
+                    this.loadChange(change as unknown as FileChangePayload).catch(console.error)
+                  } else if (reloadToken) {
+                    window.electron.ipcRenderer
+                      .invoke('mt::resolve-textpack-reload', pathname, reloadToken, false)
+                      .catch(console.error)
                   }
                 }
               })
@@ -2277,6 +2332,8 @@ interface BufferedTabState {
   isPendingCreation?: boolean
   id: string
   pathname: string
+  documentKind: IFileState['documentKind']
+  resourcePath: string
   filename: string
   markdown: string
   isSaved: boolean
@@ -2297,6 +2354,10 @@ const createBufferedTabState = (tab: Partial<IFileState> & { id: string }): Buff
     diskConflict: tab.diskConflict,
     id: tab.id,
     pathname: tab.pathname ?? defaultFileState.pathname,
+    // Main supplies a fresh TextPack workspace during restore. Do not strip
+    // this descriptor while normalizing the incoming mt::load-state payload.
+    documentKind: tab.documentKind ?? defaultFileState.documentKind,
+    resourcePath: tab.resourcePath ?? defaultFileState.resourcePath,
     filename: tab.filename ?? defaultFileState.filename,
     markdown: typeof tab.markdown === 'string' ? tab.markdown : defaultFileState.markdown,
     isPendingCreation: tab.isPendingCreation,
