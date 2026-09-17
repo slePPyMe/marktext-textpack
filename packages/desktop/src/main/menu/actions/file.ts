@@ -215,6 +215,7 @@ const handlePandocExport = async(e: IpcMainEvent, payload: PandocExportPayload):
   try {
     const { filePath: chosen, canceled } = await dialog.showSaveDialog(win, {
       defaultPath: path.join(sourceDir ?? getPath('documents'), `${stem}${format.extension}`),
+      properties: ['showOverwriteConfirmation'],
       filters: [{ name: format.label, extensions: [format.extension.slice(1)] }]
     })
     if (canceled || !chosen || win.isDestroyed()) return
@@ -333,6 +334,7 @@ const handleResponseForSave = async(
         saveAs && pathname
           ? pathname
           : path.join(defaultPath || getPath('documents'), `${recommendFilename}.md`),
+      properties: ['showOverwriteConfirmation'],
       filters: [
         { name: 'Markdown document', extensions: [...MARKDOWN_EXTENSIONS] },
         { name: 'TextPack document', extensions: ['textpack'] }
@@ -346,7 +348,7 @@ const handleResponseForSave = async(
   // SaveOptions is partial on the IPC surface; renderer save requests supply all document options.
   return documentWrites
     .write(e.sender.id, id, writeEpoch, () =>
-      writeDocumentFile(destination, markdown, options, pathname)
+      writeDocumentFile(destination, markdown, options, pathname, saveAs ? 'saveAs' : 'save')
     )
     .then((descriptor) => {
       if (!descriptor) return

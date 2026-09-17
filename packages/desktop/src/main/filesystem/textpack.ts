@@ -7,7 +7,7 @@ import path from 'path'
 import { pipeline } from 'stream/promises'
 import yauzl, { type Entry, type ZipFile } from 'yauzl'
 import yazl from 'yazl'
-import type { LineEnding, MarkdownDocument, SaveOptions } from '@shared/types/files'
+import type { LineEnding, MarkdownDocument, SaveIntent, SaveOptions } from '@shared/types/files'
 import { loadMarkdownFile, writeMarkdownFile } from './markdown'
 
 export const TEXTPACK_LIMITS = Object.freeze({
@@ -39,6 +39,7 @@ interface TextPackSession {
   sourceRevision: { size: number; mtimeMs: number } | null
   references: number
   dirtyResources: boolean
+  workspaceFiles: string[]
 }
 
 interface TextPackManifest {
@@ -49,6 +50,8 @@ interface TextPackManifest {
   pid: number
   dirtyResources: boolean
   updatedAt: string
+  /** Optional for compatibility with workspaces created by older versions. */
+  workspaceFiles?: string[]
 }
 
 interface PendingTextPackReload {
@@ -341,6 +344,7 @@ const writeManifest = async(session: TextPackSession): Promise<void> => {
     sourceRevision: session.sourceRevision,
     pid: process.pid,
     dirtyResources: session.dirtyResources,
+    workspaceFiles: session.workspaceFiles,
     updatedAt: new Date().toISOString()
   }
   await fsPromises.writeFile(
@@ -380,13 +384,16 @@ const findRecoverySession = async(physicalPath: string): Promise<TextPackSession
       ) { continue }
       validateTextPackEntryName(manifest.textEntryName)
       await fsPromises.access(path.join(workspacePath, manifest.textEntryName))
+      const workspaceFiles = manifest.workspaceFiles ?? await listWorkspaceFiles(workspacePath)
+      for (const entry of workspaceFiles) validateTextPackEntryName(entry)
       const session: TextPackSession = {
         physicalPath: path.resolve(physicalPath),
         workspacePath,
         textEntryName: manifest.textEntryName,
         sourceRevision: manifest.sourceRevision ?? null,
         references: 1,
-        dirtyResources: !!manifest.dirtyResources
+        dirtyResources: !!manifest.dirtyResources,
+        workspaceFiles
       }
       await writeManifest(session)
       return session
@@ -671,7 +678,8 @@ export const resolveTextPackReload = async(
     textEntryName: candidate.textEntryName,
     sourceRevision: candidate.sourceRevision,
     references: activeSession.references,
-    dirtyResources: false
+    dirtyResources: false,
+    workspaceFiles: await listWorkspaceFiles(candidate.workspacePath)
   }
   sessions.set(key, replacement)
   await writeManifest(replacement)
@@ -755,7 +763,8 @@ export const loadTextPackFile = async(
         textEntryName,
         sourceRevision: { size: stat.size, mtimeMs: stat.mtimeMs },
         references: 1,
-        dirtyResources: false
+        dirtyResources: false,
+        workspaceFiles: await listWorkspaceFiles(workspacePath)
       }
       sessions.set(sessionKey(physicalPath), session)
       await writeManifest(session)
@@ -785,12 +794,13 @@ const listWorkspaceFiles = async(root: string, current = root): Promise<string[]
   return files.sort()
 }
 
-const buildArchive = async(workspacePath: string, outputPath: string): Promise<void> => {
+const buildArchive = async(workspacePath: string, outputPath: string, files: string[]): Promise<void> => {
   const zipfile = new yazl.ZipFile()
-  for (const relative of await listWorkspaceFiles(workspacePath)) {
+  for (const relative of files) {
     zipfile.addFile(path.join(workspacePath, ...relative.split('/')), relative, { compress: true })
   }
   const output = fs.createWriteStream(outputPath, { flags: 'wx' })
+  zipfile.once('error', (error) => output.destroy(error))
   zipfile.end()
   await pipeline(zipfile.outputStream, output)
   const handle = await fsPromises.open(outputPath, 'r+')
@@ -824,7 +834,8 @@ const createTextPackSession = async(targetPath: string): Promise<TextPackSession
     textEntryName: 'text.md',
     sourceRevision: null,
     references: 1,
-    dirtyResources: false
+    dirtyResources: false,
+    workspaceFiles: ['info.json']
   }
 }
 
@@ -840,12 +851,41 @@ const queueSave = (key: string, task: () => Promise<void>): Promise<void> => {
   })
 }
 
+const readArchiveRevision = async(pathname: string): Promise<TextPackSession['sourceRevision']> => {
+  try {
+    const stat = await fsPromises.stat(pathname)
+    return { size: stat.size, mtimeMs: stat.mtimeMs }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  }
+}
+
+const validateWorkspaceFiles = async(session: TextPackSession): Promise<string[]> => {
+  let files: string[]
+  try {
+    files = await listWorkspaceFiles(session.workspacePath)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new Error('The TextPack workspace is missing. Cannot save the document with its resources.')
+    }
+    throw error
+  }
+  const available = new Set(files)
+  const missing = session.workspaceFiles.filter((entry) => !available.has(entry))
+  if (missing.length) {
+    throw new Error(`TextPack workspace resources are missing: ${missing.join(', ')}. The destination was not replaced.`)
+  }
+  return files
+}
+
 export const writeTextPackFile = async(
   targetPath: string,
   markdown: string,
   _options: SaveOptions,
   sourcePath?: string,
-  conversionOptions: TextPackConversionOptions = DEFAULT_CONVERSION_OPTIONS
+  conversionOptions: TextPackConversionOptions = DEFAULT_CONVERSION_OPTIONS,
+  intent: SaveIntent = 'save'
 ): Promise<{ documentKind: 'textpack'; resourcePath: string; markdown: string }> => {
   if (conversionOptions.remoteImages !== 'preserve') {
     throw new Error('TextPack remote image embedding is not implemented. Use the preserve policy.')
@@ -856,6 +896,9 @@ export const writeTextPackFile = async(
   let session = sessions.get(sourceKey)
   let savedMarkdown = markdown
   if (!session) {
+    if (sourcePath?.toLowerCase().endsWith('.textpack')) {
+      throw new Error('The TextPack session is no longer available. Cannot save without its cached resources.')
+    }
     session = await createTextPackSession(resolvedTarget)
     try {
       if (!sourcePath || !sourcePath.toLowerCase().endsWith('.textpack')) {
@@ -872,28 +915,30 @@ export const writeTextPackFile = async(
   }
 
   await queueSave(targetKey, async() => {
-    if (sourceKey === targetKey && session!.sourceRevision) {
-      const stat = await fsPromises.stat(resolvedTarget)
-      if (
-        stat.size !== session!.sourceRevision.size ||
-        stat.mtimeMs !== session!.sourceRevision.mtimeMs
-      ) {
+    const targetRevision = await readArchiveRevision(resolvedTarget)
+    if (intent === 'save' && sourceKey === targetKey && session!.sourceRevision) {
+      if (!targetRevision) {
+        throw new Error('The original TextPack no longer exists. Use Save As to save the current document.')
+      }
+      if (!revisionsMatch(targetRevision, session!.sourceRevision)) {
         throw new Error(
           'The TextPack changed on disk. Reload it or use Save As to keep both versions.'
         )
       }
     }
+    const workspaceFiles = await validateWorkspaceFiles(session!)
     await fsPromises.writeFile(
       path.join(session!.workspacePath, session!.textEntryName),
       savedMarkdown,
       'utf8'
     )
+    if (!workspaceFiles.includes(session!.textEntryName)) workspaceFiles.push(session!.textEntryName)
     const tempPath = path.join(
       path.dirname(resolvedTarget),
       `.${path.basename(resolvedTarget)}.${randomUUID()}.tmp`
     )
     try {
-      await buildArchive(session!.workspacePath, tempPath)
+      await buildArchive(session!.workspacePath, tempPath, workspaceFiles)
       const validationPath = path.join(SESSION_ROOT, randomUUID(), 'content')
       await fsPromises.mkdir(validationPath, { recursive: true })
       try {
@@ -901,10 +946,18 @@ export const writeTextPackFile = async(
       } finally {
         await removeWorkspace(validationPath)
       }
+      // Do not overwrite a file created or changed while the archive was built.
+      const currentRevision = await readArchiveRevision(resolvedTarget)
+      if (targetRevision || currentRevision) {
+        if (!revisionsMatch(targetRevision, currentRevision)) {
+          throw new Error('The TextPack destination changed while saving. Use Save As again to confirm the destination.')
+        }
+      }
       await replaceArchive(tempPath, resolvedTarget)
       const stat = await fsPromises.stat(resolvedTarget)
       session!.sourceRevision = { size: stat.size, mtimeMs: stat.mtimeMs }
       session!.dirtyResources = false
+      session!.workspaceFiles = workspaceFiles
       await writeManifest(session!)
     } finally {
       await fsPromises.rm(tempPath, { force: true })
@@ -930,6 +983,7 @@ export const exportTextPackToMarkdown = async(
       'The TextPack session is no longer available. Reopen the document and try again.'
     )
   }
+  await validateWorkspaceFiles(session)
   const targetDirectory = path.dirname(targetPath)
   const assetFolderName = `${path.basename(targetPath, path.extname(targetPath))}.assets`
   const targetAssets = path.join(targetDirectory, assetFolderName)
@@ -987,11 +1041,21 @@ export const moveTextPackSession = (oldPathname: string, newPathname: string): v
   writeManifest(session).catch(() => undefined)
 }
 
-export const markTextPackResourcesDirty = (pathname: string): void => {
+export const markTextPackResourcesDirty = async(pathname: string, resourceEntry?: string): Promise<void> => {
   const session = sessions.get(sessionKey(pathname))
   if (!session) return
   session.dirtyResources = true
-  writeManifest(session).catch(() => undefined)
+  // Record newly inserted resources before their first save, including images
+  // later removed from the Markdown (the package still retains those assets).
+  if (resourceEntry?.startsWith('assets/')) {
+    try {
+      const entry = validateTextPackEntryName(resourceEntry)
+      if (!session.workspaceFiles.includes(entry)) session.workspaceFiles.push(entry)
+    } catch {
+      // An unsuccessful image import can return its original, non-package path.
+    }
+  }
+  await writeManifest(session).catch(() => undefined)
 }
 
 export const cleanupStaleTextPackSessions = async(

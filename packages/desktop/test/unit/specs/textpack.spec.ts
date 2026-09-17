@@ -7,6 +7,7 @@ import { pipeline } from 'stream/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import yauzl, { type Entry } from 'yauzl'
 import yazl from 'yazl'
+import { writeDocumentFile } from '../../../src/main/filesystem/document'
 import {
   closeTextPackSession,
   exportTextPackToMarkdown,
@@ -64,6 +65,7 @@ const readArchive = (pathname: string): Promise<Map<string, Buffer>> =>
   })
 
 afterEach(async() => {
+  vi.restoreAllMocks()
   await Promise.all(openedTextPacks.splice(0).map(closeTextPackSession))
   await Promise.all(
     temporaryDirectories
@@ -252,6 +254,145 @@ describe('TextPack codec', () => {
       })
     ).rejects.toThrow(/changed on disk/)
     expect(await fsPromises.readFile(pathname)).toEqual(externalBytes)
+  })
+
+  const openRecoveryFixture = async() => {
+    const directory = await makeDirectory()
+    const pathname = path.join(directory, 'original.textpack')
+    const entries = [
+      { name: 'info.json', content: '{"version":2,"custom":{"preserve":true}}' },
+      { name: 'text.md', content: '# Original\n![image](assets/image.svg)' },
+      { name: 'assets/image.svg', content: '<svg xmlns="http://www.w3.org/2000/svg"/>' },
+      { name: 'assets/unused.bin', content: Buffer.from([0, 1, 255]) },
+      { name: 'extra/data.json', content: '{"keep":true}' }
+    ]
+    await createArchive(pathname, entries)
+    const opened = await loadTextPackFile(pathname, 'lf')
+    openedTextPacks.push(pathname)
+    if (!opened.resourcePath) throw new Error('Missing fixture workspace')
+    return { directory, pathname, entries, workspace: opened.resourcePath }
+  }
+
+  it('rejects ordinary save after deletion without changing the cached document', async() => {
+    const { pathname, workspace } = await openRecoveryFixture()
+    const before = await fsPromises.readFile(path.join(workspace, 'text.md'))
+    await fsPromises.unlink(pathname)
+
+    await expect(writeDocumentFile(pathname, '# Edited', {}, pathname))
+      .rejects.toThrow(/no longer exists.*Save As/)
+    await expect(fsPromises.access(pathname)).rejects.toThrow()
+    expect(await fsPromises.readFile(path.join(workspace, 'text.md'))).toEqual(before)
+  })
+
+  it.each(['same', 'different'])('allows Save As to a %s path after deletion, preserving the whole package', async(target) => {
+    const { directory, pathname, entries } = await openRecoveryFixture()
+    await fsPromises.unlink(pathname)
+    const destination = target === 'same' ? pathname : path.join(directory, 'recovered.textpack')
+    const markdown = '# Recovered\n![image](assets/image.svg)'
+
+    await writeDocumentFile(destination, markdown, {}, pathname, 'saveAs')
+    openedTextPacks.push(destination)
+
+    const saved = await readArchive(destination)
+    expect(saved.get('text.md')?.toString()).toBe(markdown)
+    for (const entry of entries.filter((entry) => entry.name !== 'text.md')) {
+      expect(saved.get(entry.name)).toEqual(Buffer.from(entry.content))
+    }
+    // Successful recovery establishes the revision for subsequent ordinary saves.
+    await writeDocumentFile(destination, '# Next edit', {}, destination)
+    expect((await readArchive(destination)).get('text.md')?.toString()).toBe('# Next edit')
+  })
+
+  it('allows explicitly confirmed Save As to replace a changed target', async() => {
+    const { pathname } = await openRecoveryFixture()
+    await fsPromises.writeFile(pathname, 'external replacement')
+
+    await writeDocumentFile(pathname, '# Confirmed replacement', {}, pathname, 'saveAs')
+
+    expect((await readArchive(pathname)).get('text.md')?.toString()).toBe('# Confirmed replacement')
+  })
+
+  it.each(['workspace', 'assets/image.svg', 'assets/unused.bin', 'extra/data.json'])('rejects Save As when cached %s is missing and preserves the destination', async(missing) => {
+    const { directory, pathname, workspace } = await openRecoveryFixture()
+    const destination = path.join(directory, 'existing.textpack')
+    const existing = Buffer.from('keep destination untouched')
+    await fsPromises.writeFile(destination, existing)
+    await fsPromises.rm(missing === 'workspace' ? workspace : path.join(workspace, missing), { recursive: true })
+
+    await expect(writeDocumentFile(destination, '# Edited', {}, pathname, 'saveAs'))
+      .rejects.toThrow(/workspace.*missing|resources.*missing/i)
+    expect(await fsPromises.readFile(destination)).toEqual(existing)
+  })
+
+  it('does not create a resource-less package when the source session is unavailable', async() => {
+    const directory = await makeDirectory()
+    const source = path.join(directory, 'no-session.textpack')
+    const destination = path.join(directory, 'recovered.textpack')
+
+    await expect(writeDocumentFile(destination, '![image](assets/image.svg)', {}, source, 'saveAs'))
+      .rejects.toThrow(/session.*no longer available/i)
+    await expect(fsPromises.access(destination)).rejects.toThrow()
+  })
+
+  it('rejects a newly inserted resource lost before its first save, even if no longer referenced', async() => {
+    const { pathname, workspace } = await openRecoveryFixture()
+    const before = await fsPromises.readFile(pathname)
+    const image = path.join(workspace, 'assets', 'new.png')
+    await fsPromises.writeFile(image, 'new image bytes')
+    await markTextPackResourcesDirty(pathname, 'assets/new.png')
+    await fsPromises.unlink(image)
+
+    await expect(writeDocumentFile(pathname, '# Image removed from the text', {}, pathname, 'saveAs'))
+      .rejects.toThrow(/resources are missing: assets\/new.png/)
+    expect(await fsPromises.readFile(pathname)).toEqual(before)
+  })
+
+  it('fails safely if a cached resource disappears after validation while building the archive', async() => {
+    const { pathname, workspace } = await openRecoveryFixture()
+    const before = await fsPromises.readFile(pathname)
+    const originalWriteFile = fsPromises.writeFile.bind(fsPromises)
+    vi.spyOn(fsPromises, 'writeFile').mockImplementation(async(...args: Parameters<typeof fsPromises.writeFile>) => {
+      await originalWriteFile(...args)
+      if (args[0] === path.join(workspace, 'text.md')) {
+        await fsPromises.unlink(path.join(workspace, 'assets', 'image.svg'))
+      }
+    })
+
+    await expect(writeDocumentFile(pathname, '# Edited', {}, pathname, 'saveAs')).rejects.toThrow()
+    expect(await fsPromises.readFile(pathname)).toEqual(before)
+  })
+
+  it.each(['create', 'replace'])('does not overwrite a destination that another process can %s during Save As', async(change) => {
+    const { directory, pathname } = await openRecoveryFixture()
+    const destination = path.join(directory, 'destination.textpack')
+    if (change === 'replace') await fsPromises.writeFile(destination, 'previous target')
+    const external = Buffer.from('a different file created during the save')
+    const originalStat = fsPromises.stat.bind(fsPromises)
+    let targetReads = 0
+    vi.spyOn(fsPromises, 'stat').mockImplementation(async(...args: Parameters<typeof fsPromises.stat>) => {
+      if (args[0] === destination && ++targetReads === 2) {
+        await fsPromises.writeFile(destination, external)
+      }
+      return originalStat(...args)
+    })
+
+    await expect(writeDocumentFile(destination, '# Edited', {}, pathname, 'saveAs'))
+      .rejects.toThrow(/destination changed while saving/)
+    expect(await fsPromises.readFile(destination)).toEqual(external)
+    expect((await fsPromises.readdir(directory)).filter((name) => name.endsWith('.tmp'))).toEqual([])
+  })
+
+  it('does not interpret a permissions failure as a missing target', async() => {
+    const { pathname } = await openRecoveryFixture()
+    const originalStat = fsPromises.stat.bind(fsPromises)
+    vi.spyOn(fsPromises, 'stat').mockImplementation(async(...args: Parameters<typeof fsPromises.stat>) => {
+      if (args[0] === pathname) throw Object.assign(new Error('Access denied'), { code: 'EACCES' })
+      return originalStat(...args)
+    })
+
+    await expect(writeDocumentFile(pathname, '# Edited', {}, pathname, 'saveAs'))
+      .rejects.toMatchObject({ code: 'EACCES' })
+    expect((await readArchive(pathname)).get('text.md')?.toString()).toContain('# Original')
   })
 
   it('finds inline and reference destinations without treating code as links', () => {
