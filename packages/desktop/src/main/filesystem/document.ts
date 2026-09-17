@@ -1,7 +1,7 @@
 import path from 'path'
 import { isDirectory2 } from 'common/filesystem'
 import { hasTextPackExtension, isDocumentFile } from 'common/filesystem/paths'
-import type { LineEnding, MarkdownDocument, SaveOptions } from '@shared/types/files'
+import type { LineEnding, MarkdownDocument, SaveIntent, SaveOptions } from '@shared/types/files'
 import { normalizeAndResolvePath } from '.'
 import { loadMarkdownFile, writeMarkdownFile } from './markdown'
 import {
@@ -90,14 +90,15 @@ export const writeDocumentFile = async(
   pathname: string,
   markdown: string,
   options: SaveOptions,
-  sourcePath?: string
+  sourcePath?: string,
+  intent: SaveIntent = 'save'
 ): Promise<{
   documentKind: 'markdown' | 'textpack'
   resourcePath: string
   markdown?: string
 }> => {
   if (hasTextPackExtension(pathname)) {
-    return writeTextPackFile(pathname, markdown, options, sourcePath)
+    return writeTextPackFile(pathname, markdown, options, sourcePath, undefined, intent)
   }
   if (sourcePath && hasTextPackExtension(sourcePath)) {
     return exportTextPackToMarkdown(sourcePath, pathname, markdown, options)

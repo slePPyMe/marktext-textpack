@@ -499,6 +499,7 @@ ipcMain.on(
     let { filePath, canceled } = await dialog.showSaveDialog(win, {
       defaultPath:
         pathname || path.join(defaultPath || getPath('documents'), `${recommendFilename}.md`),
+      properties: ['showOverwriteConfirmation'],
       filters: [
         { name: 'Markdown document', extensions: [...MARKDOWN_EXTENSIONS] },
         { name: 'TextPack document', extensions: ['textpack'] }
@@ -507,7 +508,9 @@ ipcMain.on(
 
     if (filePath && !canceled) {
       filePath = path.resolve(filePath)
-      writeDocumentFile(filePath, markdown, options, pathname)
+      // A confirmed Save As can recreate a deleted file even at the original path.
+      // The native dialog handles confirmation when the selected target exists.
+      await writeDocumentFile(filePath, markdown, options, pathname, 'saveAs')
         .then((descriptor) => {
           if (!alreadyExistOnDisk) {
             ipcMain.emit('window-add-file-path', win.id, filePath)

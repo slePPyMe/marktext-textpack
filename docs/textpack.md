@@ -8,6 +8,8 @@ MarkText can open and edit compressed TextBundle documents with the `.textpack` 
 - Edit it like any other Markdown document. Relative `assets/...` images resolve inside the bundle.
 - Pasted or dropped images are copied into the bundle's `assets/` directory. The Markdown keeps a portable POSIX-style `assets/...` reference.
 - **Save** rebuilds and validates a temporary archive, then replaces the original. External changes enter MarkText's existing file-change flow; a final source-revision check also prevents a changed archive from being overwritten during a race.
+- If the original was deleted, **Save** (including auto-save) reports the missing file. **Save As** can recreate it at the same location and name, or save to a different path, using the current text and complete cached package. Existing destinations require the save dialog's overwrite confirmation. A destination change detected during packing cancels the replacement.
+- Missing cached package files cancel saving rather than silently producing an incomplete archive. The workspace inventory preserves metadata, attachments, and unreferenced files as well as images.
 - Saving a Markdown or untitled document as `.textpack` embeds Base64 image data, local absolute/file-URL images, and relative local link/image targets. Inline images, reference-style images, and HTML `<img src>` are supported. Source files are copied, never moved. Missing or invalid resources cancel conversion without replacing the destination.
 - Saving a TextPack as Markdown exports its complete `assets/` directory as `<document>.assets` and rewrites Markdown destinations accordingly.
 

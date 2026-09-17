@@ -849,7 +849,7 @@ const imageAction = async (
       workspaceTextPath
     )
     const destImagePath = result.split(window.path.sep).join('/')
-    window.electron.ipcRenderer.send('mt::textpack-resource-dirty', currentPathname)
+    window.electron.ipcRenderer.send('mt::textpack-resource-dirty', currentPathname, destImagePath)
     if (id && sourceCode.value) {
       bus.emit('image-action', { id, result: destImagePath, alt })
     }

@@ -206,7 +206,7 @@ export interface IpcSendChannels {
   'mt::window-add-file-path': [windowId: number, filePath: string]
   'mt::window-initialized': []
   'mt::window-tab-closed': [pathname: string]
-  'mt::textpack-resource-dirty': [pathname: string]
+  'mt::textpack-resource-dirty': [pathname: string, resourceEntry?: string]
   'mt::window-toggle-always-on-top': []
   'mt::window::drop': [payload: unknown]
   'screen-capture': [payload: unknown]

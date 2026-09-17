@@ -124,6 +124,9 @@ export interface TabOptions {
   [key: string]: unknown
 }
 
+/** Set by the main-process save command, not inferred from the chosen path. */
+export type SaveIntent = 'save' | 'saveAs'
+
 export interface SaveOptions {
   // Encoding is the `FileEncoding` object at runtime (`{ encoding, isBom }`).
   // String form is accepted for legacy callers that haven't been updated.

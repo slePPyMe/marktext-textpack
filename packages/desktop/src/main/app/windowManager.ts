@@ -416,8 +416,8 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
       }
     })
 
-    ipcMain.on('mt::textpack-resource-dirty', (_e, pathname: string) => {
-      markTextPackResourcesDirty(pathname)
+    ipcMain.on('mt::textpack-resource-dirty', (_e, pathname: string, resourceEntry?: string) => {
+      markTextPackResourcesDirty(pathname, resourceEntry)
     })
 
     ipcMain.handle(
