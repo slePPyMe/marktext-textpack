@@ -31,6 +31,25 @@ document and filesystem layers.
 See [TextPack documentation](docs/textpack.md) for compatibility details and
 current limitations.
 
+### Upstream synchronization
+
+The weekly `Sync upstream` workflow rebases this fork onto upstream `develop`,
+runs lint, type checks and unit tests, then updates `textpack` only if its remote
+head is still the commit checked out at the start. Conflicts stop the run for
+manual resolution.
+
+The push uses a dedicated SSH deploy key with write access to this repository,
+stored in the Actions secret `SYNC_UPSTREAM_SSH_KEY`. This also allows upstream
+workflow changes, which the default `GITHUB_TOKEN` cannot push. The key is used
+only after checks pass, with strict GitHub host-key verification, and its temporary
+file is removed when the push step ends. It is not persisted in the checkout.
+The built-in token has read-only access.
+
+To rotate the credential, add a new write-enabled key in repository **Settings →
+Deploy keys**, replace `SYNC_UPSTREAM_SSH_KEY` with its private key, verify a manual
+sync, then remove the old deploy key. Deploy keys do not expire automatically.
+Never paste private keys into issues, chat, or source files.
+
 The implementation was developed with AI assistance and manually reviewed and tested.
 
 <div align="center">

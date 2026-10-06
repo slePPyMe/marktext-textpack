@@ -296,3 +296,39 @@ See `packages/website/content/docs/dev/IPC.md` for conventions and examples.
 - Run `pnpm run lint` before submitting.
 - All PRs must pass CI before merge.
 - See `.github/CONTRIBUTING.md` for the full contributing guide.
+
+---
+
+# TextPack 分支协作约定
+
+## 任务范围与共享上下文
+
+- 每个 Codex 对话只处理一个新功能、缺陷修复、维护操作或审查目标。如果用户开始了实质上不同的新功能，建议为它新建一个对话。
+- 将稳定的仓库事实和反复适用的协作约定记录在本文件中，使后续对话能够共享这些信息。
+- 具体功能的设计、临时调查记录、实施进度和未完成的决定，应保留在对应对话或专门的交接、设计文档中；不要把临时状态不断累积到本文件。
+- 完成较大的功能工作后，应说明所在分支及其基础、修改过的文件、执行过的检查、已知限制和后续事项，使其他对话能够根据仓库中的证据继续工作。
+- 开始任务时，应检查当前分支、工作区状态、最近提交及相关文档；不要假设之前对话中的工作状态没有变化。
+
+## 仓库身份与 Git 工作流
+
+- 原始项目是 `marktext/marktext`，其 Git 远程名称为 `upstream`。
+- 当前非官方 TextPack 分支仓库是 `slePPyMe/marktext-textpack`，其 Git 远程名称为 `origin`。
+- 长期维护的定制分支是 `textpack`。它应保持基于 `upstream/develop`，通常将少量 TextPack 提交 rebase 到最新的上游分支。
+- 除非用户明确要求，否则不要强制推送、发布 release 或修改 GitHub 仓库设置。
+- 保留与当前任务无关的本地文件和未跟踪文件。除非用户要求，否则不要把本地设计或交接文档加入提交。
+
+## TextPack 分支的范围
+
+- 本分支为 MarkText 增加原生 `.textpack` 支持，并尽量将改动集中在文档和文件系统层。
+- 当程序尚不知道文档是 TextPack 时，应保持 MarkText 原有的编辑器和图片处理行为。
+- `.textbundle` 目录格式以及通用的非图片附件插入界面不在当前范围内。
+- 按当前已实现的策略，远程 HTTP/HTTPS 资源继续保持远程引用。
+- 上游维护者目前没有接受该功能进入 MarkText 主项目，因此应将本仓库视为独立维护的非官方分支。
+
+## Windows 工具链与构建
+
+- 读取根目录 `package.json` 的 `packageManager` 字段，并使用其中声明的准确 pnpm 版本。如果当前会话注入的备用 pnpm 版本不同，不要直接使用它。当前声明的版本是 `pnpm@10.33.4`。
+- Node 原生模块构建及其他 Python 工作优先使用 `C:\Users\pengj\anaconda3\python.exe`，使用前先确认该文件存在。需要运行 `node-gyp` 时，显式设置 `npm_config_python` 和 `PYTHON`。
+- Visual Studio 2022 已安装 x86/x64 Spectre 缓解版 MSVC 库。正常的 `electron-rebuild` 应能成功；除非先诊断并说明新的构建故障，否则不要用旧的原生二进制代替重新构建。
+- 完整的 Windows x64 打包检查是使用项目声明的 pnpm 和上述 Anaconda Python 执行 `pnpm run build:win:x64`。成功产物写入 `dist/`。
+- 报告结果时，应区分 `pnpm build`（Electron/Vite 应用构建）和 `pnpm run build:win:x64`（原生模块重编译及 Windows 打包）。
