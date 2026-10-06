@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: sync-upstream-textpack
@@ -15,15 +15,19 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out TextPack branch
         uses: actions/checkout@v4
         with:
           ref: textpack
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Rebase onto upstream develop
+        id: rebase
         run: |
+          echo "previous=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/marktext/marktext.git
@@ -42,4 +46,23 @@ jobs:
         run: pnpm test
 
       - name: Update TextPack branch
-        run: git push --force-with-lease origin HEAD:textpack
+        env:
+          SYNC_SSH_KEY: ${{ secrets.SYNC_UPSTREAM_SSH_KEY }}
+          PREVIOUS_HEAD: ${{ steps.rebase.outputs.previous }}
+        run: |
+          if [ -z "$SYNC_SSH_KEY" ]; then
+            echo "::error::Configure SYNC_UPSTREAM_SSH_KEY with the private key of this repository's write-enabled deploy key. The default GITHUB_TOKEN cannot push upstream workflow changes."
+            exit 1
+          fi
+
+          # Only the push step receives the repository-scoped write credential.
+          umask 077
+          ssh_dir=$(mktemp -d "$RUNNER_TEMP/textpack-sync.XXXXXX")
+          trap 'rm -rf "$ssh_dir"' EXIT
+          printf '%s\n' "$SYNC_SSH_KEY" > "$ssh_dir/key"
+          curl --fail --silent --show-error --retry 3 https://api.github.com/meta \
+            | jq -r '.ssh_keys[] | "github.com \(.)"' > "$ssh_dir/known_hosts"
+          export GIT_SSH_COMMAND="ssh -F /dev/null -i '$ssh_dir/key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile='$ssh_dir/known_hosts'"
+          git push --force-with-lease="refs/heads/textpack:$PREVIOUS_HEAD" \
+            "git@github.com:$GITHUB_REPOSITORY.git" HEAD:textpack
+          echo "Synced TextPack to $(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
