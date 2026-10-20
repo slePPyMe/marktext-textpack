@@ -867,7 +867,7 @@ const validateWorkspaceFiles = async(session: TextPackSession): Promise<string[]
     files = await listWorkspaceFiles(session.workspacePath)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error('The TextPack workspace is missing. Cannot save the document with its resources.')
+      throw new Error('The TextPack workspace is missing. Cannot save the document with its resources.', { cause: error })
     }
     throw error
   }

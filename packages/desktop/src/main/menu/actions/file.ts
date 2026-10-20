@@ -371,8 +371,8 @@ const handleResponseForSave = async(
         })
       } else {
         ipcMain.emit('window-file-saved', win.id, destination)
-        win.webContents.send('mt::tab-saved', id, markdown)
       }
+      win.webContents.send('mt::tab-saved', id, descriptor.markdown ?? markdown)
       return id
     })
     .catch((err: unknown) => {

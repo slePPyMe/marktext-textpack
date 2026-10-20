@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('electron', async() => {
   const { EventEmitter } = await import('node:events')
   return {
-    ipcMain: new EventEmitter(),
+    ipcMain: Object.assign(new EventEmitter(), { handle: vi.fn() }),
     BrowserWindow: { fromWebContents: () => mocks.win },
     app: {},
     dialog: { showMessageBox: mocks.showMessageBox },

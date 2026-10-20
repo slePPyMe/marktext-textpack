@@ -339,6 +339,7 @@ class EditorWindow extends BaseWindow {
         browserWindow!.webContents.send('mt::switch-tab-by-file_path', filePath, options)
         continue
       }
+      this._openedFiles!.push(filePath)
       const load = options.allowMissing
         ? loadCliDocumentFile.bind(null, filePath, preferences.getAll().defaultEncoding ?? 'utf8')
         : loadDocumentFile.bind(null, filePath)

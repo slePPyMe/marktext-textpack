@@ -7,7 +7,7 @@ import { pipeline } from 'stream/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import yauzl, { type Entry } from 'yauzl'
 import yazl from 'yazl'
-import { writeDocumentFile } from '../../../src/main/filesystem/document'
+import { loadCliDocumentFile, writeDocumentFile } from '../../../src/main/filesystem/document'
 import {
   closeTextPackSession,
   exportTextPackToMarkdown,
@@ -75,6 +75,19 @@ afterEach(async() => {
 })
 
 describe('TextPack codec', () => {
+  it('retains the upstream pending Markdown buffer when a CLI target does not exist', async() => {
+    const directory = await makeDirectory()
+    const pathname = path.join(directory, 'new.md')
+    const document = await loadCliDocumentFile(pathname, 'utf8', 'lf')
+    expect(document).toMatchObject({
+      pathname,
+      documentKind: 'markdown',
+      resourcePath: directory,
+      isPendingCreation: true,
+      markdown: ''
+    })
+    await expect(fsPromises.access(pathname)).rejects.toThrow()
+  })
   it('reserves remote embedding without silently falling back or writing a file', async() => {
     const directory = await makeDirectory()
     const pathname = path.join(directory, 'remote.textpack')

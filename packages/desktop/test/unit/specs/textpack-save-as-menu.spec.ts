@@ -4,9 +4,10 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ipcMain, type IpcMainEvent } from 'electron'
 import { closeTextPackSession, loadTextPackFile, writeTextPackFile } from 'main_renderer/filesystem/textpack'
+import { documentWrites } from 'main_renderer/filesystem/documentWrites'
 
 const mocks = vi.hoisted(() => ({
-  win: { id: 17, webContents: { send: vi.fn() } },
+  win: { id: 17, webContents: { id: 17, send: vi.fn(), once: vi.fn() } },
   showSaveDialog: vi.fn(),
   showMessageBox: vi.fn()
 }))
@@ -14,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('electron', async() => {
   const { EventEmitter } = await import('node:events')
   return {
-    ipcMain: new EventEmitter(),
+    ipcMain: Object.assign(new EventEmitter(), { handle: vi.fn() }),
     BrowserWindow: { fromWebContents: () => mocks.win },
     app: {},
     dialog: { showSaveDialog: mocks.showSaveDialog, showMessageBox: mocks.showMessageBox },
@@ -49,6 +50,7 @@ describe('TextPack Save As command', () => {
 
   beforeEach(async() => {
     vi.clearAllMocks()
+    documentWrites.clearOwner(17)
     directory = await fs.mkdtemp(path.join(os.tmpdir(), 'mt-save-as-command-'))
     original = path.join(directory, 'original.textpack')
     destination = original
@@ -73,11 +75,12 @@ describe('TextPack Save As command', () => {
     const reopened = await loadTextPackFile(destination, 'lf')
     expect(reopened.markdown).toContain('# Current edit')
     expect(mocks.win.webContents.send).not.toHaveBeenCalledWith('mt::tab-save-failure', expect.anything(), expect.anything())
-    if (target === 'same') {
-      expect(mocks.win.webContents.send).toHaveBeenCalledWith('mt::tab-saved', 'tab-1')
-    } else {
-      expect(mocks.win.webContents.send).toHaveBeenCalledWith('mt::set-pathname', expect.objectContaining({ pathname: destination }))
-    }
+    expect(mocks.win.webContents.send).toHaveBeenCalledWith('mt::set-pathname', expect.objectContaining({
+      pathname: destination,
+      savedMarkdown: '# Current edit',
+      documentKind: 'textpack',
+      resourcePath: expect.any(String)
+    }))
   })
 
   it('keeps ordinary Save strict after the original is deleted', async() => {
@@ -109,6 +112,33 @@ describe('TextPack Save As command', () => {
 
     await closeTextPackSession(original)
     expect((await loadTextPackFile(original, 'lf')).markdown).toContain('# Current edit')
-    expect(mocks.win.webContents.send).toHaveBeenCalledWith('mt::tab-saved', 'tab-1')
+    expect(mocks.win.webContents.send).toHaveBeenCalledWith('mt::set-pathname', expect.objectContaining({
+      pathname: original,
+      savedMarkdown: '# Current edit'
+    }))
+  })
+
+  it.each(['mt::response-file-save', 'mt::response-file-save-as'])('blocks %s for a read-only TextPack', async(command) => {
+    const before = await fs.readFile(original)
+    await documentWrites.setReadOnly(17, 'tab-1', true)
+
+    await runCommand(command)
+
+    expect(await fs.readFile(original)).toEqual(before)
+    expect(mocks.showSaveDialog).not.toHaveBeenCalled()
+    expect(mocks.win.webContents.send).not.toHaveBeenCalled()
+  })
+
+  it('cancels a Save As opened before the tab became read-only', async() => {
+    const before = await fs.readFile(original)
+    mocks.showSaveDialog.mockImplementationOnce(async() => {
+      await documentWrites.setReadOnly(17, 'tab-1', true)
+      return { canceled: false, filePath: original }
+    })
+
+    await runCommand('mt::response-file-save-as')
+
+    expect(await fs.readFile(original)).toEqual(before)
+    expect(mocks.win.webContents.send).not.toHaveBeenCalled()
   })
 })
