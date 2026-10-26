@@ -6,7 +6,7 @@ import type { Muya } from '../../muya';
 import type { TState } from '../../state/types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Muya as MuyaClass } from '../../muya';
-import { SelectionCaretType, SelectionDirection } from '../../selection/types';
+import { SelectionDirection } from '../../selection/types';
 
 // A cross-block cut that ends inside a table:
 // #5400 removed every block after the block where the selection starts when the
@@ -61,7 +61,6 @@ function findContent(muya: Muya, text: string): Content {
     return block;
 }
 
-// Every content leaf in document order, as `blockName:text`.
 function outline(muya: Muya): string[] {
     return contentBlocks(muya).map(block => `${block.blockName}:${block.text}`);
 }
@@ -75,20 +74,19 @@ function topLevelNames(muya: Muya): string[] {
 function cut(muya: Muya, anchor: Content, anchorOffset: number, focus: Content, focusOffset: number): void {
     const anchorPath = anchor.path;
     const focusPath = focus.path;
-    muya.editor.selection.getSelection = () => ({
+    muya.editor.selection.getTextSelection = () => ({
         anchor: { offset: anchorOffset, block: anchor, path: anchorPath },
         focus: { offset: focusOffset, block: focus, path: focusPath },
         isCollapsed: false,
         isSelectionInSameBlock: false,
         direction: SelectionDirection.FORWARD,
-        type: SelectionCaretType.RANGE,
+
     });
     muya.editor.clipboard.cutHandler();
 }
 
-// The json state still matches the block tree.
 function expectNoDrift(muya: Muya): void {
-    muya.editor.jsonState.flush();
+    muya.editor.transactions.flush();
     const tree: TState[] = [];
     muya.editor.scrollPage!.forEach(block => tree.push((block as Parent).getState()));
     expect(muya.editor.jsonState.getState()).toEqual(tree);

@@ -17,6 +17,7 @@
       "openFile": "打开文件…",
       "openFolder": "打开文件夹…",
       "openRecent": "打开最近",
+      "openRecentMore": "搜索最近使用...",
       "clearRecentlyUsed": "清除最近使用",
       "save": "保存",
       "saveAs": "另存为…",
@@ -32,7 +33,8 @@
       "closeTab": "关闭标签页",
       "closeWindow": "关闭窗口",
       "quit": "退出",
-      "preferences": "偏好设置"
+      "preferences": "偏好设置",
+      "addFolder": "添加文件夹…"
     },
     "edit": {
       "edit": "编辑",
@@ -241,8 +243,11 @@
       "noFolderOpen": "没有打开的文件夹",
       "noResultsFound": "未找到结果。",
       "cancel": "取消",
-      "openFolder": "打开文件夹",
-      "showMoreMatches": "显示更多匹配"
+      "openFolder": "添加文件夹…",
+      "showMoreMatches": "显示更多匹配",
+      "searchInFolders": "在已添加的文件夹中搜索",
+      "partialSearch": "部分文件夹无法搜索。",
+      "noSearchableFolders": "没有可供搜索的文件夹。"
     },
     "tree": {
       "openedFiles": "已打开的文件",
@@ -250,7 +255,17 @@
       "closeAll": "关闭全部",
       "emptyProject": "空项目",
       "createFile": "创建文件",
-      "openFolder": "打开文件夹"
+      "openFolder": "打开文件夹",
+      "noFolders": "尚未添加文件夹",
+      "removeFolder": "从侧边栏移除",
+      "retryFolder": "重试",
+      "loadingFolder": "正在加载文件夹…",
+      "unavailableFolder": "文件夹不可用",
+      "overlappingFolder": "此文件夹与已添加项存在包含关系，请先移除已有项。",
+      "folderAlreadyAdded": "该文件夹已添加。",
+      "fileOutsideFolders": "此文件不在已添加的文件夹中。",
+      "sessionSaveFailed": "无法保存会话",
+      "resizeOpenedFiles": "调整已打开文件列表的大小"
     },
     "toc": {
       "expand": "展开目录",
@@ -286,8 +301,16 @@
     "placeholders": {
       "selectOption": "选择一个选项",
       "searchFileToOpen": "搜索要打开的文件",
-      "selectLanguage": "选择要切换的语言"
-    }
+      "selectLanguage": "选择要切换的语言",
+      "searchRecentFilesAndFolders": "搜索最近打开的文件和文件夹"
+    },
+    "recentlyOpened": "最近打开",
+    "fileResults": "文件结果",
+    "folders": "文件夹",
+    "files": "文件",
+    "removeFromRecent": "从最近使用中移除",
+    "noResults": "没有匹配结果",
+    "noRecentFiles": "暂无最近打开的文件或文件夹"
   },
   "exportSettings": {
     "title": "导出选项",
@@ -396,6 +419,7 @@
         "autoNormalizeLineEndings": "打开文件时自动规范化行尾。禁用时按原样打开文件",
         "titleBarStyle": "标题栏样式（仅限 Windows 和 Linux 系统）",
         "openFilesInNewWindow": "在新窗口中打开文件",
+        "openFilesInPreviewMode": "在预览标签页中打开侧栏文件",
         "openFolderInNewWindow": "通过菜单在新窗口中打开文件夹",
         "zoom": "缩放级别。介于 0.5 和 2.0 之间",
         "hideScrollbar": "是否隐藏滚动条",
@@ -446,6 +470,8 @@
         "isHtmlEnabled": "启用 HTML 渲染",
         "softNewlineAsSpace": "将软换行符视为空格",
         "sequenceTheme": "序列图主题",
+        "mermaidLightTheme": "MarkText 使用浅色主题时的 Mermaid 主题",
+        "mermaidDarkTheme": "MarkText 使用深色主题时的 Mermaid 主题",
         "plantumlServer": "PlantUML 服务器 URL",
         "theme": "选择 MarkText 中使用的主题",
         "followSystemTheme": "跟随系统主题",
@@ -517,6 +543,7 @@
         "wrapTextInToc": "在目录中换行文本",
         "showOpenedFiles": "显示已打开文件",
         "autoReveal": "在侧边栏中定位当前文件",
+        "openFilesInPreviewMode": "单击侧栏文件时复用预览标签页；编辑或双击后保留该标签页",
         "excludePatterns": "排除模式",
         "excludePatternsNotes": "排除模式（注释）",
         "fileSortBy": {
@@ -548,7 +575,8 @@
           "dutch": "Nederlands",
           "portuguese": "Português",
           "turkish": "Türkçe",
-          "russian": "Русский"
+          "russian": "Русский",
+          "italian": "Italiano"
         }
       }
     },
@@ -699,6 +727,12 @@
           "handDrawn": "手绘",
           "simple": "简单"
         },
+        "mermaidLightTheme": {
+          "title": "MarkText 使用浅色主题时的 Mermaid 主题"
+        },
+        "mermaidDarkTheme": {
+          "title": "MarkText 使用深色主题时的 Mermaid 主题"
+        },
         "plantumlServer": {
           "title": "PlantUML 服务器 URL"
         }
@@ -808,6 +842,7 @@
       "moveFile": "移动文件",
       "renameFile": "重命名文件",
       "quickOpen": "快速打开",
+      "quickOpenRecent": "快速打开最近使用",
       "changeEncoding": "更改编码",
       "trailingNewline": "尾随换行",
       "print": "打印",
@@ -822,7 +857,8 @@
       "exportFilePdf": "导出为 PDF",
       "zoom": "缩放",
       "checkUpdate": "检查更新",
-      "changeLineEnding": "更改行结束符"
+      "changeLineEnding": "更改行结束符",
+      "addFolder": "添加文件夹…"
     },
     "edit": {
       "undo": "撤销",
@@ -901,6 +937,8 @@
       "toggleTypewriterMode": "切换打字机模式",
       "toggleFocusMode": "切换专注模式",
       "toggleSidebar": "切换侧边栏",
+      "outlineCollapseAll": "大纲：全部折叠",
+      "outlineExpandAll": "大纲：全部展开",
       "toggleToc": "切换目录",
       "toggleTabbar": "切换标签栏",
       "toggleDevTools": "切换开发者工具",
@@ -1044,11 +1082,12 @@
       "switchError": "{languageCode} 拼写检查切换错误，{error}"
     },
     "tabs": {
-      "close": "关闭 {name}"
+      "close": "关闭 {name}",
+      "preview": "{name}，预览标签页"
     }
   },
   "readingMode": {
-    "title": "阅读模式（只读）",
+    "title": "阅读模式",
     "edit": "编辑模式",
     "lock": "进入阅读模式",
     "unlock": "切换到编辑模式",

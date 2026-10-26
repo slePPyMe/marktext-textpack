@@ -18,6 +18,7 @@ import type Paragraph from '../../commonMark/paragraph';
 import { HTML_TAGS, VOID_HTML_TAGS } from '../../../config';
 import { tokenizer } from '../../../inlineRenderer/lexer';
 import { isListItemState, isTaskListItemState } from '../../../state/types';
+import { ChangeSource } from '../../../types';
 import { firstWordOfInfo, isKeyboardEvent, isLengthEven, parseFenceLine } from '../../../utils';
 import { createDiagramState, diagramTypeOfLang } from '../../../utils/diagram/fence';
 import { matchGithubAlertMarker } from '../../../utils/githubAlerts';
@@ -29,10 +30,6 @@ import TaskList from '../../gfm/taskList';
 import { convertGithubAlert } from '../../githubAlerts';
 import { ScrollPage } from '../../scrollPage';
 
-// `_unindentListItem` / `_indentListItem` walk parents typed as the loose
-// `Parent` super-class; at runtime the relevant nodes are always one of
-// these three list kinds, which carry a `meta` field with the bullet/order
-// shape. Narrow once instead of casting per access.
 type TListBlock = BulletList | OrderList | TaskList;
 
 // Markdown continues a list only while items keep the same bullet or ordered
@@ -41,8 +38,7 @@ function listMarker(list: TListBlock): string {
     return 'delimiter' in list.meta ? list.meta.delimiter : list.meta.marker;
 }
 
-// The number an ordered list numbers from, or `undefined` for the unordered
-// kinds; the split paths below have to rebase it for task lists as well.
+// Unordered lists return undefined; ordered task lists also require rebasing when split.
 function orderedListStart(list: TListBlock): number | undefined {
     if (list instanceof OrderList)
         return list.meta.start;
@@ -69,7 +65,6 @@ function isListBlock(block: Nullable<Parent>): block is Parent {
         || block?.blockName === 'task-list';
 }
 
-// Task lists hold task items; bullet and ordered lists hold plain items.
 function holdsItemKind(list: Parent, listItem: Parent) {
     return (list.blockName === 'task-list') === (listItem.blockName === 'task-list-item');
 }
@@ -232,9 +227,6 @@ function parseTableHeader(text: string) {
     return rowHeader;
 }
 
-/**
- * ParagraphContent
- */
 class ParagraphContent extends Format {
     public override parent: Nullable<Paragraph> = null;
 
@@ -339,9 +331,6 @@ class ParagraphContent extends Format {
 
             case 'code': {
                 const { lang, fenceChar } = match;
-                // Diagram fences (```mermaid etc.) become diagram blocks,
-                // mirroring the file-load path in markdownToState; everything
-                // else is a fenced code block.
                 const diagramType = diagramTypeOfLang(lang);
                 if (diagramType) {
                     const state = createDiagramState(diagramType);
@@ -378,10 +367,7 @@ class ParagraphContent extends Format {
 
             case 'table': {
                 const tableHeader = parseTableHeader(this.text);
-                // Table extends the base `create` shape with a static
-                // `createWithHeader(muya, header)` factory; the registry-level
-                // IConstructor doesn't surface it. Cast to a structural view
-                // that names only the static slot we read.
+                // The registry’s common constructor type does not expose the table-specific factory.
                 const tableCtor = ScrollPage.loadBlock('table') as {
                     createWithHeader?: (muya: Muya, header: string[]) => Parent;
                 };
@@ -389,11 +375,6 @@ class ParagraphContent extends Format {
 
                 this.parent!.replaceWith(tableBlock);
 
-                // Set cursor at the first cell of second row. The runtime chain
-                // is: table → table-body (Parent.firstChild) → row (find(1)) →
-                // first cell content (firstContentInDescendant). Asserted as
-                // Parent at each container hop since createWithHeader guarantees
-                // a populated structure.
                 const tableBody = tableBlock.firstChild as Parent;
                 const secondRow = tableBody.find(1) as Parent;
                 secondRow.firstContentInDescendant()?.setCursor(0, 0, true);
@@ -683,7 +664,6 @@ class ParagraphContent extends Format {
 
     private _handleBackspaceInParagraph(this: ParagraphContent) {
         const previousContentBlock = this.previousContentInContext();
-        // Handle no previous content block, the first paragraph in document.
         if (!previousContentBlock)
             return;
 
@@ -746,7 +726,7 @@ class ParagraphContent extends Format {
             const previousListItem = listItem.prev;
             listItem.forEach((node, i: number) => {
                 const paragraph = (node as Parent).clone() as Parent;
-                previousListItem!.append(paragraph, 'user');
+                previousListItem!.append(paragraph, ChangeSource.User);
                 if (i === 0)
                     paragraph?.firstContentInDescendant()?.setCursor(0, 0, true);
             });
@@ -780,7 +760,6 @@ class ParagraphContent extends Format {
             return false;
 
         const listItem = parent?.parent;
-        // Now we know it's a list item. Check whether we can indent the list item.
         const list = listItem?.parent;
 
         if (listItem == null || list == null)
@@ -834,14 +813,10 @@ class ParagraphContent extends Format {
             this._placeCursorIn(paragraph, start.offset, end.offset);
         }
         else if (type === UnindentType.INDENT) {
-            // At runtime, when unindentListItem runs, the surrounding `list`
-            // is always one of the three list block kinds — narrow once
-            // so `meta` resolves without `as any`.
             const listAsList = list as TListBlock;
             const newListItem = this._insertOutdentedListItem(listItem, listParent, listAsList);
 
-            // The nested child list only exists to carry the SIBLING LIST
-            // ITEMS that stay indented below the outdented item.
+            // Only remaining sibling items belong in the nested list.
             if (
                 listItem.next
                 && newListItem.lastChild!.blockName !== list.blockName
@@ -855,7 +830,7 @@ class ParagraphContent extends Format {
                     this.muya,
                     state,
                 );
-                newListItem.append(childList, 'user');
+                newListItem.append(childList, ChangeSource.User);
             }
 
             if (listItem.next) {
@@ -865,7 +840,7 @@ class ParagraphContent extends Format {
                     if (node.isParent()) {
                         (newListItem.lastChild as Parent).append(
                             node.clone() as Parent,
-                            'user',
+                            ChangeSource.User,
                         );
                     }
                     node.remove();
@@ -881,7 +856,7 @@ class ParagraphContent extends Format {
                         // list items — putting them inside a list block
                         // corrupts the state and the next composed op crashes
                         // ot-json1 (#4899). Append them to the item itself.
-                        newListItem.append(node.clone() as Parent, 'user');
+                        newListItem.append(node.clone() as Parent, ChangeSource.User);
                     }
                     node.remove();
                 });
@@ -905,13 +880,7 @@ class ParagraphContent extends Format {
         }
     }
 
-    // Puts a copy of `listItem` into the list around `parentItem`, right after
-    // it, and returns the copy. A list holds one item kind (plain items in
-    // bullet and ordered lists, task items in task lists), so when the kinds
-    // differ the outer list is split after `parentItem` and the item gets a
-    // list of its own kind, with the items that followed `parentItem` in a
-    // list of the outer kind after it. That is the structure the parser builds
-    // for such a list, so the document stays the same across a reopen (#5341).
+    // Outdenting into a list of another kind requires rebuilding its item shape.
     private _insertOutdentedListItem(listItem: Parent, parentItem: Parent, nestedList: TListBlock): Parent {
         const outerList = parentItem.parent as TListBlock;
 
@@ -1000,7 +969,6 @@ class ParagraphContent extends Format {
         if (parent == null || listItem == null || list == null)
             return;
 
-        // Remember the offset of cursor paragraph in listItem
         const offset = listItem.offset(parent);
 
         // Join the previous item's trailing sublist only when it holds this
@@ -1015,18 +983,14 @@ class ParagraphContent extends Format {
                 children: [listItem.getState()],
             };
             newList = ScrollPage.loadBlock(state.name).create(muya, state);
-            prevListItem!.append(newList as Parent, 'user');
+            prevListItem!.append(newList as Parent, ChangeSource.User);
         }
         else {
-            (newList as Parent).append(listItem.clone() as Parent, 'user');
+            (newList as Parent).append(listItem.clone() as Parent, ChangeSource.User);
         }
 
         listItem.remove();
 
-        // newList.lastChild is the just-appended list-item (a Parent) at
-        // runtime; find/firstContentInDescendant live on Parent. find()
-        // returns the matched TreeNode (which is itself a Parent at runtime
-        // for nested-list cases).
         const matched = ((newList as Parent).lastChild as Parent).find(offset) as Parent | undefined;
         const cursorBlock = matched?.firstContentInDescendant();
         cursorBlock?.setCursor(start.offset, end.offset, true);
@@ -1051,7 +1015,6 @@ class ParagraphContent extends Format {
 
     private _checkCursorAtEndFormat(): Nullable<{ offset: number }> {
         const { offset } = this.getCursor()!.start;
-        // TODO: add labels in tokenizer...
         const { muya, text } = this;
         const tokens = tokenizer(text, {
             hasBeginRules: false,
@@ -1089,7 +1052,6 @@ class ParagraphContent extends Format {
     }
 
     override tabHandler(event: Event) {
-    // disable tab focus
         event.preventDefault();
 
         if (!isKeyboardEvent(event))
@@ -1108,7 +1070,6 @@ class ParagraphContent extends Format {
             return;
         }
 
-        // Handle `tab` to jump to the end of format when the cursor is at the end of format content.
         if (this.isCollapsed) {
             const atEnd = this._checkCursorAtEndFormat();
 

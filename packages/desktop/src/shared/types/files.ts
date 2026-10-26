@@ -42,8 +42,6 @@ export interface FileHistory {
   lastInitIndex?: number
 }
 
-// Individual frames pushed by Muya's history. Shape is opaque to the
-// renderer store; we only key off the id for the saved-snapshot check.
 export interface HistoryStackEntry {
   id: number | string
   [key: string]: unknown
@@ -67,14 +65,11 @@ export interface FileSearchMatches {
   value: string
 }
 
-/**
- * Per-tab editor state — the canonical document state shape shared between
- * the renderer Pinia store, the buffered-state persistence layer, and
- * cross-process IPC payloads. Mirrors `defaultFileState` in
- * `src/renderer/src/store/help.ts`.
- */
+/** Canonical per-tab state shared by renderer stores, buffered persistence and IPC. */
 export interface IFileState {
   readOnly: boolean
+  // Transient navigation state; deliberately excluded from buffered tab state.
+  isPreview: boolean
   modeChanging?: boolean
   diskMissing?: boolean
   diskConflict?: boolean
@@ -82,8 +77,7 @@ export interface IFileState {
   isPendingCreation?: boolean
   id: string
   filename: string
-  // Falsy (`''`) for untitled buffers; pre-migration this was sometimes
-  // missing entirely. Always a string at runtime now.
+  // Empty for untitled buffers; always a string at runtime.
   pathname: string
   markdown: string
   documentKind: DocumentKind
@@ -98,6 +92,8 @@ export interface IFileState {
   wordCount: FileWordCount
   searchMatches: FileSearchMatches
   scrollTop: number
+  // View state for this open tab; deliberately excluded from buffered persistence.
+  tocCollapsedKeys?: string[]
   muyaIndexCursor: unknown
   notifications: FileNotification[]
   lastSavedHistoryId?: number
@@ -106,10 +102,6 @@ export interface IFileState {
   isMixedLineEndings?: boolean
 }
 
-/**
- * Per-tab notification banner. Pushed via the editor store's
- * `pushTabNotification` action; consumed by `notifications.vue`.
- */
 export interface FileNotification {
   msg: string
   showConfirm: boolean
@@ -137,6 +129,11 @@ export interface TabOptions {
 /** Set by the main-process save command, not inferred from the chosen path. */
 export type SaveIntent = 'save' | 'saveAs'
 
+export interface SidebarOpenOptions extends TabOptions {
+  preview?: boolean
+  requestId?: number
+}
+
 export interface SaveOptions {
   isPendingCreation?: boolean
   // Encoding is the `FileEncoding` object at runtime (`{ encoding, isBom }`).
@@ -147,12 +144,7 @@ export interface SaveOptions {
   trimTrailingNewline?: number
 }
 
-/**
- * Per-tab payload sent with `mt::close-window-confirm` / `mt::save-tabs` /
- * `mt::save-and-close-tabs` when the renderer asks main to surface a
- * "save unsaved changes?" dialog. Mirrors the runtime shape consumed by
- * `showUnsavedFilesMessage` in `src/main/menu/actions/file.ts`.
- */
+/** Unsaved tab payload for close-window and save-tabs confirmation requests. */
 export interface UnsavedFile {
   readOnly?: boolean
   id: string
@@ -166,11 +158,7 @@ export interface UnsavedFile {
 export interface BootstrapEditorConfig {
   isNewWindow?: boolean
   addBlankTab?: boolean
-  /**
-   * Raw markdown contents used to seed new untitled tabs. Main fills this
-   * from `_markdownToOpen` (e.g. stdin-piped launches and
-   * `mt::new-tab-with-content`); empty when no seed content was supplied.
-   */
+  /** Seed Markdown for new untitled tabs, including stdin launches. */
   markdownList: string[]
   lineEnding: LineEnding
   sideBarVisibility: boolean
@@ -194,7 +182,6 @@ export interface PageOptions {
 
 export type ExportType = 'pdf' | 'html' | 'styledHtml' | 'png' | 'jpeg'
 
-/** Current document handed to the main process for a pandoc export. */
 export interface PandocExportPayload {
   githubAlerts?: boolean
   /** One of `PANDOC_EXPORT_FORMATS[].id`. */

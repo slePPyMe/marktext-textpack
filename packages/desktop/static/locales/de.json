@@ -17,6 +17,7 @@
       "openFile": "Datei öffnen...",
       "openFolder": "Ordner öffnen...",
       "openRecent": "Zuletzt verwendet",
+      "openRecentMore": "Zuletzt verwendet durchsuchen...",
       "clearRecentlyUsed": "Zuletzt verwendet löschen",
       "save": "Speichern",
       "saveAs": "Speichern unter...",
@@ -32,7 +33,8 @@
       "closeTab": "Tab schließen",
       "closeWindow": "Fenster schließen",
       "quit": "Beenden",
-      "preferences": "Einstellungen"
+      "preferences": "Einstellungen",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "edit": "Bearbeiten",
@@ -241,8 +243,11 @@
       "noFolderOpen": "Kein Ordner geöffnet",
       "noResultsFound": "Keine Ergebnisse gefunden.",
       "cancel": "Abbrechen",
-      "openFolder": "Ordner öffnen",
-      "showMoreMatches": "Weitere Treffer anzeigen"
+      "openFolder": "Add Folder…",
+      "showMoreMatches": "Weitere Treffer anzeigen",
+      "searchInFolders": "Search in added folders",
+      "partialSearch": "Some folders could not be searched.",
+      "noSearchableFolders": "No available folders to search."
     },
     "tree": {
       "openedFiles": "Geöffnete Dateien",
@@ -250,7 +255,17 @@
       "closeAll": "Alle schließen",
       "emptyProject": "Leeres Projekt",
       "createFile": "Datei erstellen",
-      "openFolder": "Ordner öffnen"
+      "openFolder": "Ordner öffnen",
+      "noFolders": "No folders added",
+      "removeFolder": "Remove from Sidebar",
+      "retryFolder": "Retry",
+      "loadingFolder": "Loading folder…",
+      "unavailableFolder": "Folder unavailable",
+      "overlappingFolder": "This folder overlaps an existing folder. Remove the existing item first.",
+      "folderAlreadyAdded": "This folder has already been added.",
+      "fileOutsideFolders": "This file is not in an added folder.",
+      "sessionSaveFailed": "Unable to save session",
+      "resizeOpenedFiles": "Liste der geöffneten Dateien in der Größe ändern"
     },
     "toc": {
       "expand": "Inhaltsverzeichnis aufklappen",
@@ -286,8 +301,16 @@
     "placeholders": {
       "selectOption": "Option auswählen",
       "searchFileToOpen": "Datei zum Öffnen suchen",
-      "selectLanguage": "Sprache auswählen"
-    }
+      "selectLanguage": "Sprache auswählen",
+      "searchRecentFilesAndFolders": "Zuletzt verwendete Dateien und Ordner durchsuchen"
+    },
+    "recentlyOpened": "zuletzt verwendet",
+    "fileResults": "Dateiergebnisse",
+    "folders": "Ordner",
+    "files": "Dateien",
+    "removeFromRecent": "Aus \"Zuletzt verwendet\" entfernen",
+    "noResults": "Keine Treffer",
+    "noRecentFiles": "Keine zuletzt verwendeten Dateien oder Ordner"
   },
   "exportSettings": {
     "autoNumberingHeadings": "Automatische Nummerierung der Überschriften",
@@ -396,6 +419,7 @@
         "autoNormalizeLineEndings": "Zeilenenden beim Öffnen von Dateien automatisch normalisieren. Wenn deaktiviert, werden Dateien unverändert geöffnet.",
         "titleBarStyle": "Der Titelleisten-Stil (nur Windows und Linux-System)",
         "openFilesInNewWindow": "Dateien in einem neuen Fenster öffnen",
+        "openFilesInPreviewMode": "Sidebar-Dateien in Vorschauregistern öffnen",
         "openFolderInNewWindow": "Ordner über Menü in einem neuen Fenster öffnen",
         "zoom": "Das Zoom-Level. Zwischen 0.5 und 2.0 inklusive",
         "hideScrollbar": "Ob Scrollbalken ausgeblendet werden sollen",
@@ -446,6 +470,8 @@
         "isHtmlEnabled": "HTML-Rendering aktivieren",
         "softNewlineAsSpace": "Weiche Zeilenumbrüche als Leerzeichen behandeln",
         "sequenceTheme": "Sequenzdiagramm-Theme",
+        "mermaidLightTheme": "Mermaid-Theme für helle MarkText-Themes",
+        "mermaidDarkTheme": "Mermaid-Theme für dunkle MarkText-Themes",
         "plantumlServer": "PlantUML-Server-URL",
         "theme": "Das in MarkText verwendete Theme auswählen",
         "followSystemTheme": "Systemdesign folgen",
@@ -517,6 +543,7 @@
         "wrapTextInToc": "Text im Inhaltsverzeichnis umbrechen",
         "showOpenedFiles": "Geöffnete Dateien anzeigen",
         "autoReveal": "Aktive Datei in der Seitenleiste anzeigen",
+        "openFilesInPreviewMode": "Sidebar-Dateien in Vorschauregistern öffnen. Bearbeiten oder Doppelklicken behält das Register bei.",
         "excludePatterns": "Ausschlussmuster",
         "excludePatternsNotes": "Hinweise zu Ausschlussmustern",
         "fileSortBy": {
@@ -548,7 +575,8 @@
           "dutch": "Nederlands",
           "portuguese": "Português",
           "turkish": "Türkçe",
-          "russian": "Русский"
+          "russian": "Русский",
+          "italian": "Italiano"
         }
       }
     },
@@ -699,6 +727,12 @@
           "handDrawn": "Handgezeichnet",
           "simple": "Einfach"
         },
+        "mermaidLightTheme": {
+          "title": "Mermaid-Theme für helle MarkText-Themes"
+        },
+        "mermaidDarkTheme": {
+          "title": "Mermaid-Theme für dunkle MarkText-Themes"
+        },
         "plantumlServer": {
           "title": "PlantUML-Server-URL"
         }
@@ -808,6 +842,7 @@
       "moveFile": "Datei verschieben",
       "renameFile": "Datei umbenennen",
       "quickOpen": "Schnell öffnen",
+      "quickOpenRecent": "Zuletzt verwendete Dateien schnell öffnen",
       "changeEncoding": "Kodierung ändern",
       "changeLineEnding": "Zeilenendezeichen ändern",
       "trailingNewline": "Abschließende neue Zeile",
@@ -822,7 +857,8 @@
       "exportFile": "Datei exportieren",
       "exportFilePdf": "Als PDF exportieren",
       "zoom": "Zoom",
-      "checkUpdate": "Nach Updates suchen"
+      "checkUpdate": "Nach Updates suchen",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "undo": "Rückgängig",
@@ -901,6 +937,8 @@
       "toggleTypewriterMode": "Schreibmaschinen-Modus umschalten",
       "toggleFocusMode": "Fokus-Modus umschalten",
       "toggleSidebar": "Seitenleiste umschalten",
+      "outlineCollapseAll": "Inhaltsverzeichnis: Alle einklappen",
+      "outlineExpandAll": "Inhaltsverzeichnis: Alle ausklappen",
       "toggleToc": "Inhaltsverzeichnis umschalten",
       "toggleTabbar": "Tab-Leiste umschalten",
       "toggleDevTools": "Entwicklertools umschalten",
@@ -1044,11 +1082,12 @@
       "title": "Rechtschreibprüfung"
     },
     "tabs": {
-      "close": "{name} schließen"
+      "close": "{name} schließen",
+      "preview": "{name}, Vorschauregister"
     }
   },
   "readingMode": {
-    "title": "Lesemodus (schreibgeschützt)",
+    "title": "Lesemodus",
     "edit": "Bearbeitungsmodus",
     "lock": "Lesemodus aktivieren",
     "unlock": "Zum Bearbeitungsmodus wechseln",

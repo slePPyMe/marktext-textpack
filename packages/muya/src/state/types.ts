@@ -10,6 +10,7 @@ export interface IAtxHeadingState {
     meta: {
         level: number;
     };
+    // The complete editable line, including opening/closing markers and whitespace.
     text: string;
 }
 
@@ -17,8 +18,8 @@ export interface ISetextHeadingState {
     name: 'setext-heading';
     meta: {
         level: number;
-        underline: string; // "===" | "---";
     };
+    syntax: { underline: string }; // The complete underline line, excluding its EOL.
     text: string;
 }
 
@@ -31,14 +32,10 @@ export interface ICodeBlockState {
     name: 'code-block';
     meta: {
         type: string; // "indented" | "fenced";
-        // The full fenced info string, verbatim (e.g. `js`, `js title="x"`, or a
-        // Pandoc/RMarkdown `{…}` block). The language for highlighting is its
-        // first word — derive via `firstWordOfInfo()`, never assume a single word.
+        // Full fence info string; derive the highlighting language with firstWordOfInfo().
         lang: string;
         fenceLength?: number;
-        // Fence character for fenced blocks. Always written for `fenced`
-        // blocks; omitted only for `indented` ones, which have no fence.
-        // Older persisted state may still lack it — readers treat that as '`'.
+        // Absent for indented blocks. Older fenced states may omit it; readers default to backticks.
         fenceChar?: '`' | '~';
     };
     text: string;
@@ -234,9 +231,6 @@ export type TState = TLeafState | TContainerState;
 
 export type CodeContentState = ICodeBlockState | IHtmlBlockState | IDiagramState | IMathBlockState | IFrontmatterState;
 
-// Discriminated-union type guards. `TState` is keyed by `name`, so consumers can
-// narrow without `as I<X>State` casts. Use `isStateOfName(state, 'atx-heading')`
-// for ad-hoc narrowing or the per-name shorthands.
 export function isStateOfName<N extends TState['name']>(
     state: TState,
     name: N,
@@ -269,6 +263,10 @@ export const isFootnoteBlockState = (s: TState): s is IFootnoteBlockState => s.n
 
 export function isAnyListState(s: TState): s is IOrderListState | IBulletListState | ITaskListState {
     return s.name === 'order-list' || s.name === 'bullet-list' || s.name === 'task-list';
+}
+
+export function markdownListMarker(list: IOrderListState | IBulletListState | ITaskListState): string {
+    return 'delimiter' in list.meta ? `ordered:${list.meta.delimiter}` : `bullet:${list.meta.marker}`;
 }
 
 export interface ITurnoverOptions {

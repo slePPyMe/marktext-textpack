@@ -10,11 +10,7 @@ import { pastePlainText, pasteSelection } from './paste';
 import { pasteImageSrc } from './pasteImage';
 import { CopyType, PasteType } from './types';
 
-// After the table/same-block guards, decide whether a keydown over a
-// cross-block selection should cut (replace) the selected text. Non-editing
-// keys and any modifier combo must NOT cut — in particular Ctrl+<key> (e.g.
-// Ctrl+C copy on Windows/Linux), which was previously not excluded and
-// silently deleted the selection (#3491). Mirrors the macOS metaKey guard.
+// Modifier shortcuts such as Ctrl+C must never delete a cross-block selection (#3491).
 export function shouldCrossBlockCut(key: string, metaKey: boolean, ctrlKey: boolean): boolean {
     if (/Alt|Option|Meta|Shift|CapsLock|ArrowUp|ArrowDown|ArrowLeft|ArrowRight/.test(key))
         return false;
@@ -77,7 +73,7 @@ class Clipboard {
         const ownsEvent = () => {
             if (this.muya.hasFocus())
                 return true;
-            return this.muya.readOnly
+            return this.muya.isReadOnly
                 && !document.activeElement?.matches('input, textarea, [contenteditable="true"]')
                 && this.muya.domNode.contains(document.getSelection()?.anchorNode ?? null);
         };
@@ -89,7 +85,7 @@ class Clipboard {
             event.stopPropagation();
 
             const isCut = event.type === 'cut';
-            if (isCut && this.muya.readOnly)
+            if (isCut && this.muya.isReadOnly)
                 return;
 
             this.copyHandler(event);
@@ -99,7 +95,7 @@ class Clipboard {
         };
 
         const keydownHandler = (event: Event) => {
-            if (this.muya.readOnly)
+            if (this.muya.isReadOnly)
                 return;
             if (!ownsEvent() || !isKeyboardEvent(event))
                 return;
@@ -113,7 +109,7 @@ class Clipboard {
                 return;
             }
 
-            const { isSelectionInSameBlock } = this.selection.getSelection() ?? {};
+            const { isSelectionInSameBlock } = this.selection.getTextSelection() ?? {};
             if (isSelectionInSameBlock)
                 return;
 
@@ -138,7 +134,7 @@ class Clipboard {
         };
 
         const beforeInputHandler = (event: Event) => {
-            if (this.muya.readOnly)
+            if (this.muya.isReadOnly)
                 return;
             if (!ownsEvent() || !isInputEvent(event) || !event.cancelable)
                 return;
@@ -147,7 +143,7 @@ class Clipboard {
             if (replacement == null || document.getSelection()?.isCollapsed !== false)
                 return;
 
-            if (this.selection.getSelection()?.isSelectionInSameBlock !== false)
+            if (this.selection.getTextSelection()?.isSelectionInSameBlock !== false)
                 return;
 
             event.preventDefault();
@@ -167,8 +163,8 @@ class Clipboard {
         eventCenter.attachDOMEvent(document, 'copy', copyCutHandler);
         eventCenter.attachDOMEvent(document, 'cut', copyCutHandler);
         eventCenter.attachDOMEvent(document, 'paste', pasteHandler);
-        eventCenter.attachDOMEvent(document, 'keydown', keydownHandler);
-        eventCenter.attachDOMEvent(document, 'beforeinput', beforeInputHandler);
+        eventCenter.attachDOMEvent(document, 'keydown', event => this.muya.transact(() => keydownHandler(event)));
+        eventCenter.attachDOMEvent(document, 'beforeinput', event => this.muya.transact(() => beforeInputHandler(event)));
     }
 
     getClipboardData(): IClipboardPayload {
@@ -182,7 +178,7 @@ class Clipboard {
     cutHandler(): void {
         if (!this.muya.canMutate)
             return;
-        cutSelection(this);
+        this.muya.transact(() => cutSelection(this));
     }
 
     pasteHandler(
@@ -213,32 +209,24 @@ class Clipboard {
         this.copyType = CopyType.NORMAL;
     }
 
-    // Chromium removed programmatic clipboard reads via
-    // `document.execCommand('paste')` — it returns false and fires no paste
-    // event, so the old flag + execCommand approach pasted nothing. Read the
-    // clipboard text ourselves and feed it through the paste pipeline.
+    // Read explicitly: Chromium no longer dispatches paste for execCommand('paste').
     async pasteAsPlainText(): Promise<void> {
-        const target = this.selection.getSelection()?.anchor.block;
+        const target = this.selection.getTextSelection()?.anchor.block;
         const text = await this._readClipboardText();
-        if (this.muya.readOnly || !this.muya.isBlockInDocument(target) || this.selection.getSelection()?.anchor.block !== target)
+        if (this.muya.isReadOnly || !this.muya.isBlockInDocument(target))
+            return;
+        if (this.selection.getTextSelection()?.anchor.block !== target)
             return;
         if (text)
             await pastePlainText(this, text);
     }
 
-    // Insert an image at the cursor from an explicit `src` (a saved file path or
-    // `data:` URL), routing through `imageAction` like a clipboard image paste.
-    // Drives the macOS screenshot flow, which can no longer use the removed
-    // `document.execCommand('paste')`.
     pasteImage(src: string): Promise<void> {
         return pasteImageSrc(this, src);
     }
 
     private async _readClipboardText(): Promise<string> {
-        // Sandboxed Electron renderers can't reach the system clipboard
-        // directly, so the embedder supplies a reader (e.g. an IPC bridge to
-        // Electron's native `clipboard`). Fall back to the async Clipboard API
-        // for standalone (browser) use.
+        // Sandboxed hosts supply a clipboard bridge; standalone browsers use the Clipboard API.
         const reader = this.muya.options.clipboardText;
         if (typeof reader === 'function') {
             try {

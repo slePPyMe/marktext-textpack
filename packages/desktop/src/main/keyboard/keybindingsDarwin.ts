@@ -1,15 +1,12 @@
-// Key bindings for macOS.
 
 // NOTE: Avoid pure `Option` aka `Alt` shortcuts on macOS because these are used to produce alternative characters on all letters and digits.
 //       Our current key manager will forbid the usage of these key combinations too.
 
 const keybindings: Map<string, string> = new Map([
-  // MarkText menu
   ['mt.hide', 'Command+H'],
   ['mt.hide-others', 'Command+Option+H'],
   ['file.preferences', 'Command+,'], // located under MarkText menu in macOS only
 
-  // File menu
   ['file.new-window', 'Command+N'],
   ['file.new-tab', 'Command+T'],
   ['file.open-file', 'Command+O'],
@@ -23,10 +20,8 @@ const keybindings: Map<string, string> = new Map([
   ['file.close-window', 'Command+Shift+W'],
   ['file.quit', 'Command+Q'],
 
-  // File > Export submenu
   ['file.export-file.pdf', 'Ctrl+Alt+E'],
 
-  // Edit menu
   ['edit.undo', 'Command+Z'],
   ['edit.redo', 'Command+Shift+Z'],
   ['edit.cut', 'Command+X'],
@@ -46,7 +41,6 @@ const keybindings: Map<string, string> = new Map([
   ['edit.find-in-folder', 'Shift+Command+F'],
   ['edit.screenshot', 'Command+Option+A'], // macOS only
 
-  // Paragraph menu
   ['paragraph.heading-1', 'Command+1'],
   ['paragraph.heading-2', 'Command+2'],
   ['paragraph.heading-3', 'Command+3'],
@@ -68,21 +62,20 @@ const keybindings: Map<string, string> = new Map([
   ['paragraph.horizontal-line', 'Command+Option+-'],
   ['paragraph.front-matter', 'Command+Option+Y'],
 
-  // Format menu
   ['format.strong', 'Command+B'],
   ['format.emphasis', 'Command+I'],
   ['format.underline', 'Command+U'],
   ['format.superscript', ''],
   ['format.subscript', ''],
   ['format.highlight', 'Shift+Command+H'],
-  ['format.inline-code', 'Command+`'],
+  // Leave Command+` available for macOS window cycling (#3085).
+  ['format.inline-code', 'Control+Command+C'],
   ['format.inline-math', 'Shift+Command+M'],
   ['format.strike', 'Command+D'],
   ['format.hyperlink', 'Command+L'],
   ['format.image', 'Command+Shift+I'],
   ['format.clear-format', 'Shift+Command+R'],
 
-  // Window menu
   ['window.minimize', 'Command+M'],
   ['window.toggle-always-on-top', ''],
   ['window.zoomIn', ''],
@@ -90,7 +83,6 @@ const keybindings: Map<string, string> = new Map([
   ['window.zoomOut', ''],
   ['window.toggle-full-screen', 'Ctrl+Command+F'],
 
-  // View menu
   ['view.read-only-mode', 'Command+Control+R'],
   ['view.command-palette', 'Command+Shift+P'],
   ['view.source-code-mode', 'Command+Option+S'],
@@ -103,7 +95,6 @@ const keybindings: Map<string, string> = new Map([
   ['view.dev-reload', 'Command+Option+R'],
   ['view.reload-images', 'Command+R'],
 
-  // ======== Not included in application menu ========================
   ['tabs.cycleForward', 'Ctrl+Tab'],
   ['tabs.cycleBackward', 'Ctrl+Shift+Tab'],
   ['tabs.switchToLeft', 'Command+PageUp'],
@@ -118,7 +109,8 @@ const keybindings: Map<string, string> = new Map([
   ['tabs.switchToEighth', 'Ctrl+8'],
   ['tabs.switchToNinth', 'Ctrl+9'],
   ['tabs.switchToTenth', 'Ctrl+0'],
-  ['file.quick-open', 'Command+P']
+  ['file.quick-open', 'Command+P'],
+  ['file.quick-open-recent', 'Control+R']
 ])
 
 export default keybindings

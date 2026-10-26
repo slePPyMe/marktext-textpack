@@ -77,7 +77,6 @@ function flush(): Promise<void> {
     return new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 }
 
-/** Every child of every list block must be a list item. */
 function assertListsHoldOnlyItems(state: TState[]): void {
     for (const node of state) {
         if ('children' in node && Array.isArray(node.children)) {
@@ -104,13 +103,12 @@ describe('paragraphContent — Shift+Tab INDENT with trailing content (#4899)', 
 
         shiftTabAt(muya, b, 1);
         await flush();
-        muya.editor.jsonState.flush();
+        muya.editor.transactions.flush();
 
         const state = muya.getState();
         assertListsHoldOnlyItems(state);
 
         const md = muya.getMarkdown();
-        // c stays indented under the outdented item b.
         expect(md).toMatch(/- b\n\n {2}c/);
     });
 
@@ -122,7 +120,7 @@ describe('paragraphContent — Shift+Tab INDENT with trailing content (#4899)', 
 
         shiftTabAt(muya, b, 1);
         await flush();
-        muya.editor.jsonState.flush();
+        muya.editor.transactions.flush();
 
         const state = muya.getState();
         assertListsHoldOnlyItems(state);

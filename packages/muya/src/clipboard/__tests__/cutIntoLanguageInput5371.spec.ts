@@ -6,7 +6,7 @@ import type { Muya } from '../../muya';
 import type { TState } from '../../state/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Muya as MuyaClass } from '../../muya';
-import { SelectionCaretType, SelectionDirection } from '../../selection/types';
+import { SelectionDirection } from '../../selection/types';
 
 // #5371: a cross-block cut that ends inside a code block's language line
 // keeps that code block and its language input; only the selected start of
@@ -70,19 +70,19 @@ function findContent(muya: Muya, blockName: string, text: string, nth = 0): Cont
 function cut(muya: Muya, anchor: Content, anchorOffset: number, focus: Content, focusOffset: number): void {
     const anchorPath = anchor.path;
     const focusPath = focus.path;
-    muya.editor.selection.getSelection = () => ({
+    muya.editor.selection.getTextSelection = () => ({
         anchor: { offset: anchorOffset, block: anchor, path: anchorPath },
         focus: { offset: focusOffset, block: focus, path: focusPath },
         isCollapsed: false,
         isSelectionInSameBlock: false,
         direction: SelectionDirection.FORWARD,
-        type: SelectionCaretType.RANGE,
+
     });
     muya.editor.clipboard.cutHandler();
 }
 
 function settledState(muya: Muya): TState[] {
-    muya.editor.jsonState.flush();
+    muya.editor.transactions.flush();
     const state = muya.editor.jsonState.getState();
     const tree: TState[] = [];
     muya.editor.scrollPage!.forEach(block => tree.push((block as Parent).getState()));
@@ -90,7 +90,6 @@ function settledState(muya: Muya): TState[] {
     return state;
 }
 
-// Every code block still starts with its language input, holding its language.
 function expectLanguageInputs(muya: Muya, languages: string[]): void {
     const inputs = contentBlocks(muya).filter(b => b.blockName === 'language-input');
     expect(inputs.map(input => input.text)).toEqual(languages);

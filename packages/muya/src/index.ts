@@ -1,16 +1,28 @@
 export type { ISerializedHistory } from './history';
 export type { ILocale } from './i18n/types';
 
-export { de, en, es, fr, ja, ko, nl, pt, ru, tr, zhCN, zhTW } from './locales';
+export { de, en, es, fr, it, ja, ko, nl, pt, ru, tr, zhCN, zhTW } from './locales';
 export { Muya } from './muya';
 export type { IMatch, IReplaceOption, ISearchOption } from './search/types';
 export type { IIndexCursor } from './selection/offsetCursor';
-export type { IHistorySelection, IPublicCursorInput } from './selection/types';
+export { SelectionDirection, SelectionType } from './selection/types';
+export type {
+    IImageSelection,
+    IImageSelectionState,
+    ISelectionChangePayload,
+    ITableRectSelection,
+    ITableRectSelectionState,
+    ITextSelection,
+    ITextSelectionState,
+    TSelection,
+    TSelectionState,
+} from './selection/types';
 export type { ITocItem } from './state/getTOC';
 export { MarkdownToHtml } from './state/markdownToHtml';
 export { renderToStaticHTML } from './state/renderToStaticHTML';
 export type { IRenderToStaticHTMLOptions } from './state/renderToStaticHTML';
 export type { TState } from './state/types';
+export { ChangeSource } from './types';
 export type { IMuyaOptions } from './types';
 
 export { CodeBlockLanguageSelector } from './ui/codeBlockLanguageSelector';
@@ -38,4 +50,6 @@ export type { IExportRenderOptions } from './utils/diagram/render';
 export type { IImageInfo } from './utils/image';
 export { getImageInfo } from './utils/image';
 export { escapeHTML, sanitize, unescapeHTML, wordCount } from './utils/index';
+export { default as logger } from './utils/logger';
+export type { TLogLevel, TLogSink } from './utils/logger';
 export { generateGithubSlug } from './utils/slug';

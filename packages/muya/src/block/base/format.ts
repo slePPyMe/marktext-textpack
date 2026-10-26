@@ -28,6 +28,8 @@ import {
 import { generator, tokenizer } from '../../inlineRenderer/lexer';
 import Selection, { getCursorReference } from '../../selection';
 import { getTextContent } from '../../selection/dom';
+import { contentPath } from '../../selection/state';
+import { SelectionType } from '../../selection/types';
 import { isListItemState } from '../../state/types';
 import { conflict, escapeHTML, firstGraphemeLength, isHTMLElement, isKeyboardEvent, isMouseEvent, lastGraphemeLength } from '../../utils';
 import { COLOR_SPAN_CLOSE_TAG, colorPropertyOf, colorSpanOpenTag, isColorStyleEmpty, parseColorStyle } from '../../utils/colorSpan';
@@ -56,7 +58,6 @@ const INLINE_UPDATE_FRAGMENTS = [
     '^[\\s\\S]+?\\n {0,3}(={3,}|-{3,})(?= +|$)', // Setext headings **match from beginning**
     '(?:^|\n) {0,3}(>).+', // Block quote
     '^( {4,})', // Indent code **match from beginning**
-    // '^(\\[\\^[^\\^\\[\\]\\s]+?(?<!\\\\)\\]: )', // Footnote **match from beginning**
     '(?:^|\n) {0,3}((?:\\* *\\* *\\*|- *- *-|_ *_ *_)[ *_-]*)(?=\n|$)', // Thematic break
 ];
 
@@ -72,9 +73,7 @@ function stripHardBreakMarker(line: string): string {
     return backslashes % 2 === 1 ? line.slice(0, -1) : line;
 }
 
-// Offset of the cursor relative to a symmetric/asymmetric marker pair
-// (strong/em/code/math/html_tag). `open`/`close` are the opening/closing
-// marker lengths; for the symmetric inline markers they are equal.
+// Marker lengths differ for asymmetric HTML tags; offsets must account for each end.
 function markeredOffset(dis: number, len: number, open: number, close: number) {
     if (dis < 0)
         return 0;
@@ -183,7 +182,6 @@ function clearFormat(token: Token, cursor: IContentCursor) {
         case 'link':
 
         case 'html_tag': {
-            // underline, sub, sup
             const { parent, children } = token;
             const index = parent.indexOf(token);
             parent.splice(index, 1, ...(children as Token[]));
@@ -380,15 +378,17 @@ class Format extends Content {
         return false;
     }
 
-    // TODO: @JOCS remove use this.selection directly
-    checkNeedRender(cursor: IRenderCursor = { anchor: this.selection.anchor ?? undefined, focus: this.selection.focus ?? undefined }) {
+    checkNeedRender(cursor: IRenderCursor = {
+        anchor: this.selection.anchor ?? undefined,
+        focus: this.selection.focus ?? undefined,
+    }) {
         const { labels } = this.inlineRenderer;
         const { text } = this;
-        const { start: cStart, end: cEnd, anchor, focus } = cursor;
-        const anchorOffset = cStart ? cStart.offset : anchor?.offset;
-        const focusOffset = cEnd ? cEnd.offset : focus?.offset;
-        if (anchorOffset == null || focusOffset == null)
+        const anchor = cursor.start ?? cursor.anchor;
+        const focus = cursor.end ?? cursor.focus;
+        if (!anchor || !focus)
             return false;
+        const offsets = [anchor.offset, focus.offset];
         const NO_NEED_TOKEN_REG = /text|hard_line_break|soft_line_break/;
 
         for (const token of tokenizer(text, {
@@ -399,20 +399,9 @@ class Format extends Content {
                 continue;
 
             const { start, end } = token.range;
-            const textLen = text.length;
-
-            if (
-                conflict(
-                    [Math.max(0, start - 1), Math.min(textLen, end + 1)],
-                    [anchorOffset, anchorOffset],
-                )
-                || conflict(
-                    [Math.max(0, start - 1), Math.min(textLen, end + 1)],
-                    [focusOffset, focusOffset],
-                )
-            ) {
+            const range: [number, number] = [Math.max(0, start - 1), Math.min(text.length, end + 1)];
+            if (offsets.some(offset => conflict(range, [offset, offset])))
                 return true;
-            }
         }
 
         return false;
@@ -430,7 +419,6 @@ class Format extends Content {
      * @param {string} text emoji text
      */
     setEmoji(text: string) {
-    // TODO: @JOCS remove use this.selection directly.
         const { anchor } = this.selection;
         const editEmoji = this._checkCursorInTokenType(
             this.text,
@@ -490,11 +478,10 @@ class Format extends Content {
     }
 
     updateImage(
-        { imageId, token }: IImageInfo,
+        { token }: IImageInfo,
         attrName: string,
         attrValue: string,
     ) {
-    // inline/left/center/right
         const { start, end } = token.range;
         const oldText = this.text;
         let imageText = '';
@@ -517,23 +504,18 @@ class Format extends Content {
 
         this.update();
 
-        const selector = `#${imageId.includes('_') ? imageId : `${imageId}_${token.range.start}`
-        } img`;
-        // Scope the lookup to this block: identical-src images share a DOM id,
-        // so a document-wide query would re-click the first occurrence. Within a
-        // single block the `_${range.start}` suffix is unique.
-        const image: Nullable<HTMLElement>
-            = this.domNode?.querySelector<HTMLElement>(selector)
-                ?? document.querySelector<HTMLElement>(selector);
-
-        if (image)
-            image.click();
+        this.selection.setSelection({
+            kind: SelectionType.IMAGE,
+            path: contentPath(this),
+            range: {
+                start,
+                end: start + imageText.length,
+            },
+            raw: imageText,
+        });
     }
 
-    // Replace the link's source text (e.g. `[Anthropic](https://…)`) with the
-    // visible anchor text only (`Anthropic`), stripping the markdown / HTML
-    // around it. We keep the visible text rather than substituting the URL,
-    // matching the contemporary norm (Notion, GDocs, Slack).
+    // Unlink keeps the visible anchor text rather than substituting the URL.
     unlink({ range, text }: { range: { start: number; end: number } | null; text: string }) {
         if (!range)
             return;
@@ -547,24 +529,15 @@ class Format extends Content {
     deleteImage({ token }: IImageInfo) {
         const oldText = this.text;
         const { start, end } = token.range;
-        const { eventCenter } = this.muya;
-
         this.text = oldText.substring(0, start) + oldText.substring(end);
         this.setCursor(start, start, true);
-
-        // Hide image toolbar and image transformer
-        eventCenter.emit('muya-transformer', { reference: null });
-        eventCenter.emit('muya-image-toolbar', { reference: null });
     }
 
     override clickHandler(event: Event): void {
         if (!isMouseEvent(event))
             return;
 
-        // Handler click inline math and inline ruby html. Use `Element`, not
-        // `HTMLElement` — inline-math KaTeX output is SVG, and a click that
-        // lands on an `<svg>` path still has to walk up to the wrapping
-        // `.mu-math-render` HTMLElement.
+        // Use Element: KaTeX clicks can originate on SVG paths inside the math wrapper.
         const { target } = event;
         if (!(target instanceof Element))
             return;
@@ -575,9 +548,7 @@ class Format extends Content {
         if (inlineRuleRenderEle)
             return this._handleClickInlineRuleRender(event, inlineRuleRenderEle);
 
-        // Open the footnote tool when the user clicks an inline `[^id]`
-        // reference. Doesn't early-return: cursor placement below still runs
-        // so the user can also edit the identifier text directly.
+        // Keep cursor placement running after opening the footnote tool so identifiers remain editable.
         const footnoteEl = target.closest<HTMLElement>(
             `.${CLASS_NAMES.MU_INLINE_FOOTNOTE_IDENTIFIER}`,
         );
@@ -585,7 +556,6 @@ class Format extends Content {
             this._emitFootnoteToolEvent(footnoteEl);
 
         requestAnimationFrame(() => {
-            // TODO: @JOCS, remove use this.selection directly.
             if (event.shiftKey && this.selection.anchorBlock !== this) {
                 // TODO: handle select multiple paragraphs
                 return;
@@ -600,26 +570,12 @@ class Format extends Content {
                 block: this,
             });
 
-            // TODO: The codes bellow maybe is wrong? and remove use this.selection directly
-            const needRender
-                = this.selection.anchorBlock === this
-                    ? this.checkNeedRender(cursor) || this.checkNeedRender()
-                    : this.checkNeedRender(cursor);
-
+            const needRender = this.checkNeedRender(cursor)
+                || (this.selection.anchorBlock === this && this.checkNeedRender());
             if (needRender)
                 this.update(cursor);
 
             this.setCursor(currentCursor.anchor.offset, currentCursor.focus.offset);
-
-            // Check and show format picker
-            if (cursor.start.offset !== cursor.end.offset) {
-                const reference = getCursorReference();
-
-                this.muya.eventCenter.emit('muya-format-picker', {
-                    reference,
-                    block: this,
-                });
-            }
         });
     }
 
@@ -627,36 +583,34 @@ class Format extends Content {
         if (this.isComposed)
             return;
 
-        // TODO: @JOCS remove use this.selection directly
         const {
             anchor: oldAnchor,
             focus: oldFocus,
-            isSelectionInSameBlock,
         } = this.selection;
-
-        if (!isSelectionInSameBlock)
+        const currentCursor = this.getCursor();
+        if (!currentCursor)
             return;
 
-        const { anchor, focus } = this.getCursor()!;
+        const { anchor, focus } = currentCursor;
+        const cursor = {
+            anchor,
+            focus,
+            block: this,
+        };
+        const needUpdate = this.checkNeedRender(cursor)
+            || (this.selection.anchorBlock === this && this.checkNeedRender());
 
         if (
             anchor.offset !== oldAnchor?.offset
             || focus.offset !== oldFocus?.offset
+            || needUpdate
         ) {
-            // Also check the previously committed selection (no-arg default):
-            // a held arrow fires one keyup on release, so the caret can leap
-            // clear of a token in a single step and leave its markers stuck
-            // revealed. Mirrors the guard in `clickHandler`.
-            const needUpdate = this.checkNeedRender({ anchor, focus }) || this.checkNeedRender();
-            const cursor = { anchor, focus, block: this };
-
             if (needUpdate)
                 this.update(cursor);
 
             this.setCursor(anchor.offset, focus.offset);
         }
 
-        // Check not edit emoji
         const editEmoji = this._checkCursorInTokenType(
             this.text,
             anchor.offset,
@@ -668,23 +622,10 @@ class Format extends Content {
                 emojiText: '',
             });
         }
-
-        // Check and show format picker
-        if (anchor.offset !== focus.offset) {
-            const reference = getCursorReference();
-
-            this.muya.eventCenter.emit('muya-format-picker', {
-                reference,
-                block: this,
-            });
-        }
     }
 
     override inputHandler(event: Event): void {
-        // Do not use `isInputEvent` util, because compositionEnd event also
-        // invoke this method — `event.inputType` may legitimately be `undefined`
-        // (CompositionEvent doesn't expose it). Use `'inputType' in event` to
-        // read it from whichever event shape the runtime hands us.
+        // compositionend also reaches this handler and has no inputType.
         const inputType = 'inputType' in event && typeof event.inputType === 'string'
             ? event.inputType
             : '';
@@ -749,7 +690,6 @@ class Format extends Content {
             this.update(cursor);
 
         this.setCursor(start.offset, end.offset);
-        // check edit emoji
         if (
             inputType !== 'insertFromPaste'
             && inputType !== 'deleteByCut'
@@ -842,9 +782,7 @@ class Format extends Content {
         }
     }
 
-    // Thematic Break
     private _convertToThematicBreak() {
-    // If the block is already thematic break, no need to update.
         if (this.parent?.blockName === 'thematic-break')
             return;
 
@@ -980,7 +918,6 @@ class Format extends Content {
         if (hasSelection)
             firstContent.setCursor(0, 0, true);
 
-        // convert `[*-+] \[[xX ]\] ` to task list.
         const TASK_LIST_REG = /^\[[x ]\] {1,4}/i;
         if (TASK_LIST_REG.test(firstContent.text))
             firstContent._convertToTaskList();
@@ -989,7 +926,6 @@ class Format extends Content {
     // The item becomes a task item; an ordered list keeps its numbering.
     private _convertToTaskList() {
         const { text, parent, muya, hasSelection } = this;
-        const { preferLooseListItem } = muya.options;
         const listItem = parent!.parent!;
         const list = listItem?.parent as BulletList | OrderList;
         const matches = text.match(/^\[([x ])\] {1,4}([\s\S]*)$/i);
@@ -1004,16 +940,17 @@ class Format extends Content {
         }
 
         const offset = list.offset(listItem);
+        const { loose } = list.meta;
         const ordered = list.blockName === 'order-list';
         const meta: ITaskListState['meta'] = ordered
             ? {
                     ordered: true,
-                    loose: preferLooseListItem,
+                    loose,
                     start: (list.meta as IOrderListState['meta']).start + offset,
                     delimiter: (list.meta as IOrderListState['meta']).delimiter,
                 }
             : {
-                    loose: preferLooseListItem,
+                    loose,
                     marker: (list.meta as IBulletListState['meta']).marker,
                 };
         const listState: ITaskListState = {
@@ -1036,9 +973,6 @@ class Format extends Content {
                             return node.getState();
                         }
                         else {
-                            // Content leaves under a list item don't carry a
-                            // full state, but in practice every nested item
-                            // is a Parent at runtime (paragraph / inner-list).
                             return { name: 'paragraph', text: '' };
                         }
                     }),
@@ -1069,7 +1003,7 @@ class Format extends Content {
                     const path = list.path;
                     path.pop();
                     path.push('meta', 'start');
-                    list.jsonState.replaceOperation(
+                    list.transactions.replaceOperation(
                         path,
                         oldStart,
                         listMeta.start,
@@ -1088,7 +1022,7 @@ class Format extends Content {
                     ? {
                             name: 'order-list',
                             meta: {
-                                loose: preferLooseListItem,
+                                loose,
                                 start: (list.meta as IOrderListState['meta']).start + offset + 1,
                                 delimiter: (list.meta as IOrderListState['meta']).delimiter,
                             },
@@ -1097,7 +1031,7 @@ class Format extends Content {
                     : {
                             name: 'bullet-list',
                             meta: {
-                                loose: preferLooseListItem,
+                                loose,
                                 marker: (list.meta as IBulletListState['meta']).marker,
                             },
                             children: [],
@@ -1126,7 +1060,6 @@ class Format extends Content {
             newTaskList.firstContentInDescendant().setCursor(0, 0, true);
     }
 
-    // ATX Heading
     private _convertToAtxHeading(atxHeading: string) {
         const level = atxHeading.length;
         if (
@@ -1207,7 +1140,6 @@ class Format extends Content {
         }
     }
 
-    // Setext Heading
     private _convertToSetextHeading(setextHeading: string) {
         const level = /=/.test(setextHeading) ? 1 : 2;
         if (
@@ -1223,22 +1155,27 @@ class Format extends Content {
         const setextLines = [];
         const postParagraphLines = [];
         let setextLineHasPushed = false;
+        let underline = setextHeading;
 
         for (const l of lines) {
-            if (/^ {0,3}(?:={3,}|-{3,})(?= +|$)/.test(l) && !setextLineHasPushed)
+            if (/^ {0,3}(?:={3,}|-{3,})(?= +|$)/.test(l) && !setextLineHasPushed) {
                 setextLineHasPushed = true;
-            else if (!setextLineHasPushed)
+                underline = l;
+            }
+            else if (!setextLineHasPushed) {
                 setextLines.push(l);
-            else
+            }
+            else {
                 postParagraphLines.push(l);
+            }
         }
 
         const newNodeState = {
             name: 'setext-heading',
             meta: {
                 level,
-                underline: setextHeading,
             },
+            syntax: { underline },
             text: setextLines.join('\n'),
         };
 
@@ -1270,7 +1207,6 @@ class Format extends Content {
         }
     }
 
-    // Block Quote
     private _convertToBlockQuote() {
         const { text, muya, hasSelection } = this;
         const { start, end } = this.getCursor()!;
@@ -1300,6 +1236,7 @@ class Format extends Content {
             quoteParagraphState = {
                 name: 'setext-heading',
                 meta: (this.parent as SetextHeading).meta,
+                syntax: (this.parent as SetextHeading).syntax,
                 text: quoteLines.join('\n'),
             };
         }
@@ -1341,7 +1278,6 @@ class Format extends Content {
         }
 
         if (hasSelection) {
-            // TODO: USE `firstContentInDescendant`
             const cursorBlock = quoteBlock.children.head.children.head;
             cursorBlock.setCursor(
                 Math.max(0, start.offset - delta),
@@ -1351,7 +1287,6 @@ class Format extends Content {
         }
     }
 
-    // Indented Code Block
     private _convertToIndentedCodeBlock() {
         const { text, muya, hasSelection } = this;
         const lines = text.split('\n');
@@ -1402,7 +1337,6 @@ class Format extends Content {
         }
     }
 
-    // Paragraph
     protected convertToParagraph(force = false) {
         if (
             !force
@@ -1496,10 +1430,7 @@ class Format extends Content {
         }
     }
 
-    // Scan tokens for the one ending at the caret. Mutates the matched token's
-    // `raw` for the inline-syntax-marker cases (#113) so the caller can
-    // regenerate text; reports image / reference-image hits for the caller to
-    // delete or select.
+    // Mutate inline marker tokens to regenerate text; report image tokens for selection or deletion.
     private _scanBackspaceTokens(tokens: Token[], offset: number): {
         needRender: boolean;
         imageToken: Token | null;
@@ -1546,15 +1477,8 @@ class Format extends Content {
         return { needRender: false, imageToken: null, referenceImageToken: null, offsetDelta: 0 };
     }
 
-    // Resolve the real caret offset when the collapsed caret is parked on a
-    // trailing inline image, otherwise null. Inline images are
-    // `contenteditable=false`, so the browser parks the caret on the wrapper or
-    // inside the image container once nothing editable follows the image, and
-    // `getCursor` then reports an offset that collapses to the image's start
-    // (the image's own length is excluded). Report the image's end so the token
-    // scan treats it like any other caret-after-image. When other content
-    // follows the image the caret lands in that content (a reliable offset), so
-    // this returns null and the raw caret offset is used.
+    // Atomic images make getCursor report the wrapper’s start offset. For a trailing
+    // image, recover its end offset so Backspace can find the token. Return null otherwise.
     private _caretOffsetOnInlineImage(): number | null {
         const selection = document.getSelection();
         if (!selection || selection.rangeCount === 0 || !selection.isCollapsed)
@@ -1603,7 +1527,6 @@ class Format extends Content {
         this.muya.editor.selection.selectImage(Object.assign({}, imageInfo, {
             block: this,
         }));
-        // Re-render so the inline image picks up the selected highlight class.
         this.update();
     }
 
@@ -1696,15 +1619,19 @@ class Format extends Content {
     }
 
     override enterHandler(event: KeyboardEvent): void {
+        const { text } = this;
+        const { start, end } = this.getCursor()!;
+        this.splitToParagraph(event, text.substring(0, start.offset), text.substring(end.offset));
+    }
+
+    protected splitToParagraph(event: KeyboardEvent, head: string, tail: string): void {
         event.preventDefault();
         this.muya.editor.history.markInputBoundary('insertParagraph', '\n');
-        const { text: oldText, muya, parent } = this;
-        const { start, end } = this.getCursor()!;
-        this.text = oldText.substring(0, start.offset);
-        const textOfNewNode = oldText.substring(end.offset);
+        const { muya, parent } = this;
+        this.text = head;
         const newParagraphState = {
             name: 'paragraph',
-            text: textOfNewNode,
+            text: tail,
         };
 
         const newNode = ScrollPage.loadBlock(newParagraphState.name).create(
@@ -1788,7 +1715,6 @@ class Format extends Content {
                     .reverse(),
         );
 
-        // cache delta
         if (type === 'clear') {
             for (const neighbor of neighbors)
                 clearFormat(neighbor, cursor);
@@ -1828,7 +1754,6 @@ class Format extends Content {
             this._addFormat(type, { start, end });
 
             if (type === 'image') {
-                // Show image selector when create a inline image by menu/shortcut/or just input `![]()`
                 requestAnimationFrame(() => {
                     const startNode = Selection.getSelectionStart();
 
@@ -2018,10 +1943,7 @@ class Format extends Content {
                         + oldText.substring(start.offset, end.offset)
                         + MARKER
                         + oldText.substring(end.offset);
-                // Shift both offsets past the opening marker. A collapsed
-                // cursor stays between the markers (toggle-then-type lands
-                // INSIDE the format); a non-empty selection keeps the
-                // original text selected now that it sits inside the markers.
+                // Keep the same text selected after inserting markers; a caret stays between them.
                 start.offset += MARKER.length;
                 end.offset += MARKER.length;
                 break;
@@ -2042,9 +1964,6 @@ class Format extends Content {
                         + oldText.substring(start.offset, end.offset)
                         + MARKER.close
                         + oldText.substring(end.offset);
-                // Shift both offsets past the opening tag: a collapsed cursor
-                // stays between the tags, a non-empty selection keeps the
-                // wrapped text selected.
                 start.offset += MARKER.open.length;
                 end.offset += MARKER.open.length;
                 break;
@@ -2061,7 +1980,6 @@ class Format extends Content {
                     + oldText.substring(start.offset, end.offset)
                     }]()${
                         oldText.substring(end.offset)}`;
-                // put cursor between `()`
                 start.offset += type === 'link' ? 3 + anchorTextLen : 4 + anchorTextLen;
                 end.offset = start.offset;
                 break;
@@ -2069,7 +1987,6 @@ class Format extends Content {
         }
     }
 
-    // Click the rendering of inline syntax, such as Inline Math, and select the math formula.
     private _handleClickInlineRuleRender(
         event: Event,
         inlineRuleRenderEle: Element,
@@ -2095,22 +2012,13 @@ class Format extends Content {
         scrollPage.breadthFirstTraverse((node) => {
             if (node.blockName !== 'footnote')
                 return;
-            // Footnote blocks carry `meta: { identifier }`, but the breadth-
-            // first traversal hands us the base TreeNode shape. Read via a
-            // structural view rather than the `as unknown as` double-cast.
             const id = (node as TreeNode & { meta?: { identifier?: string } }).meta?.identifier;
             if (typeof id === 'string' && !footnotes.has(id))
                 footnotes.set(id, node);
         });
 
-        // Snapshot the bounding rect now: the requestAnimationFrame later in
-        // `clickHandler` calls `update(cursor)`, which re-renders the inline
-        // content and detaches the `<sup>` we captured. By the time the
-        // FootnoteTool's deferred `show()` calls floating-ui's `autoUpdate`,
-        // the original element is gone (`getBoundingClientRect()` returns
-        // 0/0/0/0) and the float pins to the top-left corner of the viewport.
-        // Hand the tool a static virtual reference instead — it doesn't need
-        // to follow live DOM changes during a single click → choose flow.
+        // Re-rendering detaches the clicked reference before the floating tool opens.
+        // Snapshot its bounds so a detached node cannot pin the tool to the viewport corner.
         const rect = reference.getBoundingClientRect();
         const virtualReference = {
             getBoundingClientRect: () =>

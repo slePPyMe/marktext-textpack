@@ -4,6 +4,7 @@ import type { TBlockPath } from '../types';
 import { LinkedList } from '../../block/base/linkedList/linkedList';
 import TreeNode from '../../block/base/treeNode';
 import { CLASS_NAMES } from '../../config';
+import { ChangeSource } from '../../types';
 import { operateClassName } from '../../utils/dom';
 import logger from '../../utils/logger';
 import { isFoldableHeading } from '../commonMark/atxHeading/foldSection';
@@ -28,7 +29,7 @@ class Parent extends TreeNode {
     }
 
     set active(value) {
-        this._active = value && !this.muya.readOnly;
+        this._active = value && !this.muya.isReadOnly;
         value = this._active;
 
         if (this.domNode == null) {
@@ -60,7 +61,6 @@ class Parent extends TreeNode {
     }
 
     get path(): TBlockPath {
-    // You should never call get path on Parent.
         debug.error('You should never call get path on Parent.');
         return [];
     }
@@ -74,14 +74,10 @@ class Parent extends TreeNode {
     }
 
     getState(): TState {
-    // You should never call get state on Parent.
         debug.error('You should never call get state on Parent.');
         return {} as TState;
     }
 
-    /**
-     * Clone itself.
-     */
     clone() {
         const state = this.getState();
         const { muya } = this;
@@ -89,9 +85,6 @@ class Parent extends TreeNode {
         return this.static.create(muya, state);
     }
 
-    /**
-     * Return the length of children.
-     */
     length() {
         return this.reduce((acc: number) => acc + 1, 0);
     }
@@ -104,18 +97,19 @@ class Parent extends TreeNode {
         return this.children.find(offset);
     }
 
-    /**
-     * Append node in linkedList, mounted it into the DOM tree, dispatch operation if necessary.
-     * @param  {...any} args
-     */
-    append(...childrenAndSource: [...Parent[], string]): void;
+    append(...childrenAndSource: [...Parent[], ChangeSource]): void;
     append(...children: Parent[]): void;
     append(...args: unknown[]) {
         if (!this.muya.canMutate)
             return;
-        const source
-            = typeof args[args.length - 1] === 'string' ? args.pop() : 'api';
+        const last = args[args.length - 1];
+        const source = last === ChangeSource.User || last === ChangeSource.Api ? last : ChangeSource.Api;
+        if (last === ChangeSource.User || last === ChangeSource.Api)
+            args.pop();
         const children = args as Parent[];
+
+        if (source === ChangeSource.User)
+            this.transactions.captureSelection();
 
         children.forEach((node) => {
             node.parent = this;
@@ -126,12 +120,11 @@ class Parent extends TreeNode {
         this.children.append(...children);
         refreshFoldVisibility(this, children.some(node => isFoldableHeading(node) && node.folded));
 
-        // push operations
-        if (source === 'user') {
+        if (source === ChangeSource.User) {
             children.forEach((node) => {
                 const path = node._getJsonPath();
                 const state = node.getState();
-                this.jsonState.insertOperation(path, state);
+                this.transactions.insertOperation(path, state);
             });
         }
     }
@@ -173,11 +166,7 @@ class Parent extends TreeNode {
         return this.children.reduce<M>(callback, initialValue);
     }
 
-    /**
-     * Use the `block` to replace the current block(this)
-     * @param {TreeNode} block
-     */
-    replaceWith(block: Parent, source = 'user') {
+    replaceWith(block: Parent, source: ChangeSource = ChangeSource.User) {
         if (!this.muya.canMutate)
             return;
         if (!this.parent) {
@@ -196,10 +185,12 @@ class Parent extends TreeNode {
     insertBefore(
         newNode: Parent,
         refNode: Nullable<Parent> = null,
-        source = 'user',
+        source: ChangeSource = ChangeSource.User,
     ) {
         if (!this.muya.canMutate)
             return;
+        if (source === ChangeSource.User)
+            this.transactions.captureSelection();
         newNode.parent = this;
         this.children.insertBefore(newNode, refNode);
         this.domNode!.insertBefore(
@@ -209,29 +200,27 @@ class Parent extends TreeNode {
 
         refreshFoldVisibility(this, isFoldableHeading(newNode) && newNode.folded);
 
-        if (source === 'user') {
-            // dispatch json1 operation
+        if (source === ChangeSource.User) {
             const path = newNode._getJsonPath();
             const state = newNode.getState();
-            this.jsonState.insertOperation(path, state);
+            this.transactions.insertOperation(path, state);
         }
 
         return newNode;
     }
 
-    insertAfter(newNode: Parent, refNode: Nullable<Parent> = null, source = 'user') {
+    insertAfter(newNode: Parent, refNode: Nullable<Parent> = null, source: ChangeSource = ChangeSource.User) {
         this.insertBefore(newNode, refNode ? refNode.next : null, source);
 
         return newNode;
     }
 
-    override remove(source = 'user') {
+    override remove(source: ChangeSource = ChangeSource.User) {
         if (!this.muya.canMutate)
             return;
-        if (source === 'user') {
-            // dispatch json1 operation
+        if (source === ChangeSource.User) {
             const path = this._getJsonPath();
-            this.jsonState.removeOperation(path);
+            this.transactions.removeOperation(path);
         }
 
         super.remove(source);
@@ -241,11 +230,11 @@ class Parent extends TreeNode {
 
     protected empty() {
         this.forEach((child) => {
-            this.removeChild(child, 'api');
+            this.removeChild(child, ChangeSource.Api);
         });
     }
 
-    removeChild(node: TreeNode, source = 'user') {
+    removeChild(node: TreeNode, source: ChangeSource = ChangeSource.User) {
         if (!this.children.contains(node)) {
             debug.warn(
                 'Can not removeChild(node), because node is not child of this block',
@@ -260,9 +249,6 @@ class Parent extends TreeNode {
         return node;
     }
 
-    /**
-     * find the first content block, paragraph.content etc.
-     */
     firstContentInDescendant() {
         let likeContentBlock: Nullable<TreeNode> = this.children.head;
 
@@ -273,9 +259,6 @@ class Parent extends TreeNode {
         return likeContentBlock?.isContent() ? likeContentBlock : null;
     }
 
-    /**
-     * find the last content block in container block.
-     */
     lastContentInDescendant() {
         let likeContentBlock: Nullable<TreeNode> = this.children.tail;
 
@@ -307,7 +290,7 @@ class Parent extends TreeNode {
             callback(node);
 
             if (node.isParent()) {
-                // Use splice ot make sure the first block in document is process first.
+                // Prepend children in order so traversal visits the first document block first.
                 node.children.forEach((child, i) => stack.splice(i, 0, child));
             }
         }

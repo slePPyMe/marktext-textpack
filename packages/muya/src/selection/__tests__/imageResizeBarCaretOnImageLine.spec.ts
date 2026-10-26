@@ -55,9 +55,9 @@ describe('image click with the caret on the image\'s line (#5391)', () => {
         const container = injectImage(muya, src);
 
         const references: unknown[] = [];
-        muya.eventCenter.on('muya-transformer', (payload: { reference?: unknown }) => {
-            if (payload && payload.reference)
-                references.push(payload.reference);
+        muya.eventCenter.on('selection-change', ({ selection }) => {
+            if (selection?.kind === 'image')
+                references.push(selection.context.domNode);
         });
 
         container
@@ -84,9 +84,9 @@ describe('image click with the caret on the image\'s line (#5391)', () => {
         });
 
         const handler = vi.fn();
-        muya.eventCenter.on('muya-transformer', (payload: { reference?: unknown }) => {
-            if (payload && payload.reference)
-                handler(payload.reference);
+        muya.eventCenter.on('selection-change', ({ selection }) => {
+            if (selection?.kind === 'image')
+                handler(selection.context.domNode);
         });
 
         containers[1]!
@@ -96,7 +96,6 @@ describe('image click with the caret on the image\'s line (#5391)', () => {
         expect(handler).toHaveBeenCalledTimes(1);
         const reference = handler.mock.calls[0]![0] as HTMLElement;
         expect(muya.domNode.contains(reference)).toBe(true);
-        // Second of the three, whether or not the re-render replaced the nodes.
         const live = Array.from(
             muya.domNode.querySelectorAll<HTMLElement>(`.${CLASS_NAMES.MU_IMAGE_CONTAINER}`),
         );
