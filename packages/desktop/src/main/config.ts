@@ -5,6 +5,9 @@ export const isOsx: boolean = process.platform === 'darwin'
 export const isWindows: boolean = process.platform === 'win32'
 export const isLinux: boolean = process.platform === 'linux'
 
+// The dev server must load document-local file:// images from an HTTP origin.
+const webSecurity = !import.meta.env.DEV
+
 export const editorWinOptions: Readonly<BrowserWindowConstructorOptions> = Object.freeze({
   minWidth: 550,
   minHeight: 350,
@@ -16,7 +19,7 @@ export const editorWinOptions: Readonly<BrowserWindowConstructorOptions> = Objec
     // enable it always and set the HTML spelling attribute to false.
     spellcheck: true,
     nodeIntegration: false,
-    webSecurity: false,
+    webSecurity,
     preload: path.join(__dirname, '../preload/index.js')
   },
   useContentSize: true,
@@ -37,7 +40,7 @@ export const preferencesWinOptions: Readonly<BrowserWindowConstructorOptions> = 
     // Always true to access native spellchecker.
     spellcheck: true,
     nodeIntegration: false,
-    webSecurity: false,
+    webSecurity,
     preload: path.join(__dirname, '../preload/index.js')
   },
   fullscreenable: false,
@@ -80,6 +83,5 @@ export const LF_LINE_ENDING_REG = /(?:[^\r]\n)|(?:^\n$)/
 export const CRLF_LINE_ENDING_REG = /\r\n/
 
 export const GITHUB_REPO_URL = 'https://github.com/marktext/marktext'
-// copy from muya
 export const URL_REG =
   /^http(s)?:\/\/([a-z0-9\-._~]+\.[a-z]{2,}|[0-9.]+|localhost|\[[a-f0-9.:]+\])(:[0-9]{1,5})?(\/[\S]+)?/i

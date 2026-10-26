@@ -17,6 +17,7 @@
       "openFile": "Abrir Arquivo...",
       "openFolder": "Abrir Pasta...",
       "openRecent": "Abrir Recente",
+      "openRecentMore": "Pesquisar nos recentes...",
       "clearRecentlyUsed": "Limpar Recentes",
       "save": "Salvar",
       "saveAs": "Salvar Como...",
@@ -32,7 +33,8 @@
       "closeTab": "Fechar Aba",
       "closeWindow": "Fechar Janela",
       "quit": "Sair",
-      "preferences": "Preferências"
+      "preferences": "Preferências",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "edit": "Editar",
@@ -241,8 +243,11 @@
       "noFolderOpen": "Nenhuma pasta aberta",
       "noResultsFound": "Nenhum resultado encontrado.",
       "cancel": "Cancelar",
-      "openFolder": "Abrir Pasta",
-      "showMoreMatches": "Mostrar mais correspondências"
+      "openFolder": "Add Folder…",
+      "showMoreMatches": "Mostrar mais correspondências",
+      "searchInFolders": "Search in added folders",
+      "partialSearch": "Some folders could not be searched.",
+      "noSearchableFolders": "No available folders to search."
     },
     "tree": {
       "openedFiles": "Arquivos abertos",
@@ -250,7 +255,17 @@
       "closeAll": "Fechar Todos",
       "emptyProject": "Projeto vazio",
       "createFile": "Criar Arquivo",
-      "openFolder": "Abrir Pasta"
+      "openFolder": "Abrir Pasta",
+      "noFolders": "No folders added",
+      "removeFolder": "Remove from Sidebar",
+      "retryFolder": "Retry",
+      "loadingFolder": "Loading folder…",
+      "unavailableFolder": "Folder unavailable",
+      "overlappingFolder": "This folder overlaps an existing folder. Remove the existing item first.",
+      "folderAlreadyAdded": "This folder has already been added.",
+      "fileOutsideFolders": "This file is not in an added folder.",
+      "sessionSaveFailed": "Unable to save session",
+      "resizeOpenedFiles": "Redimensionar a lista de arquivos abertos"
     },
     "toc": {
       "expand": "Expandir sumário",
@@ -286,8 +301,16 @@
     "placeholders": {
       "selectOption": "Selecionar opção",
       "searchFileToOpen": "Pesquisar arquivo para abrir",
-      "selectLanguage": "Selecionar idioma"
-    }
+      "selectLanguage": "Selecionar idioma",
+      "searchRecentFilesAndFolders": "Pesquisar arquivos e pastas recentes"
+    },
+    "recentlyOpened": "abertos recentemente",
+    "fileResults": "resultados de arquivos",
+    "folders": "pastas",
+    "files": "arquivos",
+    "removeFromRecent": "Remover dos abertos recentemente",
+    "noResults": "Nenhum resultado correspondente",
+    "noRecentFiles": "Nenhum arquivo ou pasta recente"
   },
   "exportSettings": {
     "autoNumberingHeadings": "Numeração automática de cabeçalhos",
@@ -396,6 +419,7 @@
         "autoNormalizeLineEndings": "Normalizar automaticamente as quebras de linha ao abrir arquivos. Quando desativado, os arquivos são abertos como estão.",
         "titleBarStyle": "O estilo da barra de título (apenas sistemas Windows e Linux)",
         "openFilesInNewWindow": "Abrir arquivos em uma nova janela",
+        "openFilesInPreviewMode": "Abrir arquivos da barra lateral em abas de visualização",
         "openFolderInNewWindow": "Abrir pasta via menu em uma nova janela",
         "zoom": "O nível de zoom. Entre 0.5 e 2.0 inclusive",
         "hideScrollbar": "Se ocultar as barras de rolagem",
@@ -446,6 +470,8 @@
         "isHtmlEnabled": "Habilitar renderização HTML",
         "softNewlineAsSpace": "Tratar quebras de linha suaves como espaços",
         "sequenceTheme": "Tema do diagrama de sequência",
+        "mermaidLightTheme": "Tema do Mermaid para temas claros do MarkText",
+        "mermaidDarkTheme": "Tema do Mermaid para temas escuros do MarkText",
         "plantumlServer": "URL do servidor PlantUML",
         "theme": "Selecionar o tema usado no MarkText",
         "followSystemTheme": "Seguir tema do sistema",
@@ -517,6 +543,7 @@
         "wrapTextInToc": "Quebrar texto no índice",
         "showOpenedFiles": "Mostrar arquivos abertos",
         "autoReveal": "Mostrar o arquivo ativo na barra lateral",
+        "openFilesInPreviewMode": "Abrir arquivos da barra lateral em abas de visualização. Editar ou clicar duas vezes mantém a aba.",
         "excludePatterns": "Padrões de exclusão",
         "excludePatternsNotes": "Padrões de exclusão (Notas)",
         "fileSortBy": {
@@ -548,7 +575,8 @@
           "dutch": "Nederlands",
           "portuguese": "Português",
           "turkish": "Türkçe",
-          "russian": "Русский"
+          "russian": "Русский",
+          "italian": "Italiano"
         }
       }
     },
@@ -699,6 +727,12 @@
           "handDrawn": "Desenhado à Mão",
           "simple": "Simples"
         },
+        "mermaidLightTheme": {
+          "title": "Tema do Mermaid para temas claros do MarkText"
+        },
+        "mermaidDarkTheme": {
+          "title": "Tema do Mermaid para temas escuros do MarkText"
+        },
         "plantumlServer": {
           "title": "URL do servidor PlantUML"
         }
@@ -808,6 +842,7 @@
       "moveFile": "Mover Arquivo",
       "renameFile": "Renomear Arquivo",
       "quickOpen": "Abertura Rápida",
+      "quickOpenRecent": "Abertura rápida de recentes",
       "changeEncoding": "Alterar Codificação",
       "changeLineEnding": "Alterar Terminação de Linha",
       "trailingNewline": "Nova Linha Final",
@@ -822,7 +857,8 @@
       "exportFile": "Exportar Arquivo",
       "exportFilePdf": "Exportar como PDF",
       "zoom": "Zoom",
-      "checkUpdate": "Verificar Atualizações"
+      "checkUpdate": "Verificar Atualizações",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "undo": "Desfazer",
@@ -901,6 +937,8 @@
       "toggleTypewriterMode": "Alternar Modo Máquina de Escrever",
       "toggleFocusMode": "Alternar Modo Foco",
       "toggleSidebar": "Alternar Barra Lateral",
+      "outlineCollapseAll": "Índice: Recolher tudo",
+      "outlineExpandAll": "Índice: Expandir tudo",
       "toggleToc": "Alternar Índice",
       "toggleTabbar": "Alternar Barra de Abas",
       "toggleDevTools": "Alternar Ferramentas de Desenvolvedor",
@@ -1044,11 +1082,12 @@
       "title": "Verificação Ortográfica"
     },
     "tabs": {
-      "close": "Fechar {name}"
+      "close": "Fechar {name}",
+      "preview": "{name}, aba de visualização"
     }
   },
   "readingMode": {
-    "title": "Modo de leitura (somente leitura)",
+    "title": "Modo de leitura",
     "edit": "Modo de edição",
     "lock": "Ativar o modo de leitura",
     "unlock": "Alternar para o modo de edição",

@@ -17,6 +17,7 @@
       "openFile": "Ouvrir un fichier...",
       "openFolder": "Ouvrir un dossier...",
       "openRecent": "Ouvrir récent",
+      "openRecentMore": "Rechercher dans les récents...",
       "clearRecentlyUsed": "Effacer les récents",
       "save": "Enregistrer",
       "saveAs": "Enregistrer sous...",
@@ -32,7 +33,8 @@
       "closeTab": "Fermer l'onglet",
       "closeWindow": "Fermer la fenêtre",
       "quit": "Quitter",
-      "preferences": "Préférences"
+      "preferences": "Préférences",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "edit": "Édition",
@@ -241,8 +243,11 @@
       "noFolderOpen": "Aucun dossier ouvert",
       "noResultsFound": "Aucun résultat trouvé.",
       "cancel": "Annuler",
-      "openFolder": "Ouvrir un dossier",
-      "showMoreMatches": "Afficher plus de correspondances"
+      "openFolder": "Add Folder…",
+      "showMoreMatches": "Afficher plus de correspondances",
+      "searchInFolders": "Search in added folders",
+      "partialSearch": "Some folders could not be searched.",
+      "noSearchableFolders": "No available folders to search."
     },
     "tree": {
       "openedFiles": "Fichiers ouverts",
@@ -250,7 +255,17 @@
       "closeAll": "Tout fermer",
       "emptyProject": "Projet vide",
       "createFile": "Créer un fichier",
-      "openFolder": "Ouvrir un dossier"
+      "openFolder": "Ouvrir un dossier",
+      "noFolders": "No folders added",
+      "removeFolder": "Remove from Sidebar",
+      "retryFolder": "Retry",
+      "loadingFolder": "Loading folder…",
+      "unavailableFolder": "Folder unavailable",
+      "overlappingFolder": "This folder overlaps an existing folder. Remove the existing item first.",
+      "folderAlreadyAdded": "This folder has already been added.",
+      "fileOutsideFolders": "This file is not in an added folder.",
+      "sessionSaveFailed": "Unable to save session",
+      "resizeOpenedFiles": "Redimensionner la liste des fichiers ouverts"
     },
     "toc": {
       "expand": "Développer la table des matières",
@@ -286,8 +301,16 @@
     "placeholders": {
       "selectOption": "Sélectionner une option",
       "searchFileToOpen": "Rechercher un fichier à ouvrir",
-      "selectLanguage": "Sélectionner la langue"
-    }
+      "selectLanguage": "Sélectionner la langue",
+      "searchRecentFilesAndFolders": "Rechercher des fichiers et dossiers récents"
+    },
+    "recentlyOpened": "ouverts récemment",
+    "fileResults": "résultats de fichiers",
+    "folders": "dossiers",
+    "files": "fichiers",
+    "removeFromRecent": "Retirer des éléments récents",
+    "noResults": "Aucun résultat correspondant",
+    "noRecentFiles": "Aucun fichier ou dossier récent"
   },
   "exportSettings": {
     "autoNumberingHeadings": "Numérotation automatique des titres",
@@ -396,6 +419,7 @@
         "autoNormalizeLineEndings": "Normaliser automatiquement les fins de ligne à l'ouverture des fichiers. Lorsque désactivé, les fichiers sont ouverts tels quels.",
         "titleBarStyle": "Le style de la barre de titre (systèmes Windows et Linux uniquement)",
         "openFilesInNewWindow": "Ouvrir les fichiers dans une nouvelle fenêtre",
+        "openFilesInPreviewMode": "Ouvrir les fichiers de la barre latérale dans des onglets d’aperçu",
         "openFolderInNewWindow": "Ouvrir le dossier via le menu dans une nouvelle fenêtre",
         "zoom": "Le niveau de zoom. Entre 0.5 et 2.0 inclus",
         "hideScrollbar": "Masquer les barres de défilement",
@@ -446,6 +470,8 @@
         "isHtmlEnabled": "Activer le rendu HTML",
         "softNewlineAsSpace": "Traiter les sauts de ligne simples comme des espaces",
         "sequenceTheme": "Thème du diagramme de séquence",
+        "mermaidLightTheme": "Thème Mermaid pour les thèmes clairs de MarkText",
+        "mermaidDarkTheme": "Thème Mermaid pour les thèmes sombres de MarkText",
         "plantumlServer": "URL du serveur PlantUML",
         "theme": "Sélectionner le thème utilisé dans MarkText",
         "followSystemTheme": "Suivre le thème du système",
@@ -517,6 +543,7 @@
         "wrapTextInToc": "Retour à la ligne dans la table des matières",
         "showOpenedFiles": "Afficher les fichiers ouverts",
         "autoReveal": "Afficher le fichier actif dans la barre latérale",
+        "openFilesInPreviewMode": "Ouvrir les fichiers de la barre latérale dans des onglets d’aperçu. La modification ou le double-clic conserve l’onglet.",
         "excludePatterns": "Motifs d'exclusion",
         "excludePatternsNotes": "Notes sur les motifs d'exclusion",
         "fileSortBy": {
@@ -548,7 +575,8 @@
           "dutch": "Nederlands",
           "portuguese": "Português",
           "turkish": "Türkçe",
-          "russian": "Русский"
+          "russian": "Русский",
+          "italian": "Italiano"
         }
       }
     },
@@ -699,6 +727,12 @@
           "handDrawn": "Dessiné à la main",
           "simple": "Simple"
         },
+        "mermaidLightTheme": {
+          "title": "Thème Mermaid pour les thèmes clairs de MarkText"
+        },
+        "mermaidDarkTheme": {
+          "title": "Thème Mermaid pour les thèmes sombres de MarkText"
+        },
         "plantumlServer": {
           "title": "URL du serveur PlantUML"
         }
@@ -808,6 +842,7 @@
       "moveFile": "Déplacer le fichier",
       "renameFile": "Renommer le fichier",
       "quickOpen": "Ouverture rapide",
+      "quickOpenRecent": "Ouverture rapide des récents",
       "changeEncoding": "Changer l'encodage",
       "changeLineEnding": "Changer la fin de ligne",
       "trailingNewline": "Nouvelle ligne de fin",
@@ -822,7 +857,8 @@
       "exportFile": "Exporter un fichier",
       "exportFilePdf": "Exporter en PDF",
       "zoom": "Zoom",
-      "checkUpdate": "Vérifier les mises à jour"
+      "checkUpdate": "Vérifier les mises à jour",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "undo": "Annuler",
@@ -901,6 +937,8 @@
       "toggleTypewriterMode": "Basculer le mode machine à écrire",
       "toggleFocusMode": "Basculer le mode focus",
       "toggleSidebar": "Basculer la barre latérale",
+      "outlineCollapseAll": "Table des matières: Tout réduire",
+      "outlineExpandAll": "Table des matières: Tout développer",
       "toggleToc": "Basculer la table des matières",
       "toggleTabbar": "Basculer la barre d'onglets",
       "toggleDevTools": "Basculer les outils de développement",
@@ -1044,11 +1082,12 @@
       "title": "Vérification orthographique"
     },
     "tabs": {
-      "close": "Fermer {name}"
+      "close": "Fermer {name}",
+      "preview": "{name}, onglet d’aperçu"
     }
   },
   "readingMode": {
-    "title": "Mode lecture (lecture seule)",
+    "title": "Mode lecture",
     "edit": "Mode édition",
     "lock": "Activer le mode lecture",
     "unlock": "Passer en mode édition",

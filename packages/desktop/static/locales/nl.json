@@ -17,6 +17,7 @@
       "openFile": "Bestand openen...",
       "openFolder": "Map openen...",
       "openRecent": "Recent geopend",
+      "openRecentMore": "Recente items doorzoeken...",
       "clearRecentlyUsed": "Recent gewist",
       "save": "Opslaan",
       "saveAs": "Opslaan als...",
@@ -32,7 +33,8 @@
       "closeTab": "Tabblad sluiten",
       "closeWindow": "Venster sluiten",
       "quit": "Afsluiten",
-      "preferences": "Voorkeuren"
+      "preferences": "Voorkeuren",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "edit": "Bewerken",
@@ -241,8 +243,11 @@
       "noFolderOpen": "Geen map geopend",
       "noResultsFound": "Geen resultaten gevonden.",
       "cancel": "Annuleren",
-      "openFolder": "Map openen",
-      "showMoreMatches": "Meer resultaten tonen"
+      "openFolder": "Add Folder…",
+      "showMoreMatches": "Meer resultaten tonen",
+      "searchInFolders": "Search in added folders",
+      "partialSearch": "Some folders could not be searched.",
+      "noSearchableFolders": "No available folders to search."
     },
     "tree": {
       "openedFiles": "Geopende bestanden",
@@ -250,7 +255,17 @@
       "closeAll": "Alles sluiten",
       "emptyProject": "Leeg project",
       "createFile": "Bestand aanmaken",
-      "openFolder": "Map openen"
+      "openFolder": "Map openen",
+      "noFolders": "No folders added",
+      "removeFolder": "Remove from Sidebar",
+      "retryFolder": "Retry",
+      "loadingFolder": "Loading folder…",
+      "unavailableFolder": "Folder unavailable",
+      "overlappingFolder": "This folder overlaps an existing folder. Remove the existing item first.",
+      "folderAlreadyAdded": "This folder has already been added.",
+      "fileOutsideFolders": "This file is not in an added folder.",
+      "sessionSaveFailed": "Unable to save session",
+      "resizeOpenedFiles": "Lijst met geopende bestanden aanpassen"
     },
     "toc": {
       "expand": "Inhoudsopgave uitklappen",
@@ -286,8 +301,16 @@
     "placeholders": {
       "selectOption": "Selecteer een optie",
       "searchFileToOpen": "Zoek bestand om te openen",
-      "selectLanguage": "Selecteer een taal om naar te wisselen"
-    }
+      "selectLanguage": "Selecteer een taal om naar te wisselen",
+      "searchRecentFilesAndFolders": "Recente bestanden en mappen doorzoeken"
+    },
+    "recentlyOpened": "recent geopend",
+    "fileResults": "bestandsresultaten",
+    "folders": "mappen",
+    "files": "bestanden",
+    "removeFromRecent": "Verwijderen uit recent geopend",
+    "noResults": "Geen overeenkomende resultaten",
+    "noRecentFiles": "Geen recente bestanden of mappen"
   },
   "exportSettings": {
     "autoNumberingHeadings": "Automatisch nummeren van koppen",
@@ -395,6 +418,7 @@
         "autoSaveDelay": "De tijd in ms na een wijziging voordat het bestand wordt opgeslagen",
         "titleBarStyle": "De titelbalkstijl (alleen Windows en Linux)",
         "openFilesInNewWindow": "Bestanden openen in een nieuw venster",
+        "openFilesInPreviewMode": "Bestanden in de zijbalk openen in voorbeeldtabbladen",
         "openFolderInNewWindow": "Map openen via menu in een nieuw venster",
         "zoom": "Het zoomniveau. Tussen 0,5 en 2,0",
         "hideScrollbar": "Schuifbalken verbergen",
@@ -445,6 +469,8 @@
         "isHtmlEnabled": "HTML-weergave inschakelen",
         "softNewlineAsSpace": "Zachte regeleinden als spaties behandelen",
         "sequenceTheme": "Sequentiediagram thema",
+        "mermaidLightTheme": "Mermaid-thema voor lichte MarkText-thema's",
+        "mermaidDarkTheme": "Mermaid-thema voor donkere MarkText-thema's",
         "plantumlServer": "PlantUML server-URL",
         "theme": "Selecteer het thema voor MarkText",
         "followSystemTheme": "Systeemthema volgen",
@@ -517,6 +543,7 @@
         "wrapTextInToc": "Tekstterugloop in inhoudsopgave",
         "showOpenedFiles": "Geopende bestanden tonen",
         "autoReveal": "Actief bestand tonen in de zijbalk",
+        "openFilesInPreviewMode": "Bestanden in de zijbalk openen in voorbeeldtabbladen. Bewerken of dubbelklikken houdt het tabblad open.",
         "excludePatterns": "Uitsluitpatronen",
         "excludePatternsNotes": "Uitsluitpatronen (opmerkingen)",
         "fileSortBy": {
@@ -548,7 +575,8 @@
           "dutch": "Nederlands",
           "portuguese": "Português",
           "turkish": "Türkçe",
-          "russian": "Русский"
+          "russian": "Русский",
+          "italian": "Italiano"
         }
       }
     },
@@ -699,6 +727,12 @@
           "handDrawn": "Handgetekend",
           "simple": "Eenvoudig"
         },
+        "mermaidLightTheme": {
+          "title": "Mermaid-thema voor lichte MarkText-thema's"
+        },
+        "mermaidDarkTheme": {
+          "title": "Mermaid-thema voor donkere MarkText-thema's"
+        },
         "plantumlServer": {
           "title": "PlantUML server"
         }
@@ -808,6 +842,7 @@
       "moveFile": "Bestand verplaatsen",
       "renameFile": "Bestand hernoemen",
       "quickOpen": "Snel openen",
+      "quickOpenRecent": "Recent snel openen",
       "changeEncoding": "Codering wijzigen",
       "changeLineEnding": "Regeleinde wijzigen",
       "trailingNewline": "Afsluitende lege regel",
@@ -822,7 +857,8 @@
       "exportFile": "Bestand exporteren",
       "exportFilePdf": "Exporteren als PDF",
       "zoom": "Zoom",
-      "checkUpdate": "Controleer op updates"
+      "checkUpdate": "Controleer op updates",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "undo": "Ongedaan maken",
@@ -901,6 +937,8 @@
       "toggleTypewriterMode": "Typemachinestand in-/uitschakelen",
       "toggleFocusMode": "Focusstand in-/uitschakelen",
       "toggleSidebar": "Zijbalk in-/uitschakelen",
+      "outlineCollapseAll": "Inhoudsopgave: Alles inklappen",
+      "outlineExpandAll": "Inhoudsopgave: Alles uitklappen",
       "toggleToc": "Inhoudsopgave in-/uitschakelen",
       "toggleTabbar": "Tabbalk in-/uitschakelen",
       "toggleDevTools": "Ontwikkelaarshulpmiddelen in-/uitschakelen",
@@ -1044,11 +1082,12 @@
       "title": "Spellingcontrole"
     },
     "tabs": {
-      "close": "{name} sluiten"
+      "close": "{name} sluiten",
+      "preview": "{name}, voorbeeldtabblad"
     }
   },
   "readingMode": {
-    "title": "Leesmodus (alleen-lezen)",
+    "title": "Leesmodus",
     "edit": "Bewerkingsmodus",
     "lock": "Leesmodus inschakelen",
     "unlock": "Overschakelen naar bewerkingsmodus",

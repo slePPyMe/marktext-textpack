@@ -54,9 +54,6 @@ function bootMuya(markdown: string): Muya {
     return muya;
 }
 
-// Rest a collapsed caret at `offset` (RAW markdown coordinates) inside the
-// first content block and mark it active, the way a click lands the caret
-// before a Backspace.
 function caretInFirstBlock(muya: Muya, offset: number): Format {
     const content = muya.editor.scrollPage!.firstContentInDescendant() as unknown as Format;
     muya.editor.activeContentBlock = content as never;
@@ -76,16 +73,10 @@ describe('format.backspaceHandler — closing-marker boundary (muya#113)', () =>
         const content = caretInFirstBlock(bootMuya('foo **strong**\n'), 14);
         const event = pressBackspace(content);
 
-        // Exactly one `*` of the closing pair is gone — not the whole pair, not
-        // a content char. `strong` and the opening `**` survive intact.
         expect(content.text).toBe('foo **strong*');
-        // No dangling / duplicated markers: the original balanced `**…**` is now
-        // a clean single trailing `*`, never `***` or an untouched `**…**`.
         expect(content.text).not.toContain('***');
         expect(content.text).not.toContain('strong**');
-        // Caret steps back by one to sit on the boundary it just edited.
         expect(content.getCursor()!.start.offset).toBe(13);
-        // The handler owns this Backspace, so the native delete is suppressed.
         expect(event.defaultPrevented).toBe(true);
     });
 
@@ -117,7 +108,6 @@ describe('format.backspaceHandler — opening-marker boundary (muya#113)', () =>
         const content = caretInFirstBlock(bootMuya('foo **strong**\n'), 5);
         const event = pressBackspace(content);
 
-        // One `*` of the opening pair is removed; the closing `**` is untouched.
         expect(content.text).toBe('foo *strong**');
         expect(content.text).not.toContain('***');
         expect(content.getCursor()!.start.offset).toBe(4);
@@ -232,7 +222,7 @@ describe('format.backspaceHandler — edits that change the block type (#5388)',
         const event = pressBackspace(content);
 
         expect(event.defaultPrevented).toBe(true);
-        muya.editor.jsonState.flush();
+        muya.editor.transactions.flush();
         expect(muya.getMarkdown()).toBe('#Heading\n');
         expect(muya.editor.scrollPage!.firstChild?.blockName).toBe('paragraph');
         expect(muya.editor.scrollPage!.firstContentInDescendant()!.getCursor()!.start.offset).toBe(1);
@@ -249,7 +239,7 @@ describe('format.backspaceHandler — edits that change the block type (#5388)',
 
         pressBackspace(heading);
 
-        muya.editor.jsonState.flush();
+        muya.editor.transactions.flush();
         expect(muya.getMarkdown()).toBe('\n');
         expect(muya.editor.scrollPage!.firstChild?.blockName).toBe('paragraph');
     });
@@ -259,7 +249,7 @@ describe('format.backspaceHandler — edits that change the block type (#5388)',
         const content = caretInFirstBlock(muya, 1);
         pressBackspace(content);
 
-        muya.editor.jsonState.flush();
+        muya.editor.transactions.flush();
         expect(muya.getMarkdown()).toBe('# Heading\n');
         expect(muya.getState()).toEqual([
             { name: 'atx-heading', meta: { level: 1 }, text: '# Heading' },

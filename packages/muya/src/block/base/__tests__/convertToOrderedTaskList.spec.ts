@@ -54,8 +54,6 @@ function convert(text: string): ILiveBlock[] {
     return top;
 }
 
-// `1. [ ] text` builds an ordered task list, the way `- [ ] text` builds the
-// unordered one (#1691).
 describe('typing an ordered task marker (#1691)', () => {
     it('converts `1. [ ] foo` into an ordered task list', () => {
         const blocks = convert('1. [ ] foo');
@@ -93,8 +91,6 @@ describe('ordered numbering when an item becomes a task (#1691)', () => {
         const content = item.firstContentInDescendant() as Format;
         content.text = text;
         content.checkInlineUpdate();
-        // The conversion queues its edits on the JSON state; flush before reading
-        // the document back out (as the editor does before a tab switch).
         muya.flush();
 
         return muya.getMarkdown();
@@ -102,18 +98,18 @@ describe('ordered numbering when an item becomes a task (#1691)', () => {
 
     it('numbers the tail after the first item', () => {
         expect(typeIntoItem('1. a\n2. b\n3. c\n', 0, '[ ] a')).toBe(
-            '1. [ ] a\n\n2. b\n3. c\n',
+            '1. [ ] a\n2. b\n3. c\n',
         );
     });
 
     it('numbers the tail after a middle item', () => {
         expect(typeIntoItem('1. a\n2. b\n3. c\n', 1, '[ ] b')).toBe(
-            '1. a\n\n2. [ ] b\n\n3. c\n',
+            '1. a\n2. [ ] b\n3. c\n',
         );
     });
 
     it('numbers the tail after a first item of an offset list', () => {
-        expect(typeIntoItem('5. a\n6. b\n', 0, '[x] a')).toBe('5. [x] a\n\n6. b\n');
+        expect(typeIntoItem('5. a\n6. b\n', 0, '[x] a')).toBe('5. [x] a\n6. b\n');
     });
 
     it('shows the rebased number in the live DOM', () => {

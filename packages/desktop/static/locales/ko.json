@@ -17,6 +17,7 @@
       "openFile": "파일 열기...",
       "openFolder": "폴더 열기...",
       "openRecent": "최근 파일",
+      "openRecentMore": "최근 항목 검색...",
       "clearRecentlyUsed": "최근 사용 목록 지우기",
       "save": "저장",
       "saveAs": "다른 이름으로 저장...",
@@ -32,7 +33,8 @@
       "closeTab": "탭 닫기",
       "closeWindow": "창 닫기",
       "quit": "종료",
-      "preferences": "환경설정"
+      "preferences": "환경설정",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "edit": "편집",
@@ -241,8 +243,11 @@
       "noFolderOpen": "열린 폴더 없음",
       "noResultsFound": "결과를 찾을 수 없습니다.",
       "cancel": "취소",
-      "openFolder": "폴더 열기",
-      "showMoreMatches": "더 많은 일치 항목 보기"
+      "openFolder": "Add Folder…",
+      "showMoreMatches": "더 많은 일치 항목 보기",
+      "searchInFolders": "Search in added folders",
+      "partialSearch": "Some folders could not be searched.",
+      "noSearchableFolders": "No available folders to search."
     },
     "tree": {
       "openedFiles": "열린 파일",
@@ -250,7 +255,17 @@
       "closeAll": "모두 닫기",
       "emptyProject": "빈 프로젝트",
       "createFile": "파일 만들기",
-      "openFolder": "폴더 열기"
+      "openFolder": "폴더 열기",
+      "noFolders": "No folders added",
+      "removeFolder": "Remove from Sidebar",
+      "retryFolder": "Retry",
+      "loadingFolder": "Loading folder…",
+      "unavailableFolder": "Folder unavailable",
+      "overlappingFolder": "This folder overlaps an existing folder. Remove the existing item first.",
+      "folderAlreadyAdded": "This folder has already been added.",
+      "fileOutsideFolders": "This file is not in an added folder.",
+      "sessionSaveFailed": "Unable to save session",
+      "resizeOpenedFiles": "열린 파일 목록 크기 조절"
     },
     "toc": {
       "expand": "목차 펼치기",
@@ -286,8 +301,16 @@
     "placeholders": {
       "selectOption": "옵션 선택",
       "searchFileToOpen": "열 파일 검색",
-      "selectLanguage": "언어 선택"
-    }
+      "selectLanguage": "언어 선택",
+      "searchRecentFilesAndFolders": "최근 파일 및 폴더 검색"
+    },
+    "recentlyOpened": "최근 항목",
+    "fileResults": "파일 결과",
+    "folders": "폴더",
+    "files": "파일",
+    "removeFromRecent": "최근 항목에서 제거",
+    "noResults": "일치하는 결과 없음",
+    "noRecentFiles": "최근 파일 또는 폴더 없음"
   },
   "exportSettings": {
     "autoNumberingHeadings": "제목 자동 번호 매기기",
@@ -396,6 +419,7 @@
         "autoNormalizeLineEndings": "파일을 열 때 줄 끝을 자동으로 정규화합니다. 비활성화하면 파일을 있는 그대로 엽니다.",
         "titleBarStyle": "제목 표시줄 스타일(Windows 및 Linux 시스템만)",
         "openFilesInNewWindow": "새 창에서 파일 열기",
+        "openFilesInPreviewMode": "사이드바 파일을 미리보기 탭에서 열기",
         "openFolderInNewWindow": "메뉴를 통해 새 창에서 폴더 열기",
         "zoom": "확대/축소 수준. 0.5에서 2.0 사이",
         "hideScrollbar": "스크롤바를 숨길지 여부",
@@ -446,6 +470,8 @@
         "isHtmlEnabled": "HTML 렌더링 활성화",
         "softNewlineAsSpace": "소프트 줄바꿈을 공백으로 처리",
         "sequenceTheme": "시퀀스 다이어그램 테마",
+        "mermaidLightTheme": "MarkText 라이트 테마용 Mermaid 테마",
+        "mermaidDarkTheme": "MarkText 다크 테마용 Mermaid 테마",
         "plantumlServer": "PlantUML 서버 URL",
         "theme": "MarkText에서 사용할 테마 선택",
         "followSystemTheme": "시스템 테마 따르기",
@@ -517,6 +543,7 @@
         "wrapTextInToc": "목차에서 텍스트 줄바꿈",
         "showOpenedFiles": "열린 파일 표시",
         "autoReveal": "사이드바에서 활성 파일 표시",
+        "openFilesInPreviewMode": "사이드바 파일을 미리보기 탭에서 엽니다. 편집하거나 두 번 클릭하면 탭이 유지됩니다.",
         "excludePatterns": "제외 패턴",
         "excludePatternsNotes": "제외 패턴 (참고)",
         "fileSortBy": {
@@ -548,7 +575,8 @@
           "dutch": "Nederlands",
           "portuguese": "Português",
           "turkish": "Türkçe",
-          "russian": "Русский"
+          "russian": "Русский",
+          "italian": "Italiano"
         }
       }
     },
@@ -699,6 +727,12 @@
           "handDrawn": "손으로 그린",
           "simple": "간단"
         },
+        "mermaidLightTheme": {
+          "title": "MarkText 라이트 테마용 Mermaid 테마"
+        },
+        "mermaidDarkTheme": {
+          "title": "MarkText 다크 테마용 Mermaid 테마"
+        },
         "plantumlServer": {
           "title": "PlantUML 서버 URL"
         }
@@ -808,6 +842,7 @@
       "moveFile": "파일 이동",
       "renameFile": "파일 이름 바꾸기",
       "quickOpen": "빠른 열기",
+      "quickOpenRecent": "최근 항목 빠른 열기",
       "changeEncoding": "인코딩 변경",
       "changeLineEnding": "줄 끝 변경",
       "trailingNewline": "끝 줄바꿈",
@@ -822,7 +857,8 @@
       "exportFile": "파일 내보내기",
       "exportFilePdf": "PDF로 내보내기",
       "zoom": "확대/축소",
-      "checkUpdate": "업데이트 확인"
+      "checkUpdate": "업데이트 확인",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "undo": "실행 취소",
@@ -901,6 +937,8 @@
       "toggleTypewriterMode": "타자기 모드 토글",
       "toggleFocusMode": "집중 모드 토글",
       "toggleSidebar": "사이드바 토글",
+      "outlineCollapseAll": "목차: 모두 접기",
+      "outlineExpandAll": "목차: 모두 펼치기",
       "toggleToc": "목차 토글",
       "toggleTabbar": "탭바 토글",
       "toggleDevTools": "개발자 도구 토글",
@@ -1044,11 +1082,12 @@
       "title": "맞춤법 검사"
     },
     "tabs": {
-      "close": "{name} 닫기"
+      "close": "{name} 닫기",
+      "preview": "{name}, 미리보기 탭"
     }
   },
   "readingMode": {
-    "title": "읽기 모드 (읽기 전용)",
+    "title": "읽기 모드",
     "edit": "편집 모드",
     "lock": "읽기 모드로 전환",
     "unlock": "편집 모드로 전환",

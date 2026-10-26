@@ -70,7 +70,7 @@ function outdent(muya: Muya, text: string): void {
         shiftKey: true,
     } as unknown as KeyboardEvent;
     content.tabHandler(event);
-    muya.editor.jsonState.flush();
+    muya.editor.transactions.flush();
 }
 
 const LIST_ITEM_KIND: Record<string, string> = {
@@ -79,7 +79,6 @@ const LIST_ITEM_KIND: Record<string, string> = {
     'task-list': 'task-list-item',
 };
 
-/** Every list holds only the item kind it allows. */
 function assertListsHoldTheirOwnItems(state: TState[]): void {
     for (const node of state) {
         if (!('children' in node) || !Array.isArray(node.children))
@@ -108,10 +107,6 @@ function structureOf(states: TState[]): TState[] {
     }));
 }
 
-/**
- * The state after the outdent must be exactly what the parser builds from the
- * markdown it serializes to, or reopening the file would change the document.
- */
 function expectStableAcrossReopen(muya: Muya): TState[] {
     const state = structureOf(muya.editor.jsonState.getState());
     const markdown = muya.getMarkdown();

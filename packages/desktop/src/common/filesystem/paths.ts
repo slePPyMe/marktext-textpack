@@ -107,9 +107,6 @@ export const isDangerousExecutableFile = (filepath: string): boolean => {
   return !!ext && DANGEROUS_EXECUTABLE_EXTENSIONS.includes(ext)
 }
 
-/**
- * Returns true if the filename matches one of the markdown extensions.
- */
 export const hasMarkdownExtension = (filename: string): boolean => {
   if (!filename || typeof filename !== 'string') return false
   return MARKDOWN_EXTENSIONS.some((ext) => filename.toLowerCase().endsWith(`.${ext}`))
@@ -121,9 +118,6 @@ export const hasTextPackExtension = (filename: string): boolean =>
 export const hasDocumentExtension = (filename: string): boolean =>
   hasMarkdownExtension(filename) || hasTextPackExtension(filename)
 
-/**
- * Returns true if the path is an image file.
- */
 export const isImageFile = (filepath: string): boolean => {
   const ext = path.extname(filepath).slice(1).toLowerCase()
   return !!ext && IMAGE_EXTENSIONS.includes(ext) && isFile(filepath)
@@ -148,9 +142,6 @@ export const isTextPackFile = (filepath: string): boolean =>
 export const isDocumentFile = (filepath: string): boolean =>
   isMarkdownFile(filepath) || isTextPackFile(filepath)
 
-/**
- * Check if the both paths point to the same file.
- */
 export const isSamePathSync = (
   pathA: string,
   pathB: string,
@@ -175,18 +166,12 @@ export const isSamePathSync = (
   return false
 }
 
-/**
- * Check whether a file or directory is a child of the given directory.
- */
 export const isChildOfDirectory = (dir: string, child: string): boolean => {
   if (!dir || !child) return false
   const relative = path.relative(dir, child)
   return !!relative && !relative.startsWith('..') && !path.isAbsolute(relative)
 }
 
-/**
- * Returns true if the pathname matches one of the exclude patterns.
- */
 export const checkPathExcludePattern = (pathname: string, patterns: readonly string[]): boolean => {
   if (!pathname || typeof pathname !== 'string') return false
   for (const pattern of patterns) {

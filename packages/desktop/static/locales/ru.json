@@ -17,6 +17,7 @@
       "openFile": "Открыть файл...",
       "openFolder": "Открыть папку...",
       "openRecent": "Недавние",
+      "openRecentMore": "Поиск в недавних...",
       "clearRecentlyUsed": "Очистить недавние",
       "save": "Сохранить",
       "saveAs": "Сохранить как...",
@@ -32,7 +33,8 @@
       "closeTab": "Закрыть вкладку",
       "closeWindow": "Закрыть окно",
       "quit": "Выход",
-      "preferences": "Настройки"
+      "preferences": "Настройки",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "edit": "Правка",
@@ -241,8 +243,11 @@
       "noFolderOpen": "Папка не открыта",
       "noResultsFound": "Ничего не найдено.",
       "cancel": "Отмена",
-      "openFolder": "Открыть папку",
-      "showMoreMatches": "Показать ещё"
+      "openFolder": "Add Folder…",
+      "showMoreMatches": "Показать ещё",
+      "searchInFolders": "Search in added folders",
+      "partialSearch": "Some folders could not be searched.",
+      "noSearchableFolders": "No available folders to search."
     },
     "tree": {
       "openedFiles": "Открытые файлы",
@@ -250,7 +255,17 @@
       "closeAll": "Закрыть всё",
       "emptyProject": "Пустой проект",
       "createFile": "Создать файл",
-      "openFolder": "Открыть папку"
+      "openFolder": "Открыть папку",
+      "noFolders": "No folders added",
+      "removeFolder": "Remove from Sidebar",
+      "retryFolder": "Retry",
+      "loadingFolder": "Loading folder…",
+      "unavailableFolder": "Folder unavailable",
+      "overlappingFolder": "This folder overlaps an existing folder. Remove the existing item first.",
+      "folderAlreadyAdded": "This folder has already been added.",
+      "fileOutsideFolders": "This file is not in an added folder.",
+      "sessionSaveFailed": "Unable to save session",
+      "resizeOpenedFiles": "Изменить размер списка открытых файлов"
     },
     "toc": {
       "expand": "Развернуть оглавление",
@@ -286,8 +301,16 @@
     "placeholders": {
       "selectOption": "Выберите вариант",
       "searchFileToOpen": "Поиск файла для открытия",
-      "selectLanguage": "Выберите язык"
-    }
+      "selectLanguage": "Выберите язык",
+      "searchRecentFilesAndFolders": "Поиск недавних файлов и папок"
+    },
+    "recentlyOpened": "недавние",
+    "fileResults": "результаты по файлам",
+    "folders": "папки",
+    "files": "файлы",
+    "removeFromRecent": "Удалить из недавних",
+    "noResults": "Нет совпадающих результатов",
+    "noRecentFiles": "Нет недавних файлов или папок"
   },
   "exportSettings": {
     "autoNumberingHeadings": "Автонумерация заголовков",
@@ -395,6 +418,7 @@
         "autoSaveDelay": "Время в мс после изменения, через которое файл сохраняется",
         "titleBarStyle": "Стиль заголовка окна (только Windows и Linux)",
         "openFilesInNewWindow": "Открывать файлы в новом окне",
+        "openFilesInPreviewMode": "Открывать файлы боковой панели во вкладках предпросмотра",
         "openFolderInNewWindow": "Открывать папку через меню в новом окне",
         "zoom": "Уровень масштаба. От 0.5 до 2.0 включительно",
         "hideScrollbar": "Скрывать полосы прокрутки",
@@ -445,6 +469,8 @@
         "isHtmlEnabled": "Включить рендеринг HTML",
         "softNewlineAsSpace": "Считать мягкие переносы строк пробелами",
         "sequenceTheme": "Тема диаграмм последовательностей",
+        "mermaidLightTheme": "Тема Mermaid для светлых тем MarkText",
+        "mermaidDarkTheme": "Тема Mermaid для тёмных тем MarkText",
         "plantumlServer": "URL сервера PlantUML",
         "theme": "Выберите тему, используемую в MarkText",
         "followSystemTheme": "Следовать системной теме",
@@ -517,6 +543,7 @@
         "wrapTextInToc": "Переносить текст в оглавлении",
         "showOpenedFiles": "Показывать открытые файлы",
         "autoReveal": "Показывать активный файл на боковой панели",
+        "openFilesInPreviewMode": "Открывать файлы боковой панели во вкладках предпросмотра. Редактирование или двойной щелчок сохраняют вкладку.",
         "excludePatterns": "Исключающие шаблоны",
         "excludePatternsNotes": "Исключающие шаблоны (примечания)",
         "fileSortBy": {
@@ -548,7 +575,8 @@
           "dutch": "Nederlands",
           "portuguese": "Português",
           "turkish": "Türkçe",
-          "russian": "Русский"
+          "russian": "Русский",
+          "italian": "Italiano"
         }
       }
     },
@@ -699,6 +727,12 @@
           "handDrawn": "Нарисованная от руки",
           "simple": "Простая"
         },
+        "mermaidLightTheme": {
+          "title": "Тема Mermaid для светлых тем MarkText"
+        },
+        "mermaidDarkTheme": {
+          "title": "Тема Mermaid для тёмных тем MarkText"
+        },
         "plantumlServer": {
           "title": "URL сервера PlantUML"
         }
@@ -808,6 +842,7 @@
       "moveFile": "Переместить файл",
       "renameFile": "Переименовать файл",
       "quickOpen": "Быстрое открытие",
+      "quickOpenRecent": "Быстрое открытие недавних",
       "changeEncoding": "Изменить кодировку",
       "changeLineEnding": "Изменить конец строки",
       "trailingNewline": "Завершающий перевод строки",
@@ -822,7 +857,8 @@
       "exportFile": "Экспортировать файл",
       "exportFilePdf": "Экспорт в PDF",
       "zoom": "Масштаб",
-      "checkUpdate": "Проверить обновления"
+      "checkUpdate": "Проверить обновления",
+      "addFolder": "Add Folder…"
     },
     "edit": {
       "undo": "Отменить",
@@ -901,6 +937,8 @@
       "toggleTypewriterMode": "Режим печатной машинки",
       "toggleFocusMode": "Режим фокусировки",
       "toggleSidebar": "Переключить боковую панель",
+      "outlineCollapseAll": "Оглавление: Свернуть всё",
+      "outlineExpandAll": "Оглавление: Развернуть всё",
       "toggleToc": "Переключить оглавление",
       "toggleTabbar": "Переключить панель вкладок",
       "toggleDevTools": "Переключить инструменты разработчика",
@@ -1044,11 +1082,12 @@
       "title": "Проверка орфографии"
     },
     "tabs": {
-      "close": "Закрыть {name}"
+      "close": "Закрыть {name}",
+      "preview": "{name}, вкладка предпросмотра"
     }
   },
   "readingMode": {
-    "title": "Режим чтения (только для чтения)",
+    "title": "Режим чтения",
     "edit": "Режим редактирования",
     "lock": "Включить режим чтения",
     "unlock": "Перейти в режим редактирования",

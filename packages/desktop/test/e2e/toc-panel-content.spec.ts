@@ -14,11 +14,6 @@ import { makeRoomForOutline, launchWithMarkdown, clickMenuById, waitForEditor } 
 // editor.vue LISTEN_FOR_CONTENT_CHANGE({ toc: editor.getTOC() }) ->
 // store UPDATE_TOC -> listToTree -> toc.vue `el-tree` re-render.
 
-// Initial document with a nested heading hierarchy:
-//   # A
-//     ## B
-//       ### B1
-//     ## C
 const INITIAL_DOC = '# A\n\n## B\n\n### B1\n\n## C\n'
 
 // Read the rendered ToC tree as an ordered list of { label, depth }. The
@@ -69,7 +64,7 @@ test.describe('TOC panel content + live update', () => {
   let app: ElectronApplication
   let page: Page
 
-  test.beforeAll(async() => {
+  test.beforeEach(async() => {
     const launched = await launchWithMarkdown(INITIAL_DOC)
     app = launched.app
     page = launched.page
@@ -86,7 +81,7 @@ test.describe('TOC panel content + live update', () => {
     )
   })
 
-  test.afterAll(async() => {
+  test.afterEach(async() => {
     if (app) await app.close()
   })
 
@@ -97,8 +92,6 @@ test.describe('TOC panel content + live update', () => {
 
   test('el-tree nesting depth matches the heading hierarchy', async() => {
     const tree = await readTocTree(page)
-    // # A -> depth 1; ## B -> depth 2 (child of A); ### B1 -> depth 3
-    // (child of B); ## C -> depth 2 (sibling of B, child of A).
     expect(tree).toEqual([
       { label: 'A', depth: 1 },
       { label: 'B', depth: 2 },
@@ -108,35 +101,18 @@ test.describe('TOC panel content + live update', () => {
   })
 
   test('renaming a heading updates its tree label live', async() => {
-    // Place the caret at the end of the "B1" heading and append " Renamed".
-    await page.evaluate(() => {
-      const headings = Array.from(
-        document.querySelectorAll('.mu-container h1, .mu-container h2, .mu-container h3')
-      ) as HTMLElement[]
-      const normalize = (s: string) => s.replace(/^[#\s]+/, '').trim()
-      const target = headings.find((h) => normalize(h.textContent || '') === 'B1')
-      if (!target) throw new Error('B1 heading not found in editor')
-      const range = document.createRange()
-      range.selectNodeContents(target)
-      range.collapse(false)
-      const sel = window.getSelection()
-      if (!sel) throw new Error('no selection')
-      sel.removeAllRanges()
-      sel.addRange(range)
-      ;(target as HTMLElement).focus?.()
-      const root = document.querySelector('.editor-component') as HTMLElement | null
-      root?.dispatchEvent(
-        new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true, cancelable: true })
-      )
-    })
+    // A range on the h3 wrapper is outside its editable content span; focusing it can reset the caret.
+    const heading = page.locator('.mu-container h3 .mu-atxheading-content')
+    await heading.click()
+    await page.keyboard.press('End')
     await page.keyboard.type(' Renamed', { delay: 0 })
+    await expect(heading).toHaveText('### B1 Renamed')
 
     // json-change -> UPDATE_TOC -> el-tree re-render. Poll until reflected.
     await expect
       .poll(() => readTocLabels(page), { timeout: 8000 })
       .toEqual(['A', 'B', 'B1 Renamed', 'C'])
 
-    // Nesting must be unchanged by the rename.
     const tree = await readTocTree(page)
     expect(tree).toEqual([
       { label: 'A', depth: 1 },
@@ -161,17 +137,18 @@ test.describe('TOC panel content + live update', () => {
     await page.keyboard.press('Enter')
     await page.keyboard.type('## D ', { delay: 20 })
 
-    // The new heading appears as a fourth top-level subtree under A
-    // (level-2 sibling of B and C).
     await expect
       .poll(() => readTocLabels(page), { timeout: 8000 })
-      .toEqual(['A', 'B', 'B1 Renamed', 'C', 'D'])
+      .toEqual(['A', 'B', 'B1', 'C', 'D'])
 
     const tree = await readTocTree(page)
     expect(tree).toEqual([
       { label: 'A', depth: 1 },
       { label: 'B', depth: 2 },
-      { label: 'B1 Renamed', depth: 3 },
+      {
+        label: 'B1',
+        depth: 3
+      },
       { label: 'C', depth: 2 },
       { label: 'D', depth: 2 }
     ])

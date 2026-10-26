@@ -5,15 +5,6 @@ import type { Muya } from '../../muya';
 import { describe, expect, it, vi } from 'vitest';
 import { CopyType } from '../types';
 
-// Track B — Copy (clipboard chain step 1). Ports `packages/muyajs`
-// `copyCutCtrl.copyHandler` behaviour into `@muyajs/core`:
-//   1. `normal` copy writes ONLY text/plain (markdown source); text/html is
-//      blanked so an internal copy → paste round-trips through the markdown
-//      branch losslessly and external pastes land as markdown source.
-//   2. `copyAsHtml` writes the DOMPurify-sanitized rendered HTML into
-//      text/plain and blanks text/html, with the empty-guard keyed on `text`.
-//   3. A selected inline image copies its raw `![alt](src)` markdown.
-
 // The clipboard module pulls in CodeBlockContent → utils/prism which touches
 // `window` at import time. Stub the prism shim (same stub as the sibling
 // clipboard specs).
@@ -167,7 +158,13 @@ describe('track B — selected inline image copies its raw markdown', () => {
         const raw = '![alt](https://e.com/x.png)';
         const muya = fakeMuya({
             editor: {
-                selection: { image: { token: imageToken(raw) } },
+                selection: {
+                    image: {
+                        imageInfo: {
+                            token: imageToken(raw),
+                        },
+                    },
+                },
             },
         } as unknown as Partial<Muya>);
         const clipboard = new Clipboard(muya);
@@ -185,7 +182,13 @@ describe('track B — selected inline image copies its raw markdown', () => {
     it('does nothing for an image with empty raw', () => {
         const muya = fakeMuya({
             editor: {
-                selection: { image: { token: imageToken('') } },
+                selection: {
+                    image: {
+                        imageInfo: {
+                            token: imageToken(''),
+                        },
+                    },
+                },
             },
         } as unknown as Partial<Muya>);
         const clipboard = new Clipboard(muya);
