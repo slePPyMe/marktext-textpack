@@ -3,28 +3,34 @@
 import type Content from '../../../base/content';
 import type Parent from '../../../base/parent';
 import type LangInputContent from '../index';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Muya } from '../../../../muya';
+import { renderDiagram } from '../../../../utils/diagram/render';
+
+// Language commits must not wait for diagram layout in the test DOM.
+vi.mock('../../../../utils/diagram/render', () => ({
+    renderDiagram: vi.fn().mockResolvedValue(undefined),
+    finalizeRenderedDiagram: vi.fn(() => vi.fn()),
+}));
 
 // #5060: leaving a code block's language input commits the language. A diagram
 // language turns the block into a diagram block — what loading its ```lang
 // fence produces — instead of leaving a code block with no preview.
 
-const bootedHosts: HTMLElement[] = [];
+const bootedEditors: Muya[] = [];
 let originalVersion: string | undefined;
 let hadVersion = false;
 
 beforeEach(() => {
+    vi.clearAllMocks();
     hadVersion = 'MUYA_VERSION' in window;
     originalVersion = window.MUYA_VERSION;
     window.MUYA_VERSION = 'test';
 });
 
 afterEach(() => {
-    while (bootedHosts.length) {
-        const host = bootedHosts.pop()!;
-        host.remove();
-    }
+    while (bootedEditors.length)
+        bootedEditors.pop()!.destroy();
     document.getSelection()?.removeAllRanges();
     if (hadVersion)
         window.MUYA_VERSION = originalVersion as string;
@@ -37,7 +43,7 @@ function bootMuya(markdown: string): Muya {
     document.body.appendChild(host);
     const muya = new Muya(host, { markdown } as ConstructorParameters<typeof Muya>[1]);
     muya.init();
-    bootedHosts.push(muya.domNode);
+    bootedEditors.push(muya);
     return muya;
 }
 
@@ -88,6 +94,7 @@ describe('leaving the language input with a diagram language', () => {
         await settle();
 
         expect(muya.getState()[0]).toMatchObject({ name: 'diagram', meta: { type: 'mermaid' } });
+        expect(renderDiagram).toHaveBeenCalledWith(expect.objectContaining({ type: 'mermaid', code: 'graph TD' }));
     });
 
     it('moves the caret into the diagram code when it went into the code block', async () => {

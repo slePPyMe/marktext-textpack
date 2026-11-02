@@ -1245,7 +1245,8 @@ export class SessionHost {
     for (const document of documents) {
       if (document.resource.kind === 'file') {
         this._editors.get(windowId)?.removeFromOpenedFiles(document.resource.location.path)
-        await closeTextPackSession(document.resource.location.path)
+        await closeTextPackSession(document.resource.location.path).catch(error =>
+          log.warn('Unable to clean up a closed TextPack session', error))
       }
     }
     if (notify) this._native(windowId).webContents.send('mt::state::documents-ended', [...ids])

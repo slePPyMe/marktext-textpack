@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionHost } from '../../../src/main/applicationState/sessionHost'
 import type { CheckpointService } from '../../../src/main/applicationState/checkpointService'
 import type EditorWindow from '../../../src/main/windows/editor'
-import type { PreparedSessionWindow, WindowCheckpointRequest } from '@shared/types/applicationState'
+import type { DocumentSnapshot, PersistResult, PreparedSessionWindow, WindowCheckpointRequest } from '@shared/types/applicationState'
 import { closeTextPackSession, loadTextPackFile, writeTextPackFile, prepareTextPackReload } from '../../../src/main/filesystem/textpack'
 import { documentWrites } from '../../../src/main/filesystem/documentWrites'
 import { contentSha256 } from 'common/filesystem'
@@ -66,7 +66,7 @@ describe('TextPack native session Save As', () => {
     }
     host = new SessionHost({ preferences, menu: { addRecentlyUsedDocument: vi.fn(), relocateRecentlyUsedDocuments: vi.fn() }, windowManager: {} } as unknown as ConstructorParameters<typeof SessionHost>[0])
     await host.start([{ path: original, isDir: false }], value => { prepared = value })
-    host.registerEditor({ sessionStateId: prepared.snapshot.id, browserWindow: mocks.win, addToOpenedFiles: vi.fn(), changeOpenedFilePath: vi.fn() } as unknown as EditorWindow)
+    host.registerEditor({ sessionStateId: prepared.snapshot.id, browserWindow: mocks.win, addToOpenedFiles: vi.fn(), removeFromOpenedFiles: vi.fn(), changeOpenedFilePath: vi.fn() } as unknown as EditorWindow)
     service = (host as unknown as { _service: CheckpointService })._service
     contextToken = (await service.initializeRenderer(prepared.snapshot.id)).context.contextToken
     sequence = 0
@@ -162,6 +162,28 @@ describe('TextPack native session Save As', () => {
     expect(await resolve({ sender: mocks.win.webContents }, original, data.reloadToken, true)).toMatchObject({ accepted: true })
     expect(current().resourcePath).toBe(data.resourcePath)
     expect(current().resourcePath).not.toBe(previous)
+  })
+
+  it('acknowledges a durable close even if temporary workspace cleanup fails', async() => {
+    const document = current()
+    if (!document.resourcePath) throw new Error('Expected a TextPack workspace')
+    const workspaceDirectory = path.dirname(document.resourcePath)
+    const remove = fs.rm.bind(fs)
+    const cleanup = vi.spyOn(fs, 'rm').mockImplementation(async(pathname, options) => {
+      if (String(pathname) === workspaceDirectory) throw new Error('Workspace is locked')
+      await remove(pathname, options)
+    })
+    try {
+      const native = host as unknown as {
+        _endDocuments(windowId: string, documents: DocumentSnapshot[], discard: boolean): Promise<PersistResult>
+      }
+      expect(await native._endDocuments(prepared.snapshot.id, [document], true)).toMatchObject({ status: 'persisted' })
+      expect(service.getWindow(prepared.snapshot.id)?.documents).toEqual([])
+      expect(mocks.win.webContents.send).toHaveBeenCalledWith('mt::state::documents-ended', [document.id])
+    } finally {
+      cleanup.mockRestore()
+      await fs.rm(workspaceDirectory, { recursive: true, force: true })
+    }
   })
 
 })
