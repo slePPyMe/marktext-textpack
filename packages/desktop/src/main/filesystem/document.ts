@@ -54,6 +54,7 @@ export const loadDocumentFile = async(
 export const loadCliDocumentFile = async(
   ...args: Parameters<typeof loadCliMarkdownFile>
 ): Promise<MarkdownDocument> => {
+  if (hasTextPackExtension(args[0])) return loadDocumentFile(args[0], ...args.slice(2) as Parameters<typeof loadDocumentFile> extends [string, ...infer Rest] ? Rest : never)
   const doc = await loadCliMarkdownFile(...args)
   return {
     ...doc,

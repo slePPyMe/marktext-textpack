@@ -110,6 +110,11 @@
   width: 12px;
 }
 
+.document-body .editor-component::-webkit-scrollbar:vertical,
+.document-body .source-code::-webkit-scrollbar:vertical {
+  width: 8px;
+}
+
 ::-webkit-scrollbar-thumb {
   background: var(--editorColor30);
 }
@@ -250,6 +255,15 @@ input.el-input__inner {
 
 .el-input.is-focus .el-input__wrapper,
 .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--themeColor) inset;
+}
+
+.input-focus-border:has(> input:focus):not(.error) {
+  border-color: var(--themeColor);
+}
+
+.mu-image-selector .input-container input:focus,
+.mu-table-picker .footer input:focus {
   box-shadow: 0 0 0 1px var(--themeColor) inset;
 }
 

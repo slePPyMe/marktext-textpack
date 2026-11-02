@@ -7,8 +7,6 @@ import { launchWithMarkdown, makeRoomForOutline, sendIpcToRenderer } from './hel
 // real built app the way a keyboard or screen reader user would.
 
 const PREFERENCES = {
-  sideBarVisibility: true,
-  tabBarVisibility: true,
   language: 'en',
   theme: 'light',
   followSystemTheme: false
@@ -37,7 +35,7 @@ test.describe('#4997 icon-only controls in the editor window', () => {
   let page: Page
 
   test.beforeAll(async() => {
-    const launched = await launchWithMarkdown('# Doc\n\nneedle\n', { preferences: PREFERENCES })
+    const launched = await launchWithMarkdown('# Doc\n\nneedle\n', { preferences: PREFERENCES, windowLayout: { showSideBar: true, showTabBar: true } })
     app = launched.app
     page = launched.page
     await makeRoomForOutline(app, page)
@@ -231,7 +229,7 @@ test.describe('#4997 form controls in the Preferences window', () => {
   let prefs: Page
 
   test.beforeAll(async() => {
-    const launched = await launchWithMarkdown('# Doc\n', { preferences: PREFERENCES })
+    const launched = await launchWithMarkdown('# Doc\n', { preferences: PREFERENCES, windowLayout: { showSideBar: true, showTabBar: true } })
     app = launched.app
     const opened = app.waitForEvent('window')
     await launched.page.getByRole('button', { name: 'Settings', exact: true }).click()
@@ -245,13 +243,13 @@ test.describe('#4997 form controls in the Preferences window', () => {
 
   // Element Plus's autocomplete also puts role="combobox" on a wrapper <div> it
   // gives no way to label; only the controls that take focus are checked.
-  const CATEGORIES = ['general', 'editor', 'markdown', 'spelling', 'theme', 'image', 'keybindings']
+  const CATEGORIES = ['general', 'appearance', 'editor', 'files', 'markdown', 'images', 'keybindings']
   for (const category of CATEGORIES) {
     test(`every focusable control on the ${category} page has a name`, async() => {
       await prefs.evaluate((c) => {
         window.location.hash = `#/preference/${c}`
       }, category)
-      await prefs.waitForSelector(`.pref-${category === 'spelling' ? 'spellchecker' : category}`)
+      await prefs.waitForSelector(`.pref-${category}`)
       // Element Plus renders the switch's native input at zero size, so only
       // controls inside a `display: none` subtree are skipped.
       const controls = prefs

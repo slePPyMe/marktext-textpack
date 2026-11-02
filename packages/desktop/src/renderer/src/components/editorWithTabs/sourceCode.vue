@@ -2,7 +2,7 @@
   <div
     ref="sourceCodeContainer"
     class="source-code"
-    @scroll.passive="updateActiveHeadingFromScroll"
+    @scroll.passive="handleScroll"
   />
 </template>
 
@@ -15,6 +15,8 @@ import {
 import { ref, shallowRef, markRaw, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useEditorStore } from '@/store/editor'
 import { usePreferencesStore } from '@/store/preferences'
+
+import { registerSourceViewState, documentViewChanged } from '@/services/documentViewState'
 import {
   findMarkdownHeadingLine,
   getMarkdownHeadingLines,
@@ -48,6 +50,8 @@ const sourceCodeContainer = ref<HTMLDivElement | null>(null)
 const editor = shallowRef<CodeMirror.Editor | null>(null)
 const viewDestroyed = ref(false)
 const tabId = ref<string | null>(null)
+let resizeObserver: ResizeObserver | undefined
+let releaseViewState: (() => void) | undefined
 
 const {
   theme,
@@ -378,6 +382,11 @@ const updateActiveHeadingFromScroll = (): void => {
   setActiveHeadingAtLine(line)
 }
 
+const handleScroll = (): void => {
+  updateActiveHeadingFromScroll()
+  documentViewChanged()
+}
+
 const listenChange = (cm: CodeMirror.Editor) => {
   cm.on('cursorActivity', (instance: CodeMirror.Editor) => {
     saveContent(instance)
@@ -410,6 +419,7 @@ onMounted(() => {
 
   const { markdown, muyaIndexCursor, textDirection } = props
   const container = sourceCodeContainer.value
+  if (!container) return
   const codeMirrorConfig: Record<string, unknown> = {
     value: markdown,
     lineNumbers: sourceCodeLineNumbers.value,
@@ -457,15 +467,32 @@ onMounted(() => {
   tabId.value = id
   updateSelectionWordCount(codeMirrorInstance)
 
+  // Pane resizing rewraps lines without triggering CodeMirror's window-resize listener.
+  let measuredWidth = 0
+  resizeObserver = new ResizeObserver(([entry]) => {
+    const width = entry.contentRect.width
+    if (width <= 0 || width === measuredWidth) return
+    measuredWidth = width
+    codeMirrorInstance.refresh()
+    updateActiveHeadingFromScroll()
+  })
+  resizeObserver.observe(codeMirrorInstance.getWrapperElement())
+
+  releaseViewState = registerSourceViewState({
+    documentId: () => tabId.value,
+    view: { editor: codeMirrorInstance, container }
+  })
+  codeMirrorInstance.on('cursorActivity', documentViewChanged)
   listenChange(codeMirrorInstance)
   registerSourceView(async () => {
-    preferencesStore.SET_MODE({ type: 'sourceCode', checked: false })
-    preferencesStore.DISPATCH_EDITOR_VIEW_STATE({ sourceCode: false })
-    await nextTick()
+    if (editor.value) saveContent(editor.value)
   })
 })
 
 onBeforeUnmount(() => {
+  releaseViewState?.()
+  editor.value?.off('cursorActivity', documentViewChanged)
+  resizeObserver?.disconnect()
   registerSourceView(null)
   if (editor.value) {
     saveContent(editor.value)

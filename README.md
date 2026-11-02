@@ -86,7 +86,7 @@ The implementation was developed with AI assistance and manually reviewed and te
 
 <div align="center">
   <h3>
-    <a href="https://github.com/marktext/marktext">
+    <a href="https://marktext.me">
       Website
     </a>
     <span> | </span>
@@ -189,7 +189,7 @@ MarkText is an open-source Markdown editor powered by the support of its communi
 
 ## Download and Installation
 
-![platform](https://img.shields.io/static/v1.svg?label=Platform&message=Linux%20x64%20|%20macOS%20x64%2Farm64%20|%20Windows%20x64%2Farm64&style=for-the-badge)
+![platform](https://img.shields.io/static/v1.svg?label=Platform&message=Linux%20x64%2Farm64%20|%20macOS%20x64%2Farm64%20|%20Windows%20x64%2Farm64&style=for-the-badge)
 
 |               ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/mac-pass-sm.png)               |               ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/windows-pass-sm.png)               |              ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/linux-pass-sm.png)              |
 | :-----------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------: |
@@ -199,7 +199,7 @@ Want to see new features of the latest version? Please refer to [CHANGELOG](http
 
 #### macOS
 
-Requires macOS 11 (Big Sur) or later. Universal builds aren't published — pick the matching `arm64` or `x64` installer.
+Requires macOS 13 (Ventura) or later. Universal builds aren't published — pick the matching `arm64` or `x64` installer.
 
 You can either download the latest `marktext-mac-(arm64|x64)-%version%.dmg` from the [release page](https://github.com/marktext/marktext/releases/latest) or install MarkText using [**homebrew cask**](https://github.com/caskroom/homebrew-cask). To use Homebrew-Cask you just need to have [Homebrew](https://brew.sh/) installed.
 

@@ -93,6 +93,45 @@ test.describe('Tab management', () => {
     expect(after).toBeGreaterThan(before)
   })
 
+  for (const closeWith of ['button', 'command'] as const) {
+    test(`Closing the last tab with the ${closeWith} returns to the initial page`, async() => {
+      const launched = await launchWithMarkdown('# Last tab\n', {
+        windowLayout: { showTabBar: true },
+        preferences: { language: 'en' }
+      })
+      const lastApp = launched.app
+      const lastPage = launched.page
+      try {
+        await expect(lastPage.locator(tabSelector)).toHaveCount(1)
+        if (closeWith === 'button') {
+          await lastPage.locator(`${tabSelector} .close-icon`).click()
+        } else {
+          await sendIpcToRenderer(lastApp, 'mt::editor-close-tab')
+        }
+        await expect(lastPage.locator(tabSelector)).toHaveCount(0)
+        await expect(lastPage.locator('.recent-files-projects')).toContainText(
+          'You have no tabs open.'
+        )
+        await expect(lastPage.locator('.editor-with-tabs')).toHaveCount(0)
+        expect(lastApp.windows()).toHaveLength(1)
+
+        await lastPage.reload()
+        await expect(lastPage.locator('.recent-files-projects')).toBeVisible()
+        await expect(lastPage.locator(tabSelector)).toHaveCount(0)
+
+        await lastPage.getByRole('button', { name: 'New File', exact: true }).click()
+        await expect(lastPage.locator(tabSelector)).toHaveCount(1)
+        await expect(lastPage.locator('.recent-files-projects')).toHaveCount(0)
+        await typeIntoEditor(lastPage, 'After closing the last tab')
+        await expect
+          .poll(async() => (await getMarkdownContent(lastPage, lastApp)).trim())
+          .toBe('After closing the last tab')
+      } finally {
+        await lastApp.close()
+      }
+    })
+  }
+
   test('Creating a new untitled tab auto-focuses the editor', async() => {
     // Drop focus first so the assertion proves the NEW tab grabbed focus rather
     // than inheriting a stale one from the previously active editor.
@@ -289,7 +328,9 @@ test.describe('Tab management', () => {
   // the user can't see which tab they're on. Runs in its own app because it
   // opens many tabs to force horizontal overflow.
   test('Switching to an overflowed tab scrolls it into view', async() => {
-    const launch = await launchWithMarkdown('# overflow base\n')
+    const launch = await launchWithMarkdown('# overflow base\n', { windowLayout: { showTabBar: true },
+      preferences: {}
+    })
     const sApp = launch.app
     const sPage = launch.page
     try {
@@ -356,8 +397,11 @@ test.describe('Tab management', () => {
     const cApp = launch.app
     const cPage = launch.page
     try {
-      // Helper: open `n` extra untitled tabs with distinct content and mark
-      // every existing tab SAVED via the real `mt::tab-saved` save-confirm IPC.
+      await cApp.evaluate(({ app, dialog }) => {
+        let number = 0
+        dialog.showSaveDialog = async() => ({ canceled: false, filePath: `${app.getPath('userData')}/saved-tab-${++number}.md` })
+      })
+      // Save through real IO so the main-process owner can verify the survivor set.
       const openSavedTabs = async(bodies: string[]): Promise<void> => {
         for (const body of bodies) {
           const before = await cPage.locator(tabSelector).count()
@@ -369,8 +413,15 @@ test.describe('Tab management', () => {
           )
           await cPage.waitForTimeout(150)
         }
-        const ids = await readTabIds(cPage)
-        for (const id of ids) await sendIpcToRenderer(cApp, 'mt::tab-saved', id)
+        await cPage.evaluate(async() => {
+          const root = document.querySelector('#app') as Element & { __vue_app__: { config: { globalProperties: { $pinia: { _s: Map<string, { tabs: Array<{ id: string }>; UPDATE_CURRENT_FILE(file: unknown): void; FILE_SAVE(options: { waitForResult: boolean }): Promise<{ status: string }> }> } } } } }
+          const editor = root.__vue_app__.config.globalProperties.$pinia._s.get('editor')!
+          for (const file of [...editor.tabs]) {
+            editor.UPDATE_CURRENT_FILE(file)
+            const result = await editor.FILE_SAVE({ waitForResult: true })
+            if (result.status !== 'saved') throw new Error('Fixture document was not saved')
+          }
+        })
         await expect
           .poll(
             () => cPage.evaluate(() => !!document.querySelector('.tabs-container > li.unsaved')),
@@ -392,13 +443,15 @@ test.describe('Tab management', () => {
       ids = await readTabIds(cPage)
       expect(ids.length).toBeGreaterThanOrEqual(3)
       expect(await callEditorStoreAction(cPage, 'CLOSE_SAVED_TABS')).toBe(true)
-      await expect.poll(() => readTabIds(cPage), { timeout: 5000 }).toEqual([])
+      await expect(cPage.locator(tabSelector)).toHaveCount(0)
+      await expect(cPage.locator('.recent-files-projects')).toBeVisible()
 
       await openSavedTabs(['final A\n', 'final B\n', 'final C\n'])
       ids = await readTabIds(cPage)
       expect(ids.length).toBeGreaterThanOrEqual(3)
       expect(await callEditorStoreAction(cPage, 'CLOSE_ALL_TABS')).toBe(true)
-      await expect.poll(() => readTabIds(cPage), { timeout: 5000 }).toEqual([])
+      await expect(cPage.locator(tabSelector)).toHaveCount(0)
+      await expect(cPage.locator('.recent-files-projects')).toBeVisible()
     } finally {
       await cApp.close()
     }

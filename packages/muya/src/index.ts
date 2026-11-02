@@ -1,3 +1,4 @@
+export type { IClipboardImageCopy } from './clipboard/image';
 export type { ISerializedHistory } from './history';
 export type { ILocale } from './i18n/types';
 
@@ -19,6 +20,7 @@ export type {
 } from './selection/types';
 export type { ITocItem } from './state/getTOC';
 export { MarkdownToHtml } from './state/markdownToHtml';
+export type { IExportHeading, IHtmlExport, IHtmlExportOptions } from './state/markdownToHtml';
 export { renderToStaticHTML } from './state/renderToStaticHTML';
 export type { IRenderToStaticHTMLOptions } from './state/renderToStaticHTML';
 export type { TState } from './state/types';
@@ -45,6 +47,7 @@ export { default as TableChessboard } from './ui/tableChessboard';
 export { TableColumnToolbar } from './ui/tableColumnToolbar';
 export { TableDragBar } from './ui/tableDragBar';
 export { TableRowColumMenu } from './ui/tableRowColumMenu';
+export type { IKeyboardShortcutOptions, IShortcutHintOptions } from './ui/types';
 export { renderDiagramForExport } from './utils/diagram/render';
 export type { IExportRenderOptions } from './utils/diagram/render';
 export type { IImageInfo } from './utils/image';

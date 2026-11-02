@@ -4,6 +4,7 @@ import type TreeNode from '../block/base/treeNode';
 import type { Muya } from '../muya';
 import type { TState } from '../state/types';
 import type { Nullable } from '../types';
+import type { IClipboardImage } from './image';
 import type Clipboard from './index';
 import CodeBlockContent from '../block/content/codeBlockContent';
 import LangInputContent from '../block/content/langInputContent';
@@ -12,11 +13,13 @@ import { tokenizer } from '../inlineRenderer/lexer';
 import { atxHeadingBody, splitAtxHeading } from '../state/headings';
 import HtmlToMarkdown from '../state/htmlToMarkdown';
 import { MarkdownToState } from '../state/markdownToState';
-import { isAnyListState, isParagraphState } from '../state/types';
+import { isAnyListState, isParagraphState, markdownListMarker } from '../state/types';
 import { getClipboardImageFile, getCopyTextType, isHttpUrl, isStandaloneTableHtml, normalizePastedHTML } from '../utils/paste';
+import { pasteClipboardImage, readClipboardImage } from './image';
+import { hasMarkdownSource } from './markdownSource';
 import { mergePasteIntoHeading } from './mergePasteIntoHeading';
-import { tryPasteImage, tryReplaceSelectedImage } from './pasteImage';
-import { tryPasteUrl } from './pasteUrl';
+import { insertImageSrc, replaceImageAt, resolveImageSrc } from './pasteImage';
+import { getUrlPaste, pasteUrl } from './pasteUrl';
 import { PasteType } from './types';
 
 // Selection and target captured before any block mutation.
@@ -248,45 +251,22 @@ function seatListMergeCursor(muya: Muya, newList: Parent, seam: IListMergeSeam):
     seatCursorAtSeam(newList.find(lastPastedIndex) as Nullable<Parent>, sewOffset);
 }
 
-function listMarkersMatch(a: TState, b: TState): boolean {
-    if (a.name === 'order-list' && b.name === 'order-list')
-        return a.meta.delimiter === b.meta.delimiter;
-    if (a.name === 'bullet-list' && b.name === 'bullet-list')
-        return a.meta.marker === b.meta.marker;
-    if (a.name === 'task-list' && b.name === 'task-list') {
-        if (!!a.meta.ordered !== !!b.meta.ordered)
-            return false;
-
-        return a.meta.ordered && b.meta.ordered
-            ? a.meta.delimiter === b.meta.delimiter
-            : ('marker' in a.meta && 'marker' in b.meta && a.meta.marker === b.meta.marker);
-    }
-
-    return false;
-}
-
-// Merge matching list kinds and markers into the enclosing list.
-// Return false to use ordinary paste when no compatible list exists.
-function tryMergeListPaste(
-    clipboard: Clipboard,
+function getListPasteTarget(
     ctx: IPasteContext,
-    states: TState[],
-    head: string,
-    tail: string,
-): boolean {
-    const firstState = states[0];
+    firstState: TState,
+) {
     if (!isAnyListState(firstState))
-        return false;
+        return null;
 
     const listItemName = firstState.name === 'task-list' ? 'task-list-item' : 'list-item';
     const listItem = ctx.anchorBlock.closestBlock(listItemName);
     const listBlock = listItem?.parent;
     if (listItem == null || listBlock == null || listBlock.blockName !== firstState.name)
-        return false;
+        return null;
 
     const listState = listBlock.getState();
-    if (!isAnyListState(listState) || !listMarkersMatch(listState, firstState))
-        return false;
+    if (!isAnyListState(listState) || markdownListMarker(listState) !== markdownListMarker(firstState))
+        return null;
 
     const itemIndex = listBlock.offset(listItem);
     // Loose list items may contain several paragraphs; merge at the caret paragraph.
@@ -294,7 +274,19 @@ function tryMergeListPaste(
     const currentItem = listState.children[itemIndex];
     const anchorPara = currentItem?.children[paraIndex];
     if (anchorPara == null || !isParagraphState(anchorPara))
-        return false;
+        return null;
+
+    return { firstState, listBlock, listState, itemIndex, paraIndex, currentItem, anchorPara };
+}
+
+function mergeListPaste(
+    clipboard: Clipboard,
+    states: TState[],
+    head: string,
+    tail: string,
+    target: NonNullable<ReturnType<typeof getListPasteTarget>>,
+): void {
+    const { firstState, listBlock, listState, itemIndex, paraIndex, currentItem, anchorPara } = target;
 
     const sewOffset = sewTail(states, tail);
     const pastedItems = firstState.children;
@@ -342,8 +334,6 @@ function tryMergeListPaste(
         pastedCount: pastedItems.length,
         trailingStates: states.slice(1),
     });
-
-    return true;
 }
 
 function applyParsedPaste(
@@ -381,8 +371,11 @@ function applyParsedPaste(
         return;
     }
 
-    if (tryMergeListPaste(clipboard, ctx, states, head, tail))
+    const listTarget = getListPasteTarget(ctx, states[0]);
+    if (listTarget) {
+        mergeListPaste(clipboard, states, head, tail, listTarget);
         return;
+    }
 
     let mergeText = inlineMergeText(states[0], head.length > 0);
 
@@ -513,6 +506,7 @@ interface IPasteData {
     html: string;
     imageFile: File | null;
     pasteType: PasteType;
+    internalImage?: IClipboardImage | null;
 }
 
 function applyNormalizedPaste(
@@ -574,6 +568,8 @@ async function applyTextPaste(
     const { pasteType } = data;
     // Preserve source provenance before synthetic URL/table HTML promotion.
     const hasClipboardHtml = html !== '';
+    if (text.length > 0 && hasMarkdownSource(html))
+        html = '';
 
     // Firefox can supply a pasted URL without HTML.
     if (isHttpUrl(text) && !html) {
@@ -605,15 +601,34 @@ async function applyTextPaste(
         clipboard.muya.transact(() => applyNormalizedPaste(clipboard, anchorBlock, text, html, pasteType));
 }
 
-async function applyPaste(clipboard: Clipboard, data: IPasteData): Promise<void> {
-    const target = clipboard.selection.image?.block ?? clipboard.selection.getTextSelection()?.anchor.block;
-    if (clipboard.muya.isReadOnly || !clipboard.muya.isBlockInDocument(target))
-        return;
-    // A selected inline image collapses the text selection, so handle the
-    // "paste an image over a selected image" replace before reading the
-    // (now absent) text selection.
-    if (clipboard.selection.image && await tryReplaceSelectedImage(clipboard, data.imageFile))
-        return;
+async function pasteInternalImageText(clipboard: Clipboard, data: IPasteData): Promise<void> {
+    if (clipboard.selection.getTextSelection()?.isSelectionInSameBlock === false)
+        clipboard.cutHandler();
+    // Cutting from a language input can replace its entire code block with a paragraph.
+    const textTarget = clipboard.selection.getTextSelection()?.anchor.block;
+    if (textTarget)
+        await applyTextPaste(clipboard, textTarget, data.text, { ...data, html: '' });
+}
+
+async function pasteExternalData(clipboard: Clipboard, data: IPasteData, target: Content): Promise<void> {
+    const { muya } = clipboard;
+    const { imageFile, pasteType } = data;
+    const selectedImage = clipboard.selection.image;
+    if (selectedImage && pasteType === PasteType.NORMAL) {
+        const { block, imageInfo: { token } } = selectedImage;
+        const range = { ...token.range };
+        const original = block.text.slice(range.start, range.end);
+        const src = await resolveImageSrc(clipboard, imageFile);
+        // A stale image paste must not fall through into a different text selection.
+        if (muya.isReadOnly || !muya.isBlockInDocument(block)
+            || block.text.slice(range.start, range.end) !== original) {
+            return;
+        }
+        if (src !== null) {
+            await replaceImageAt(clipboard, block, range, src);
+            return;
+        }
+    }
 
     const selection = clipboard.selection.getTextSelection();
     if (!selection)
@@ -621,32 +636,55 @@ async function applyPaste(clipboard: Clipboard, data: IPasteData): Promise<void>
 
     const { isSelectionInSameBlock, anchor } = selection;
     const anchorBlock = anchor.block;
-
-    if (!anchorBlock || anchorBlock !== target || clipboard.muya.isReadOnly || !clipboard.muya.isBlockInDocument(anchorBlock))
+    if (!anchorBlock || anchorBlock !== target || muya.isReadOnly || !muya.isBlockInDocument(anchorBlock))
         return;
 
     if (!isSelectionInSameBlock) {
         clipboard.cutHandler();
-
-        return applyPaste(clipboard, data);
+        await applyPaste(clipboard, data);
+        return;
     }
 
-    const { imageFile, pasteType } = data;
     // Normalize newlines before computing offsets or splitting lines.
     const text = data.text.replace(/\r\n?/g, '\n');
+    if (!imageFile && !clipboard.selection.image) {
+        const urlPaste = getUrlPaste(clipboard, anchorBlock, text, pasteType);
+        if (urlPaste) {
+            pasteUrl(clipboard, anchorBlock, urlPaste);
+            return;
+        }
+    }
 
-    if (!imageFile && !clipboard.selection.image
-        && tryPasteUrl(clipboard, anchorBlock, text, pasteType)) {
+    if (pasteType === PasteType.NORMAL) {
+        const src = await resolveImageSrc(clipboard, imageFile);
+        if (src !== null) {
+            await insertImageSrc(clipboard, anchorBlock, src);
+            return;
+        }
+    }
+
+    if (muya.isReadOnly || !muya.isBlockInDocument(target))
+        return;
+    await applyTextPaste(clipboard, anchorBlock, text, data);
+}
+
+async function applyPaste(clipboard: Clipboard, data: IPasteData): Promise<void> {
+    const target = clipboard.selection.image?.block ?? clipboard.selection.getTextSelection()?.anchor.block;
+    if (!target || clipboard.muya.isReadOnly || !clipboard.muya.isBlockInDocument(target))
+        return;
+
+    if (data.pasteType === PasteType.PASTE_AS_PLAIN_TEXT && clipboard.selection.image)
+        clipboard.cutHandler();
+
+    if (data.pasteType === PasteType.NORMAL && data.internalImage) {
+        if (/^(?:codeblock\.content|language-input)$/.test(target.blockName))
+            await pasteInternalImageText(clipboard, data);
+        else
+            await pasteClipboardImage(clipboard, data.internalImage);
         return;
     }
 
-    if (await tryPasteImage(clipboard, anchorBlock, imageFile))
-        return;
-
-    if (clipboard.muya.isReadOnly || !clipboard.muya.isBlockInDocument(target))
-        return;
-
-    return applyTextPaste(clipboard, anchorBlock, text, data);
+    await pasteExternalData(clipboard, data, target);
 }
 
 export function pasteSelection(
@@ -666,7 +704,7 @@ export function pasteSelection(
     const html = rawHtml ?? event.clipboardData.getData('text/html');
     const imageFile = getClipboardImageFile(event.clipboardData);
 
-    return applyPaste(clipboard, { text, html, imageFile, pasteType: clipboard.pasteType });
+    return applyPaste(clipboard, { text, html, imageFile, pasteType: clipboard.pasteType, internalImage: readClipboardImage(html, text) });
 }
 
 // Treat the supplied text as Markdown source without synthesizing rich HTML.

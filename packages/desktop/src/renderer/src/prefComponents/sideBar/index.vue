@@ -6,13 +6,18 @@
     <section class="search-wrapper">
       <el-autocomplete
         v-model="state"
-        popper-class="pref-autocomplete"
+        :show-arrow="false"
+        clearable
+        value-key="preference"
+        :debounce="0"
+        popper-class="pref-dropdown pref-autocomplete"
         :fetch-suggestions="querySearch"
         :placeholder="t('preferences.search.placeholder')"
         :trigger-on-focus="false"
+        :aria-label="t('preferences.search.placeholder')"
         @select="handleSelect"
       >
-        <template #suffix>
+        <template #prefix>
           <Search
             width="16"
             height="16"
@@ -20,134 +25,66 @@
         </template>
         <template #default="{ item }">
           <div class="name">
-            {{ item.category }}
+            {{ item.category }}<span v-if="item.accelerator"> · {{ item.accelerator }}</span>
           </div>
           <span class="addr">{{ item.preference }}</span>
         </template>
       </el-autocomplete>
     </section>
     <section class="category">
-      <div
+      <button
         v-for="c of getCategory()"
         :key="c.name"
+        type="button"
         class="item"
         :class="{ active: c.label === currentCategory }"
+        :aria-current="c.label === currentCategory ? 'page' : undefined"
         @click="handleCategoryItemClick(c)"
       >
         <component :is="c.icon" />
         <span>{{ c.name }}</span>
-      </div>
+      </button>
     </section>
   </div>
 </template>
 <script setup lang="ts">
-import { getCategory, getTranslatedSearchContent } from './config'
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { getCategory, getTranslatedSearchContent, matchesSearch, type SearchEntry } from './config'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
-
-interface SearchEntry {
-  key: string
-  category: string
-  categoryEn: string
-  preference: string
-  preferenceEn: string
-  routeCategory: string
-  description: string
-  enum: unknown[] | undefined
-}
-
-interface CategoryItem {
-  name: string
-  path: string
-}
+import { useKeybindingsStore } from '@/store/keybindings'
+import { getKeybindingSearchContent } from './keybindingSearch'
+import { openSetting } from '../settingLocation'
+import '../common/dropdownAppearance.css'
 
 const { t } = useI18n()
-
 const router = useRouter()
 const route = useRoute()
+const currentCategory = computed(() => String(route.name || 'general'))
+const state = ref('')
+const keybindings = useKeybindingsStore()
+const entries = computed(() => [...getTranslatedSearchContent(), ...getKeybindingSearchContent(keybindings.commands)])
 
-const currentCategory = ref<string>('general')
-const restaurants = ref<SearchEntry[]>([])
-const state = ref<string>('')
-
-watch(
-  () => route.name,
-  (newRouteName) => {
-    if (newRouteName) {
-      currentCategory.value = String(newRouteName)
-    }
-  }
-)
-
-const querySearch = (queryString: string, cb: (results: SearchEntry[]) => void): void => {
-  const results = queryString
-    ? restaurants.value.filter(createFilter(queryString))
-    : restaurants.value
-  cb(results)
+const querySearch = (query: string, callback: (results: SearchEntry[]) => void): void => {
+  callback(entries.value.filter(entry => matchesSearch(entry, query)))
 }
-
-const createFilter = (queryString: string): ((restaurant: SearchEntry) => boolean) => {
-  const q = queryString.toLowerCase()
-  return (restaurant: SearchEntry): boolean => {
-    // Support both the current language and English keywords
-    const fields = [
-      restaurant.preference,
-      restaurant.category,
-      restaurant.preferenceEn,
-      restaurant.categoryEn
-    ]
-      .filter(Boolean)
-      .map((s) => String(s).toLowerCase())
-    return fields.some((f) => f.indexOf(q) >= 0)
-  }
+const handleSelect = (item: SearchEntry | undefined): void => {
+  if (item) void openSetting(router, item.routeCategory, item.key)
 }
-
-const loadAll = (): SearchEntry[] => getTranslatedSearchContent()
-
-const handleSelect = (item: SearchEntry | null | undefined): void => {
-  // Use a safe routeCategory to avoid a blank screen caused by invalid categories
-  const target =
-    item && item.routeCategory ? item.routeCategory : (item?.category || 'general').toLowerCase()
-  router.push({ path: `/preference/${target}` }).catch(() => {})
+const handleCategoryItemClick = (item: { path: string }): void => {
+  void router.push({ path: item.path })
 }
-
-const handleCategoryItemClick = (item: CategoryItem): void => {
-  if (item.name.toLowerCase() !== currentCategory.value) {
-    router.push({
-      path: item.path
-    })
-  }
-}
-
 const onIpcCategoryChange = (_event: unknown, category: unknown): void => {
-  const categoryName = typeof category === 'string' ? category : ''
-  const validRoute =
-    categoryName &&
-    router.getRoutes().findIndex((r) => r.path.endsWith(`/${categoryName}`)) !== -1
-  if (validRoute) {
-    router.push({
-      path: `/preference/${categoryName}`
-    })
-  }
+  if (typeof category !== 'string') return
+  const target = getCategory().find(item => item.label === category)
+  if (target) void router.push({ path: target.path })
 }
-
 onMounted(() => {
-  restaurants.value = loadAll()
-  if (route.name) {
-    currentCategory.value = String(route.name)
-  }
+  void keybindings.ensureLoaded()
   window.electron.ipcRenderer.on('settings::change-tab', onIpcCategoryChange)
-  const languageChanged = (): void => {
-    restaurants.value = loadAll()
-  }
-  window.addEventListener('languageChanged', languageChanged)
-  onUnmounted(() => window.removeEventListener('languageChanged', languageChanged))
 })
-
 onUnmounted(() => {
-  // This removes all handlers for the channel; the bridge accepts no handler argument.
   window.electron.ipcRenderer.removeAllListeners('settings::change-tab')
 })
 </script>
@@ -175,7 +112,7 @@ onUnmounted(() => {
   padding: 0 16px;
   margin: 18px 0;
 }
-.el-autocomplete {
+.pref-sidebar .el-autocomplete {
   width: 100%;
 
   & .el-input__wrapper {
@@ -185,20 +122,9 @@ onUnmounted(() => {
   & .el-input__inner {
     border: none;
     background: transparent;
-    height: 28px;
-    line-height: 28px;
-    font-size: 13px;
   }
 }
 .pref-autocomplete {
-  background: var(--floatBgColor);
-  border-color: var(--floatBorderColor);
-  & .el-autocomplete-suggestion__wrap li:hover {
-    background: var(--floatHoverColor);
-  }
-  & .popper__arrow {
-    display: none;
-  }
   & li {
     line-height: normal;
     padding: 7px;
@@ -224,6 +150,10 @@ onUnmounted(() => {
   -webkit-app-region: no-drag;
   overflow-y: auto;
   & .item {
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
     width: 100%;
     height: 38px;
     font-size: 16px;

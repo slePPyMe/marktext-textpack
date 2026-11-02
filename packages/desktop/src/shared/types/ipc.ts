@@ -1,25 +1,11 @@
-import type { ProjectRootsSnapshot, ProjectTreeEvent } from './project'
+import type { ProjectRootsSnapshot, ProjectTreeEvent, SidebarMoveRequest, SidebarMoveResult } from './project'
 /**
  * Cross-process IPC contract: invoke returns a Promise, send is fire-and-forget,
  * sync returns directly, and main events push payloads to renderer listeners.
  */
 
 import type { IKeyboardLayoutInfo, IKeyboardMapping } from 'native-keymap'
-import type {
-  MarkdownDocument,
-  TabOptions,
-  SidebarOpenOptions,
-  BootstrapEditorConfig,
-  PageOptions,
-  ExportType,
-  SaveOptions,
-  SerializedStat,
-  LineEnding,
-  FileChangeDetail,
-  PandocExportPayload,
-  UnsavedFile
-} from './files'
-import type { BufferedState as BufferedStateType } from './bufferedState'
+import type { TabOptions, SidebarOpenOptions, PageOptions, ExportType, SerializedStat, LineEnding, FileChangeDetail, PandocExportPayload } from './files'
 import type { MenuTemplate, MenuPopupPosition } from './menu'
 import type { PandocCommandInfo } from './pandoc'
 
@@ -27,6 +13,12 @@ export interface SaveDialogRequest {
   title?: string
   defaultPath?: string
   filters?: Array<{ name: string; extensions: string[] }>
+}
+
+export interface ClipboardImageWriteOptions {
+  ticket: number
+  text?: string
+  html?: string
 }
 
 export type PlantumlFetchResult =
@@ -37,7 +29,13 @@ export interface RecentDocument {
   isDirectory: boolean
 }
 
-export interface IpcInvokeChannels {
+export type SaveDocumentResult =
+  | { status: 'saved'; pathname: string; filename: string; savedMarkdown: string }
+  | { status: 'canceled' | 'failed' }
+
+import type { StateIpcInvokeChannels, StateIpcMainEvents } from './applicationState'
+
+export interface IpcInvokeChannels extends StateIpcInvokeChannels {
   'mt::get-recently-used-documents': { args: []; ret: RecentDocument[] }
   'mt::project-remove-root': { args: [key: string]; ret: boolean }
   'mt::project-retry-root': { args: [key: string]; ret: boolean }
@@ -48,7 +46,13 @@ export interface IpcInvokeChannels {
   'mt::clipboard::guess-file-path': { args: []; ret: string | null }
   'mt::clipboard::read-text': { args: []; ret: string }
   'mt::link::fetch-html': { args: [url: string]; ret: string }
-  'mt::clipboard::write-image': { args: [png: Uint8Array]; ret: boolean }
+  'mt::clipboard::write-image': {
+    args: [png: Uint8Array, options?: ClipboardImageWriteOptions]
+    ret: boolean
+  }
+  'mt::clipboard::begin-image-copy': { args: [marker?: string]; ret: number | null }
+  'mt::clipboard::cancel-image-copy': { args: [ticket: number]; ret: void }
+  'mt::clipboard::read-image-source': { args: [src: string]; ret: PlantumlFetchResult }
   'mt::cmd::exists': { args: [name: string]; ret: boolean }
   'mt::diagram::fetch-plantuml': {
     args: [server: string, encoded: string, format: 'svg' | 'png']
@@ -57,6 +61,7 @@ export interface IpcInvokeChannels {
   'mt::dialog::show-save': { args: [request: SaveDialogRequest]; ret: string | null }
   'mt::fonts::list': { args: []; ret: string[] }
   'mt::fs-trash-item': { args: [pathname: string]; ret: boolean }
+  'mt::project-move-item': { args: [request: SidebarMoveRequest]; ret: SidebarMoveResult }
   'mt::fs::copy': { args: [src: string, dest: string]; ret: void }
   'mt::fs::copy-with-content-hash': { args: [src: string, outputDir: string]; ret: string }
   'mt::fs::empty-dir': { args: [path: string]; ret: void }
@@ -100,9 +105,7 @@ export interface IpcInvokeChannels {
   'mt::win::is-maximized': { args: []; ret: boolean }
   // Main derives the BrowserWindow via BrowserWindow.fromWebContents(e.sender);
   // no need to pass windowId. Payload is the editor+project+layout snapshot.
-  'update-buffer-state': { args: [payload: unknown]; ret: boolean }
 }
-
 
 export interface IpcSendChannels {
   'mt::cmd-add-folder': []
@@ -130,8 +133,6 @@ export interface IpcSendChannels {
   'mt::ask-for-user-preference': []
   'mt::check-for-update': []
   'mt::cancel-pending-preview': [requestId: number]
-  'mt::close-window': []
-  'mt::close-window-confirm': [unsavedFiles: UnsavedFile[]]
   'mt::cmd-close-window': []
   'mt::cmd-import-file': []
   'mt::cmd-new-editor-window': []
@@ -167,28 +168,9 @@ export interface IpcSendChannels {
     }
   ]
   'mt::response-file-move-to': [payload: { id: string; pathname: string }]
-  'mt::response-file-save': [
-    id: string,
-    filename: string,
-    pathname: string,
-    markdown: string,
-    options: SaveOptions,
-    defaultPath: string
-  ]
-  'mt::response-file-save-as': [
-    id: string,
-    filename: string,
-    pathname: string,
-    markdown: string,
-    options: SaveOptions,
-    defaultPath: string
-  ]
   'mt::response-pandoc-export': [payload: PandocExportPayload]
   'mt::response-print': []
   'mt::rg::cancel': [searchId: string]
-  'mt::save-and-close-tabs': [tabs: unknown[]]
-  'mt::save-tabs': [tabs: unknown[]]
-  'mt::select-default-directory-to-open': []
   'mt::set-user-data': [partial: unknown]
   'mt::set-user-preference': [partial: unknown]
   'mt::shell::open-external': [url: string]
@@ -226,26 +208,19 @@ export interface IpcSendChannels {
   'window-toggle-always-on-top': [windowId: number]
 }
 
-
 export interface IpcSyncChannels {
   'mt::boot-info': { args: []; ret: BootInfo }
   'mt::paths::is-same-sync': { args: [a: string, b: string]; ret: boolean }
 }
 
-
-export interface IpcMainEventChannels {
-  'mt::discard-and-close-window': [tabIds: string[]]
-  'mt::finish-close-window': []
+export interface IpcMainEventChannels extends StateIpcMainEvents {
   'mt::toggle-read-only': []
-  'mt::unlock-documents-for-save': [tabIds: string[]]
   'language-changed': [language: string]
   'mt::UPDATE_AVAILABLE': [info?: unknown]
   'mt::UPDATE_DOWNLOADED': [info?: unknown]
   'mt::UPDATE_ERROR': [error: unknown]
   'mt::UPDATE_NOT_AVAILABLE': [info?: unknown]
   'mt::about-dialog': []
-  'mt::ask-for-close': []
-  'mt::bootstrap-editor': [config: BootstrapEditorConfig]
   'mt::cm-copy-as-html': []
   'mt::cm-copy-as-rich': []
   'mt::cm-insert-paragraph': [direction: 'before' | 'after']
@@ -262,20 +237,12 @@ export interface IpcMainEventChannels {
   'mt::execute-command-by-id': [commandId: string]
   'mt::export-success': [payload: { type: string; filePath: string; linksMedia?: boolean }]
   'mt::export-with-pandoc': [target: string]
-  'mt::file-saved': [tabId: string]
-  'mt::force-close-tabs-by-id': [tabIds: string[]]
   'mt::invalidate-image-cache': []
-  'mt::keybindings-response': [bindings: unknown]
-  'mt::load-state': [state: BufferedStateType]
+  'mt::keybindings-response': [bindings: Readonly<Record<string, string>>]
   'mt::menu::click': [menuId: string]
   'mt::menu::closed': []
   'mt::new-untitled-tab': [selected?: boolean, markdown?: string]
   'mt::project-roots-changed': [snapshot: ProjectRootsSnapshot]
-  'mt::open-new-tab': [
-    markdownDocument: MarkdownDocument | null,
-    options?: TabOptions,
-    selected?: boolean
-  ]
   'mt::pandoc-not-exists': [opts: Record<string, unknown>]
   'mt::print-service-clearup': []
   'mt::rg::cancelled': [payload: unknown]
@@ -285,17 +252,6 @@ export interface IpcMainEventChannels {
   'mt::rg::progress': [payload: unknown]
   'mt::screenshot-captured': [filePath: string]
   'mt::set-line-ending': [lineEnding: LineEnding]
-  'mt::set-pathname': [
-    payload: {
-      id: string
-      pathname: string
-      filename: string
-      savedMarkdown?: string
-      documentKind?: 'markdown' | 'textpack'
-      resourcePath?: string
-      markdown?: string
-    }
-  ]
   'mt::set-view-layout': [layout: unknown]
   'mt::show-command-palette': []
   'mt::show-export-dialog': [type: ExportType]
@@ -305,7 +261,6 @@ export interface IpcMainEventChannels {
   'mt::switch-tab-by-file_path': [filePath: string, options?: TabOptions]
   'mt::switch-tab-by-index': [index: number]
   'mt::tab-save-failure': [tabId: string, message: string]
-  'mt::tab-saved': [tabId: string, savedMarkdown?: string]
   'mt::tabs-cycle-left': []
   'mt::tabs-cycle-right': []
   'mt::toggle-view-layout-entry': [entry: string]
@@ -321,7 +276,6 @@ export interface IpcMainEventChannels {
   'mt::window-zoom': [zoomLevel: number]
   'settings::change-tab': [tab: string]
 }
-
 
 /**
  * Snapshot of the active OS keyboard layout, returned by
@@ -347,14 +301,3 @@ export interface BootInfo {
   isUpdatable: boolean
   MARKDOWN_INCLUSIONS: string[]
 }
-
-
-export type InvokeArgs<K extends keyof IpcInvokeChannels> = IpcInvokeChannels[K]['args']
-export type InvokeRet<K extends keyof IpcInvokeChannels> = IpcInvokeChannels[K]['ret']
-
-export type SyncArgs<K extends keyof IpcSyncChannels> = IpcSyncChannels[K]['args']
-export type SyncRet<K extends keyof IpcSyncChannels> = IpcSyncChannels[K]['ret']
-
-export type SendArgs<K extends keyof IpcSendChannels> = IpcSendChannels[K]
-
-export type EventArgs<K extends keyof IpcMainEventChannels> = IpcMainEventChannels[K]

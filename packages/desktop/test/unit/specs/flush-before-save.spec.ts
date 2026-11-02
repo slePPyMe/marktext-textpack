@@ -7,17 +7,23 @@ vi.hoisted(() => {
   const w = globalThis as unknown as {
     window?: {
       path?: { sep: string; dirname: (p: string) => string }
+      fileUtils?: { isSamePathSync: (left: string, right: string) => boolean }
       electron?: {
         clipboard: { writeText: (s: string) => void }
-        ipcRenderer: { send: (...a: unknown[]) => void; on: (...a: unknown[]) => void }
+        ipcRenderer: {
+          send: (...a: unknown[]) => void
+          on: (...a: unknown[]) => void
+          invoke: (...a: unknown[]) => Promise<unknown>
+        }
       }
     }
   }
   w.window ??= {}
   w.window.path ??= { sep: '/', dirname: (p: string) => p }
+  w.window.fileUtils ??= { isSamePathSync: (left, right) => left === right }
   w.window.electron ??= {
     clipboard: { writeText: () => {} },
-    ipcRenderer: { send: () => {}, on: () => {} }
+    ipcRenderer: { send: () => {}, on: () => {}, invoke: async() => undefined }
   }
 })
 
@@ -25,26 +31,12 @@ vi.mock('@/services/notification', () => ({
   default: { notify: vi.fn(), name: 'notify' }
 }))
 
-import { useEditorStore } from '@/store/editor'
+import { useEditorStore, setSessionActions, type SessionActions } from '@/store/editor'
 import bus from '@/bus'
 
-// #3803: the store snapshots `currentFile.markdown` (refreshed only on the
-// engine's deferred rAF `json-change`) to send to the main process. A keystroke
-// typed in the same frame as Cmd+S was therefore dropped from the saved file.
-// The save/move/rename paths now emit `flush-active-editor` first, which the
-// editor synchronously commits into `currentFile.markdown` before it is read.
-//
-// The bug lives at the `const { …, markdown } = this.currentFile` READ, which
-// sits between the flush and the send — so an emit-order assertion (flush < send)
-// alone would still pass if a regression moved the flush past the read. These
-// tests instead wire a real `flush-active-editor` listener that commits the
-// pending keystroke (mirroring editor.vue → `editor.flush()` → `json-change` →
-// LISTEN_FOR_CONTENT_CHANGE) and assert the SENT PAYLOAD carries it: a flush
-// moved after the read would send the stale snapshot and fail here.
-
+// A save command must flush before the session service captures the document (#3803).
 const STALE = 'hello' // what the pre-flush snapshot holds
 const FLUSHED = 'hello world!' // the last keystroke the editor commits on flush
-const MARKDOWN_ARG = 4 // send(channel, id, filename, pathname, markdown, …)
 
 function seedCurrentFile(
   store: ReturnType<typeof useEditorStore>,
@@ -89,66 +81,78 @@ describe('editor store — flush pending edits before saving (#3803)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    setSessionActions(null)
   })
 
   afterEach(() => {
     detach?.()
     detach = undefined
+    setSessionActions(null)
   })
 
-  it('FILE_SAVE sends the flushed markdown, not the stale pre-flush snapshot', () => {
+  const installSave = (save: SessionActions['save']): void => {
+    setSessionActions({
+      save,
+      checkpoint: vi.fn(), scheduleCheckpoint: vi.fn(),
+      captureView: vi.fn(),
+      create: vi.fn(),
+      close: vi.fn(),
+      saveAll: vi.fn()
+    })
+  }
+
+  it.each([false, true])('flushes the latest text before session save (Save As: %s)', (saveAs) => {
     const store = useEditorStore()
     seedCurrentFile(store)
     detach = onFlushCommit(store)
-    const sendSpy = vi.spyOn(window.electron.ipcRenderer, 'send')
+    const save = vi.fn(async() => {
+      expect(store.currentFile?.markdown).toBe(FLUSHED)
+      return { status: 'failed' } as const
+    })
+    installSave(save)
+    if (saveAs) store.FILE_SAVE_AS()
+    else store.FILE_SAVE()
+    expect(save).toHaveBeenCalledWith('tab-1', ...(saveAs ? [true] : []))
+  })
 
+  it('returns the session save result without applying an unacknowledged document identity', async() => {
+    const store = useEditorStore()
+    seedCurrentFile(store)
+    const saved = { status: 'saved', pathname: '/new/file.md', filename: 'file.md', savedMarkdown: FLUSHED } as const
+    installSave(vi.fn(async() => saved))
+    expect(await store.FILE_SAVE({ waitForResult: true })).toEqual(saved)
+    expect(store.currentFile?.pathname).toBe('/tmp/note.md')
+  })
+
+  it.each(['canceled', 'failed'] as const)('retains the document when saving is %s', async(status) => {
+    const store = useEditorStore()
+    seedCurrentFile(store)
+    installSave(vi.fn(async() => ({ status })))
+    expect(await store.FILE_SAVE({ waitForResult: true })).toEqual({ status })
+    expect(store.currentFile?.pathname).toBe('/tmp/note.md')
+  })
+
+  it('does not fall back to the retired save protocol before a session is ready', () => {
+    const store = useEditorStore()
+    seedCurrentFile(store)
+    vi.spyOn(window.electron.ipcRenderer, 'send')
     store.FILE_SAVE()
-
-    const call = sendSpy.mock.calls.find((c) => c[0] === 'mt::response-file-save')
-    expect(call).toBeDefined()
-    expect(call?.[MARKDOWN_ARG]).toBe(FLUSHED)
-  })
-
-  it('FILE_SAVE_AS sends the flushed markdown, not the stale pre-flush snapshot', () => {
-    const store = useEditorStore()
-    seedCurrentFile(store)
-    detach = onFlushCommit(store)
-    const sendSpy = vi.spyOn(window.electron.ipcRenderer, 'send')
-
     store.FILE_SAVE_AS()
-
-    const call = sendSpy.mock.calls.find((c) => c[0] === 'mt::response-file-save-as')
-    expect(call).toBeDefined()
-    expect(call?.[MARKDOWN_ARG]).toBe(FLUSHED)
+    store.ASK_FOR_SAVE_ALL(true)
+    expect(window.electron.ipcRenderer.send).not.toHaveBeenCalled()
   })
 
-  // MOVE_FILE_TO / RESPONSE_FOR_RENAME only transmit `markdown` in their untitled
-  // (no-pathname) branch, which reuses `mt::response-file-save` — that is where
-  // the flush actually matters, so assert the payload there too.
-  it('MOVE_FILE_TO (untitled) sends the flushed markdown', () => {
+  it.each(['MOVE_FILE_TO', 'RESPONSE_FOR_RENAME'] as const)('%s saves untitled content through the session', (action) => {
     const store = useEditorStore()
     seedCurrentFile(store, { pathname: '' })
     detach = onFlushCommit(store)
-    const sendSpy = vi.spyOn(window.electron.ipcRenderer, 'send')
-
-    store.MOVE_FILE_TO()
-
-    const call = sendSpy.mock.calls.find((c) => c[0] === 'mt::response-file-save')
-    expect(call).toBeDefined()
-    expect(call?.[MARKDOWN_ARG]).toBe(FLUSHED)
-  })
-
-  it('RESPONSE_FOR_RENAME (untitled) sends the flushed markdown', () => {
-    const store = useEditorStore()
-    seedCurrentFile(store, { pathname: '' })
-    detach = onFlushCommit(store)
-    const sendSpy = vi.spyOn(window.electron.ipcRenderer, 'send')
-
-    store.RESPONSE_FOR_RENAME()
-
-    const call = sendSpy.mock.calls.find((c) => c[0] === 'mt::response-file-save')
-    expect(call).toBeDefined()
-    expect(call?.[MARKDOWN_ARG]).toBe(FLUSHED)
+    const save = vi.fn(async() => {
+      expect(store.currentFile?.markdown).toBe(FLUSHED)
+      return { status: 'failed' } as const
+    })
+    installSave(save)
+    store[action]()
+    expect(save).toHaveBeenCalledWith('tab-1')
   })
 
   // The existing-file rename branch emits 'rename' (no markdown payload); guard

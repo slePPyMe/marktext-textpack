@@ -10,6 +10,16 @@ import yazl from 'yazl'
 import type { LineEnding, MarkdownDocument, SaveIntent, SaveOptions } from '@shared/types/files'
 import { loadMarkdownFile, writeMarkdownFile } from './markdown'
 
+const archiveBaseline = async(pathname: string) => {
+  const before = await fsPromises.stat(pathname)
+  const hash = createHash('sha256')
+  for await (const chunk of fs.createReadStream(pathname)) hash.update(chunk)
+  const after = await fsPromises.stat(pathname)
+  if (before.size !== after.size || before.mtimeMs !== after.mtimeMs)
+    throw new Error('The TextPack changed while MarkText was reading it.')
+  return { exists: true as const, sizeBytes: after.size, mtimeMs: after.mtimeMs, rawSha256: hash.digest('hex') }
+}
+
 export const TEXTPACK_LIMITS = Object.freeze({
   entries: 10_000,
   entryBytes: 512 * 1024 * 1024,
@@ -618,6 +628,7 @@ export const prepareTextPackReload = async(
     })
     return {
       ...doc,
+      rawBaseline: await archiveBaseline(physicalPath),
       filename: path.basename(physicalPath),
       pathname: physicalPath,
       encoding: { encoding: 'utf8', isBom: false },
@@ -709,6 +720,7 @@ export const loadTextPackFile = async(
     )
     return {
       ...doc,
+      rawBaseline: await archiveBaseline(physicalPath),
       filename: path.basename(physicalPath),
       pathname: physicalPath,
       encoding: { encoding: 'utf8', isBom: false },
@@ -729,6 +741,7 @@ export const loadTextPackFile = async(
       )
       return {
         ...doc,
+        rawBaseline: await archiveBaseline(physicalPath),
         filename: path.basename(physicalPath),
         pathname: physicalPath,
         encoding: { encoding: 'utf8', isBom: false },
@@ -772,6 +785,7 @@ export const loadTextPackFile = async(
     }
     return {
       ...doc,
+      rawBaseline: await archiveBaseline(physicalPath),
       filename: path.basename(physicalPath),
       pathname: physicalPath,
       encoding: { encoding: 'utf8', isBom: false },

@@ -13,6 +13,7 @@ import type { Muya } from '@muyajs/core'
 import { MarkdownToHtml } from '@muyajs/core'
 import { sanitize, EXPORT_DOMPURIFY_CONFIG } from './dompurify'
 import { resolveLocalLinkHref } from './resolveLinkHref'
+import { getHtmlToc, type HtmlTocOptions } from './pdf'
 
 export interface HeaderFooterPart {
   type?: number
@@ -25,8 +26,8 @@ export interface ExportStyledHtmlOptions {
   title?: string
   printOptimization?: boolean
   extraCss?: string
-  /** Pre-rendered TOC HTML (from `getHtmlToc`). Injected at `[TOC]`. */
-  toc?: string
+  /** Include a TOC at `[TOC]`, using headings from the exported document. */
+  tocOptions?: HtmlTocOptions
   header?: HeaderFooterPart | null
   footer?: HeaderFooterPart | null
   headerFooterStyled?: boolean
@@ -124,6 +125,7 @@ const createTableBody = (article: string): string =>
 
 // Match a standalone `[TOC]` line (mirrors legacy marked TOC block token).
 const TOC_REG = /^ {0,3}\[TOC\] *$/im
+const TOC_PARAGRAPH_REG = /<p\b(?:[^>"']|"[^"]*"|'[^']*')*>\s*\[TOC\]\s*<\/p>/i
 
 // Match the `href="…"` of an <a> tag in the (already sanitized, double-quoted)
 // engine output, so relative local links can be rewritten to absolute `file://`
@@ -143,6 +145,14 @@ const rewriteAnchorHrefs = (html: string): string =>
     return resolved === href ? match : `${pre}${resolved}${post}`
   })
 
+export const injectHtmlToc = (article: string, toc: string): string => {
+  if (!toc) return article
+  if (TOC_PARAGRAPH_REG.test(article)) {
+    return article.replace(TOC_PARAGRAPH_REG, () => toc)
+  }
+  return article.replace(TOC_REG, () => toc)
+}
+
 /**
  * Build a styled, standalone HTML document equivalent to legacy muyajs
  * `exportStyledHTML`. Renders markdown through the new engine, injects the TOC
@@ -154,7 +164,7 @@ export const exportStyledHTML = async(
   markdown: string,
   options: ExportStyledHtmlOptions = {}
 ): Promise<string> => {
-  const { title = '', toc = '', header, footer, headerFooterStyled, dir } = options
+  const { title = '', tocOptions, header, footer, headerFooterStyled, dir } = options
   let { extraCss = '' } = options
 
   const appendHeaderFooter = !!header || !!footer
@@ -164,12 +174,13 @@ export const exportStyledHTML = async(
 
   // Render the engine's full HTML document. We re-extract its <article> body so
   // we can inject the TOC / header-footer, then re-emit the document shell.
-  const fullDoc = await new MarkdownToHtml(markdown, muya).generate({
+  const { html: fullDoc, headings } = await new MarkdownToHtml(markdown, muya).generateWithHeadings({
     title,
     extraCSS: extraCss,
     dir
   })
 
+  const toc = tocOptions ? getHtmlToc(headings, tocOptions) : ''
   const articleMatch = /<article class="markdown-body">([\s\S]*)<\/article>/.exec(fullDoc)
   let article = articleMatch ? articleMatch[1] : fullDoc
 
@@ -178,17 +189,7 @@ export const exportStyledHTML = async(
   // document is moved out of the source folder (#1688).
   article = rewriteAnchorHrefs(article)
 
-  // Inject the TOC at the `[TOC]` marker (legacy behaviour: only appears when
-  // the document explicitly contains `[TOC]`). The marker is rendered as a
-  // paragraph by marked, so replace the rendered `<p>[TOC]</p>` first, falling
-  // back to a raw `[TOC]` if present.
-  if (toc) {
-    if (/<p>\s*\[TOC\]\s*<\/p>/i.test(article)) {
-      article = article.replace(/<p>\s*\[TOC\]\s*<\/p>/i, () => toc)
-    } else if (TOC_REG.test(article)) {
-      article = article.replace(TOC_REG, () => toc)
-    }
-  }
+  article = injectHtmlToc(article, toc)
 
   let bodyHtml: string
   if (!appendHeaderFooter) {

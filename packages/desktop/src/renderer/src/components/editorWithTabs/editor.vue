@@ -71,6 +71,8 @@
 </template>
 
 <script setup lang="ts">
+import { registerRenderedViewState, documentViewChanged } from '@/services/documentViewState'
+
 import {
   computed,
   ref,
@@ -113,6 +115,8 @@ import {
   type ISerializedHistory
 } from '@muyajs/core'
 import { getMuyaLocale } from '@/util/muyaLocale'
+import { createMuyaShortcutResolvers } from '@/util/muyaShortcuts'
+import { useCommandCenterStore } from '@/store/commandCenter'
 import { exportStyledHTML, type HeaderFooterPart } from '@/util/exportHtml'
 import { applyCursor, isIndexCursor } from '@/util/cursor'
 import EditorSearch from '../search/index.vue'
@@ -120,14 +124,15 @@ import MediaViewer from '../mediaViewer/index.vue'
 import bus from '@/bus'
 import { DEFAULT_EDITOR_FONT_FAMILY, DEFAULT_CODE_FONT_FAMILY } from '@/config'
 import notice from '@/services/notification'
+import { beforeImageDrop } from '@/services/imageDrop'
 import Printer from '@/services/printService'
 import { SpellcheckerLanguageCommand } from '@/commands'
 import { SpellChecker } from '@/spellchecker'
 import { isMac, animatedScrollTo } from '@/util'
 import { moveImageToFolder, uploadImage } from '@/util/fileSystem'
-import { guessClipboardFilePath } from '@/util/clipboard'
+import { guessClipboardFilePath, copyImageToClipboard, readImagePng, clipboardImagePath } from '@/util/clipboard'
 import { dataURLToFile } from '@/util/dataURLToFile'
-import { getCssForOptions, getHtmlToc, type PdfCssOptions, type HtmlTocOptions } from '@/util/pdf'
+import { getCssForOptions, type PdfCssOptions } from '@/util/pdf'
 import {
   getTocHeadingScrollTop,
   resolveTocHeadingElement,
@@ -165,6 +170,7 @@ const props = defineProps<{
 
 const preferencesStore = usePreferencesStore()
 const editorStore = useEditorStore()
+const commandCenterStore = useCommandCenterStore()
 const projectStore = useProjectStore()
 
 const {
@@ -183,6 +189,7 @@ const {
   texMathGfm,
   texMathSingleBackslash,
   texMathDoubleBackslash,
+  fancyLists,
   highlightSyntax,
   inlineDiff,
   multilineBlockquote,
@@ -226,6 +233,9 @@ const sourceCode = computed(() => sourceCodePreference.value && !currentFile.val
 const typewriter = computed(() => typewriterPreference.value && !currentFile.value?.readOnly)
 const focus = computed(() => focusPreference.value && !currentFile.value?.readOnly)
 let loadingContent = false
+let releaseViewState: (() => void) | undefined
+let renderedDocumentId: string | null = null
+let renderedMarkdown = ''
 const readingSelectionChanged = () => {
   if (!currentFile.value?.readOnly || !editor.value) return
   const selection = document.getSelection()
@@ -242,11 +252,15 @@ const toSequenceTheme = (value: string): IMuyaOptions['sequenceTheme'] =>
 const defaultFontFamily = DEFAULT_EDITOR_FONT_FAMILY
 const resolveEditorFont = (family: string): string =>
   family ? `${family}, ${defaultFontFamily}` : defaultFontFamily
-const resolveCodeFont = (family: string): string => `${family}, ${DEFAULT_CODE_FONT_FAMILY}`
+const resolveCodeFont = (family: string): string =>
+  family ? `${family}, ${DEFAULT_CODE_FONT_FAMILY}` : DEFAULT_CODE_FONT_FAMILY
 const selectionChange = ref<ISelectionChangePayload | null>(null)
 // `shallowRef`: the engine instance is `markRaw`d anyway, and a deep ref
 // would map `Muya` through `UnwrapRef` and lose the class's own type.
 const editor = shallowRef<Muya | null>(null)
+watch(() => commandCenterStore.activeKeybindings, () => {
+  editor.value?.refreshShortcutHints()
+})
 const isShowClose = ref(false)
 const dialogTableVisible = ref(false)
 const tableChecker = reactive({
@@ -525,6 +539,10 @@ watch(texMathDoubleBackslash, (value, oldValue) => {
   if (value !== oldValue) applyOutlineAffectingOption({ texMathDoubleBackslash: value })
 })
 
+watch(fancyLists, (value, oldValue) => {
+  if (value !== oldValue) applyOutlineAffectingOption({ fancyLists: value })
+})
+
 watch(highlightSyntax, (value, oldValue) => {
   if (value !== oldValue) applyOutlineAffectingOption({ highlightSyntax: value })
 })
@@ -787,8 +805,7 @@ const imageAction = async (
     return destImagePath
   }
 
-  // Use the saved file directory, falling back to the project root for untitled tabs.
-  const isTabSavedOnDisk = !!currentPathname
+  const isTabSavedOnDisk = !!currentPathname && !currentFile.value.isPendingCreation
   let relativeBasePath: string | null = isTabSavedOnDisk
     ? window.path.dirname(currentPathname)
     : null
@@ -1105,6 +1122,11 @@ const rebuildHeadingCache = (): void => {
 // is fractional, and rounding the headings to whole pixels reports the one the
 // caret sits in as the heading above it.
 const updateActiveHeading = (viewportY: number): void => {
+  // Locale and view restoration can rebuild blocks without a content-change event.
+  if (editor.value && headingElementCache.some(({ el }) => !el.isConnected)) {
+    editorStore.REFRESH_TOC(editor.value.getTOC())
+    rebuildHeadingCache()
+  }
   if (headingElementCache.length === 0) return
   const positions: HeadingPosition[] = headingElementCache
     .filter(({ el }) => el.getClientRects().length > 0)
@@ -1187,6 +1209,8 @@ interface ExportOptions {
   footer?: unknown
   headerFooterStyled?: unknown
   htmlTitle?: string
+  tocTitle?: string
+  tocIncludeTopHeading?: boolean
   pageSize?: string
   pageSizeWidth?: number
   pageSizeHeight?: number
@@ -1207,7 +1231,10 @@ const handleExport = async (options: unknown) => {
 
   editorStore.flushActiveEditor()
   const extraCss = await getCssForOptions(opts as unknown as PdfCssOptions)
-  const htmlToc = getHtmlToc(muya.getTOC(), opts as unknown as HtmlTocOptions)
+  const tocOptions = {
+    tocTitle: opts.tocTitle,
+    tocIncludeTopHeading: opts.tocIncludeTopHeading
+  }
   // The hidden WYSIWYG engine keeps its pre-source-mode document until the handoff.
   const markdown = sourceCode.value ? (editorStore.currentFile?.markdown ?? '') : muya.getMarkdown()
   const header = (opts.header ?? null) as HeaderFooterPart | null
@@ -1220,7 +1247,7 @@ const handleExport = async (options: unknown) => {
           title: htmlTitle || '',
           printOptimization: false,
           extraCss,
-          toc: htmlToc,
+          tocOptions,
           dir: props.textDirection
         })
         editorStore.EXPORT({ type, content })
@@ -1250,7 +1277,7 @@ const handleExport = async (options: unknown) => {
           title: '',
           printOptimization: true,
           extraCss,
-          toc: htmlToc,
+          tocOptions,
           header,
           footer,
           headerFooterStyled: headerFooterStyled as boolean | undefined,
@@ -1276,7 +1303,7 @@ const handleExport = async (options: unknown) => {
           title: '',
           printOptimization: true,
           extraCss,
-          toc: htmlToc,
+          tocOptions,
           header,
           footer,
           headerFooterStyled: headerFooterStyled as boolean | undefined,
@@ -1390,6 +1417,8 @@ const setMarkdownToEditor = (payload: unknown) => {
     // `setContent` resets the document and clears the undo history; only set a
     // cursor afterwards (a freshly-opened file has no history to restore).
     editor.value.setContent(newMarkdown ?? '')
+    renderedDocumentId = id ?? currentFile.value?.id ?? null
+    renderedMarkdown = newMarkdown ?? ''
     // Seed baseline ID 0 from engine serialization so undoing the first edit marks the tab clean.
     if (id) {
       resetSyntheticHistory(id, editor.value.getMarkdown())
@@ -1408,6 +1437,7 @@ const setMarkdownToEditor = (payload: unknown) => {
     editorStore.UPDATE_TOC(editor.value.getTOC())
     // A freshly created/opened tab should be ready to type into.
     if (editorStore.TAKE_OPEN_INTENT(currentFile.value?.pathname) !== false) focusFreshEditor()
+    documentViewChanged()
   }
 }
 
@@ -1523,6 +1553,12 @@ const handleFileChange = (payload: unknown) => {
     applyCursor(editor.value, newCursor)
   }
 
+  if (typeof newMarkdown === 'string') {
+    renderedDocumentId = id ?? currentFile.value?.id ?? null
+    renderedMarkdown = newMarkdown
+    documentViewChanged()
+  }
+
   if (typeof scrollTop === 'number') {
     // The synchronous rebuild and rAF scroll restore finish before paint; hiding here forces a second layout (#5860).
     scrollToCords(scrollTop)
@@ -1608,6 +1644,7 @@ const handleLanguageChanged = (newLocale?: unknown) => {
   if (editor.value) {
     const locale = typeof newLocale === 'string' ? newLocale : language.value
     editor.value.locale(getMuyaLocale(locale))
+    editorStore.REFRESH_TOC(editor.value.getTOC())
   }
 }
 const resizeObserverForEditor = new ResizeObserver(handleResetPaddingBottom)
@@ -1618,7 +1655,11 @@ onMounted(() => {
   if (!ele) return
 
   Muya.use(TableChessboard)
-  Muya.use(ParagraphQuickInsertMenu)
+  const shortcuts = createMuyaShortcutResolvers(commandCenterStore.getAccelerator, isMac)
+  Muya.use(ParagraphQuickInsertMenu, {
+    keyboardShortcuts: false,
+    getShortcut: shortcuts.paragraph
+  })
   Muya.use(CodeBlockLanguageSelector)
   Muya.use(EmojiSelector)
   Muya.use(ImagePathPicker)
@@ -1629,9 +1670,12 @@ onMounted(() => {
   })
   Muya.use(ImageResizeBar)
   Muya.use(ImageToolBar)
-  Muya.use(InlineFormatToolbar)
+  Muya.use(InlineFormatToolbar, {
+    keyboardShortcuts: false,
+    getShortcut: shortcuts.format
+  })
   Muya.use(ParagraphFrontButton)
-  Muya.use(ParagraphFrontMenu)
+  Muya.use(ParagraphFrontMenu, { getShortcut: shortcuts.front })
   Muya.use(PreviewToolBar)
   Muya.use(LinkTools, {
     jumpClick
@@ -1669,6 +1713,7 @@ onMounted(() => {
     texMathGfm: texMathGfm.value,
     texMathSingleBackslash: texMathSingleBackslash.value,
     texMathDoubleBackslash: texMathDoubleBackslash.value,
+    fancyLists: fancyLists.value,
     highlightSyntax: highlightSyntax.value,
     inlineDiff: inlineDiff.value,
     multilineBlockquote: multilineBlockquote.value,
@@ -1686,9 +1731,13 @@ onMounted(() => {
     // Read the OS clipboard's plain text for "Paste as Plain Text" (execCommand('paste') no longer fires).
     clipboardText: () => window.electron.clipboard.readText(),
     clipboardWriteText: window.electron.clipboard.writeText,
+    documentId: () => currentFile.value?.pathname || currentFile.value?.id || '',
+    clipboardWriteImage: (data) => copyImageToClipboard(() => readImagePng(data.src), data),
+    clipboardImageAction: (src) => imageAction(clipboardImagePath(src), null),
     fetchLinkHtml: (url) => window.electron.fetchLinkHtml(url),
     // Clipboard and drag-drop handlers read these callbacks from engine options, separately from ImageEditTool.
     imageAction: muyaImageAction,
+    beforeImageDrop,
     getPathForFile: (file: File) => window.electron.webUtils.getPathForFile(file)
   }
 
@@ -1706,6 +1755,9 @@ onMounted(() => {
   const muya = markRaw(new Muya(ele, options))
   muya.init({ focus: editorStore.TAKE_OPEN_INTENT(currentFile.value?.pathname) !== false })
   editor.value = muya
+  muya.on('image-drop-error', () => {
+    void notice.notify({ title: t('editor.imageDrop.failed'), type: 'error' })
+  })
   muya.on(
     'reading-context-menu',
     ({ event, href, image }: { event: MouseEvent; href?: string; image?: string }) => {
@@ -1763,6 +1815,10 @@ onMounted(() => {
   }
 
   const container = getScrollContainer()!
+  renderedDocumentId = currentFile.value?.id ?? null
+  renderedMarkdown = currentFile.value?.markdown ?? ''
+  releaseViewState = registerRenderedViewState({ documentId: () => renderedDocumentId, markdown: () => renderedMarkdown, view: { engine: muya, container, refreshToc: () => editorStore.UPDATE_TOC(muya.getTOC()) } })
+  muya.on('selection-change', documentViewChanged)
 
   bus.on('language-changed', handleLanguageChanged)
 
@@ -1816,6 +1872,8 @@ onMounted(() => {
     const { id } = currentFile.value
     if (!id) return
     const markdown = editor.value.getMarkdown()
+    renderedDocumentId = id
+    renderedMarkdown = markdown
     // Persist engine undo history separately from content-based save tracking.
     const engineHistory = editor.value.getHistory()
     engineHistoryByTab.set(id, engineHistory)
@@ -1835,6 +1893,7 @@ onMounted(() => {
   // The engine does not emit `scroll`; listen on the scroll container directly
   // so the desktop can persist each tab's scroll position.
   scrollHandler = () => {
+    documentViewChanged()
     if (!sourceCode.value) updateActiveHeading(container.getBoundingClientRect().top + 80)
     if (currentFile.value) {
       editorStore.updateScrollPosition(currentFile.value.id, container.scrollTop)
@@ -1845,6 +1904,7 @@ onMounted(() => {
   editor.value.on(
     'heading-copy-link',
     async ({ key, onCopied }: { key: string; onCopied?: (ok: boolean) => void }) => {
+      editorStore.REFRESH_TOC(editor.value?.getTOC() ?? [])
       const ok = await editorStore.copyGithubSlug(key)
       onCopied?.(ok)
     }
@@ -1938,6 +1998,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  releaseViewState?.()
   registerDocumentView(null)
   document.removeEventListener('selectionchange', readingSelectionChanged)
   bus.off('file-loaded', setMarkdownToEditor)

@@ -75,7 +75,9 @@ test('bulk folds survive tab switches, content edits and source mode', async() =
 
 test('commands reveal a hidden outline without modifying or scrolling the document', async() => {
   const editor = page.locator('.mu-editor')
-  await editor.click()
+  const heading = editor.locator('.mu-atx-heading').first()
+  await heading.locator('.mu-plain-text').click()
+  await expect(heading).toHaveClass(/mu-active/)
   const before = await editor.evaluate(el => ({ html: el.innerHTML, scroll: el.scrollTop }))
   await clickMenuById(app, 'tocMenuItem')
   await page.mouse.move(1200, 500)
@@ -104,6 +106,7 @@ test('command palette exposes both actions without default shortcuts', async() =
 test('floating toolbar stays inside the card and supports keyboard activation', async() => {
   const win = await app.browserWindow(page)
   await win.evaluate(window => window.setContentSize(850, 800))
+  await clickMenuById(app, 'tocMenuItem')
   await page.mouse.move(800, 500)
   const outline = page.locator('.document-outline')
   await expect(outline).toHaveClass(/is-floating/)
@@ -130,14 +133,15 @@ test('floating toolbar stays inside the card and supports keyboard activation', 
   await expect.poll(() => visibleLabels(page)).toEqual(ALL_LABELS)
 })
 
-test('flat outlines disable the button and heading-free documents hide it', async() => {
+test('flat outlines disable the button and heading-free documents show an empty pane', async() => {
   await sendIpcToRenderer(app, 'mt::new-untitled-tab', true, '# One\n\n# Two\n')
   await expect.poll(() => visibleLabels(page)).toEqual(['One', 'Two'])
   await expect(page.locator('.outline-bulk-toggle')).toBeDisabled()
   await command(app, 'collapse')
   await expect.poll(() => visibleLabels(page)).toEqual(['One', 'Two'])
   await sendIpcToRenderer(app, 'mt::new-untitled-tab', true, 'Plain paragraph')
-  await expect(page.locator('.document-outline')).toBeHidden()
+  await expect(page.locator('.outline-empty')).toBeVisible()
+  await expect(page.locator('.outline-bulk-toggle')).toBeHidden()
   await command(app, 'expand')
-  await expect(page.locator('.document-outline')).toBeHidden()
+  await expect(page.locator('.outline-empty')).toBeVisible()
 })

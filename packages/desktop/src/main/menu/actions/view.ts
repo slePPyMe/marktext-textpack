@@ -1,6 +1,7 @@
-import { ipcMain, type BrowserWindow, type Menu, type MenuItem } from 'electron'
+import { ipcMain, type BrowserWindow, type Menu } from 'electron'
 import { COMMANDS } from '../../commands'
 import type { CommandManager } from '../../commands'
+import { requireMenuItem } from '../lookup'
 
 type Win = BrowserWindow | null | undefined
 
@@ -10,12 +11,6 @@ const focusModeMenuItemId = 'focusModeMenuItem'
 const toggleTypeMode = (win: Win, type: string): void => {
   if (win && win.webContents) {
     win.webContents.send('mt::toggle-view-mode-entry', type)
-  }
-}
-
-const setLayout = (win: Win, type: string, value: unknown): void => {
-  if (win && win.webContents) {
-    win.webContents.send('mt::set-view-layout', { [type]: value })
   }
 }
 
@@ -57,10 +52,6 @@ export const toggleSidebar = (win: Win): void => {
 
 export const toggleTabBar = (win: Win): void => {
   toggleLayout(win, 'showTabBar')
-}
-
-export const showTabBar = (win: Win): void => {
-  setLayout(win, 'showTabBar', true)
 }
 
 export const showTableOfContents = (win: Win): void => {
@@ -107,11 +98,11 @@ export const viewLayoutChanged = (
   changes: Record<string, unknown>
 ): void => {
   const disableMenuByName = (id: string, value: boolean): void => {
-    const menuItem: MenuItem = applicationMenu.getMenuItemById(id)!
+    const menuItem = requireMenuItem(applicationMenu, id)
     menuItem.enabled = value
   }
   const changeMenuByName = (id: string, value: unknown): void => {
-    const menuItem: MenuItem = applicationMenu.getMenuItemById(id)!
+    const menuItem = requireMenuItem(applicationMenu, id)
     menuItem.checked = !!value
   }
 

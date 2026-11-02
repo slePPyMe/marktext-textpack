@@ -10,6 +10,7 @@ import type {
     TState,
 } from '../../state/types';
 import type { IQuickInsertMenuItem } from '../paragraphQuickInsertMenu/config';
+import type { IBaseOptions, IShortcutHintOptions } from '../types';
 import { replaceBlockByLabel } from '../../block/blockTransforms';
 import { canConvertGithubAlert, convertGithubAlert } from '../../block/githubAlerts';
 import { ScrollPage } from '../../block/scrollPage';
@@ -19,10 +20,12 @@ import { isAnyListState, isAtxHeadingState } from '../../state/types';
 
 import { deepClone, isHTMLElement } from '../../utils';
 import { githubAlertBlockType } from '../../utils/githubAlerts';
+import { toListDelimiter } from '../../utils/listMarker';
 import { h, patch } from '../../utils/snabbdom';
 import BaseFloat from '../baseFloat';
 import { renderMenuIcon } from '../menuIcon';
-import { canTurnIntoMenu, FRONT_MENU } from './config';
+import { getShortcutHint } from '../shortcuts';
+import { canTurnIntoMenu, COPY_AS, COPY_AS_MENU, FRONT_MENU } from './config';
 import './index.css';
 
 const defaultOptions = {
@@ -41,8 +44,9 @@ export class ParagraphFrontMenu extends BaseFloat {
     private _oldVNode: VNode | null = null;
     private _block: Parent | null = null;
     private _frontMenuContainer: HTMLDivElement = document.createElement('div');
+    declare protected options: IBaseOptions & IShortcutHintOptions;
 
-    constructor(muya: Muya, options = {}) {
+    constructor(muya: Muya, options: Partial<IBaseOptions> & IShortcutHintOptions = {}) {
         const name = 'mu-front-menu';
         const opts = Object.assign({}, defaultOptions, options);
         super(muya, name, opts);
@@ -60,6 +64,10 @@ export class ParagraphFrontMenu extends BaseFloat {
         const { container } = this;
         const { eventCenter } = this.muya;
         super.listen();
+        eventCenter.subscribe('shortcut-hints-change', () => {
+            if (this.status && this._block?.parent)
+                this.render();
+        });
 
         eventCenter.subscribe('muya-front-menu', ({ reference, block }) => {
             if (reference) {
@@ -92,7 +100,7 @@ export class ParagraphFrontMenu extends BaseFloat {
                 iconWrapperSelector,
                 {
                     props: {
-                        title: `${i18n.t(title)}\n${subTitle}`,
+                        title: [i18n.t(title), subTitle, getShortcutHint(this.options, label, menuItem.shortCut)].filter(Boolean).join('\n'),
                     },
                 },
                 renderMenuIcon(menuItem),
@@ -132,6 +140,22 @@ export class ParagraphFrontMenu extends BaseFloat {
         return h(subMenuSelector, children);
     }
 
+    private _renderCopyAs() {
+        const { i18n } = this.muya;
+        const formats = COPY_AS_MENU.map(({ label, text }) => h(
+            `li.item.${label}`,
+            { on: { click: event => this.selectItem(event, { label }) } },
+            [h('span.text', i18n.t(text))],
+        ));
+
+        return h(`li.item.${COPY_AS.label}`, [
+            h('div.icon-wrapper', renderMenuIcon(COPY_AS)),
+            h('span.text', i18n.t(COPY_AS.text)),
+            h('div.arrow', '▸'),
+            h('ul.copy-as-menu', formats),
+        ]);
+    }
+
     render() {
         const { _oldVNode: oldVNode, _frontMenuContainer: frontMenuContainer, _block: block } = this;
         const { i18n } = this.muya;
@@ -140,9 +164,10 @@ export class ParagraphFrontMenu extends BaseFloat {
             const iconWrapperSelector = 'div.icon-wrapper';
             const iconWrapper = h(iconWrapperSelector, renderMenuIcon({ icon, label }));
             const textWrapper = h('span.text', i18n.t(text));
-            const shortCutWrapper = h('div.short-cut', [h('span', shortCut)]);
+            const hint = getShortcutHint(this.options, label, shortCut);
+            const shortCutWrapper = hint ? h('div.short-cut', { attrs: { title: hint } }, [h('span', hint)]) : null;
             const itemSelector = `li.item.${label}`;
-            const itemChildren = [iconWrapper, textWrapper, shortCutWrapper];
+            const itemChildren = shortCutWrapper ? [iconWrapper, textWrapper, shortCutWrapper] : [iconWrapper, textWrapper];
 
             return h(
                 itemSelector,
@@ -157,9 +182,11 @@ export class ParagraphFrontMenu extends BaseFloat {
             );
         });
 
-        // Frontmatter can not be duplicated
+        // Frontmatter can not be duplicated or copied as a block
         if (blockName === 'frontmatter')
             children.splice(0, 1);
+        else
+            children.splice(1, 0, this._renderCopyAs());
 
         const subMenu = canTurnIntoMenu(block!);
         if (subMenu.length) {
@@ -191,6 +218,13 @@ export class ParagraphFrontMenu extends BaseFloat {
         this._block = null;
         if (!block?.parent)
             return;
+
+        const format = COPY_AS_MENU.find(item => item.label === label);
+        if (format) {
+            void this.muya.editor.clipboard.copyBlockAs(block, format.copyType);
+            setTimeout(this.hide.bind(this));
+            return;
+        }
 
         const oldState = block.getState();
 
@@ -333,7 +367,8 @@ export class ParagraphFrontMenu extends BaseFloat {
         const loose = sourceMeta.loose;
         const delimiter = 'delimiter' in sourceMeta
             ? sourceMeta.delimiter
-            : orderListDelimiter;
+            : toListDelimiter(orderListDelimiter);
+        const style = 'delimiter' in sourceMeta ? sourceMeta.style : undefined;
         const marker = 'marker' in sourceMeta
             ? sourceMeta.marker
             : bulletListMarker;
@@ -357,7 +392,7 @@ export class ParagraphFrontMenu extends BaseFloat {
         else if (label === 'order-list') {
             state = {
                 name: 'order-list',
-                meta: { delimiter, loose: !!loose, start: 1 },
+                meta: { delimiter, ...(style ? { style } : {}), loose: !!loose, start: 1 },
                 children: childContents.map(children => ({
                     name: 'list-item',
                     children,

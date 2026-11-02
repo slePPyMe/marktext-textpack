@@ -1,3 +1,4 @@
+import type { IClipboardImageCopy } from './clipboard/image';
 import type { TState } from './state/types';
 
 export enum ChangeSource {
@@ -21,9 +22,9 @@ export interface IMuyaOptions {
     autoPairQuote: boolean;
     bulletListMarker: string;
     orderListDelimiter: string;
-    tabSize: number;
+    tabSize: number | 'tab';
     codeBlockLineNumbers: boolean;
-    listIndentation: number;
+    listIndentation: number | 'dfm' | 'tab';
     frontMatter: boolean;
     frontmatterType: string; // '-' | '+' | ';' | '{';
     mermaidTheme: string;
@@ -45,6 +46,7 @@ export interface IMuyaOptions {
     inlineDiff: boolean;
     multilineBlockquote: boolean;
     githubAlerts: boolean;
+    fancyLists: boolean;
     softNewlineAsSpace: boolean;
     autoMoveCheckedToEnd: boolean;
     disableHtml: boolean;
@@ -78,6 +80,12 @@ export interface IMuyaOptions {
      */
     clipboardText?: () => Promise<string>;
     clipboardWriteText?: (text: string) => Promise<boolean>;
+    /** Stable document identity, including unsaved tabs, for preserving copied image references. */
+    documentId?: () => string;
+    /** Called after the copy event commits its text/HTML fallback to the OS clipboard. */
+    clipboardWriteImage?: (data: IClipboardImageCopy) => Promise<boolean>;
+    /** Persist a different document's absolute image URL using the target's insert preferences. */
+    clipboardImageAction?: (src: string) => Promise<string>;
     /**
      * Fetch HTML for pasted HTTP(S) links when the host can bypass browser
      * CSP/CORS restrictions. Muya parses the title and falls back to the URL
@@ -99,6 +107,12 @@ export interface IMuyaOptions {
      * the raw `src` verbatim.
      */
     imageAction?: (state: IImageActionState) => Promise<string>;
+    /**
+     * Check whether a local image drop can proceed before changing the document.
+     * Return undefined for immediate insertion, or a promise resolving to false
+     * to abort. Image persistence still uses imageAction after the check.
+     */
+    beforeImageDrop?: () => Promise<boolean> | undefined;
     /**
      * Resolve a dropped `File` to a local filesystem path.
      *

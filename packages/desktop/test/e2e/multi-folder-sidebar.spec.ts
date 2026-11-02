@@ -24,12 +24,11 @@ test('multi-folder sidebar completes add, search, remove and restore (#2222)', a
   let app: ElectronApplication | undefined
   let page: Page
   try {
-    const launched = await launchElectron([directories[0]], {
+    const launched = await launchElectron([directories[0]], { windowLayout: { showSideBar: true },
       suppressErrorDialog: true,
       preferences: {
         language: 'en',
         startUpAction: 'restoreAll',
-        sideBarVisibility: true,
         autoRevealInSidebar: false,
         openFolderInNewWindow: true
       }
@@ -93,6 +92,7 @@ test('multi-folder sidebar completes add, search, remove and restore (#2222)', a
       .locator('.side-bar-file')
       .filter({ hasText: 'common.md' })
     await secondFile.dblclick()
+    await expect(page.locator('.tabs-container > li.active')).toHaveAttribute('title', path.join(directories[1], 'common.md'))
     await expect(page.locator('.mu-editor')).toBeVisible()
     await page.locator('.mu-editor').click()
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End')
@@ -113,8 +113,18 @@ test('multi-folder sidebar completes add, search, remove and restore (#2222)', a
     await expect(roots().first()).toHaveAttribute('aria-expanded', 'false')
     const userData = await app.evaluate(({ app: electronApp }) => electronApp.getPath('userData'))
     await expectNoRendererErrors(app)
+    await expect.poll(() => {
+      const pathname = path.join(userData, 'state', 'application-state.json')
+      if (!fs.existsSync(pathname)) return false
+      const state = JSON.parse(fs.readFileSync(pathname, 'utf8'))
+      return state.session.windows.some((window: { id: string; documents: Array<{ id: string }> }) => window.documents.some(document => {
+        const record = path.join(userData, 'recovery', window.id, `${document.id}.json`)
+        return fs.existsSync(record) && fs.readFileSync(record, 'utf8').includes('unsaved2222')
+      }))
+    }).toBe(true)
+    await expect.poll(() => JSON.parse(fs.readFileSync(path.join(userData, 'state', 'application-state.json'), 'utf8')).session.windows[0].projectView.roots.some((root: { collapsedPaths: string[] }) => root.collapsedPaths.includes(''))).toBe(true)
     const closed = app.waitForEvent('close')
-    await page.evaluate(() => window.electron.ipcRenderer.send('mt::app-try-quit'))
+    app.process().kill('SIGKILL')
     await closed
     app = await _electron.launch({
       executablePath: getElectronPath(),
@@ -129,7 +139,10 @@ test('multi-folder sidebar completes add, search, remove and restore (#2222)', a
     await expect(page.locator('.mu-editor')).toContainText('unsaved2222')
     await expect(roots().nth(1)).toContainText('third')
   } finally {
-    if (app) await app.close().catch(() => {})
+    if (app) {
+      await app.evaluate(({ app }) => app.exit(0)).catch(() => {})
+      await app.close().catch(() => {})
+    }
     fs.rmSync(fixture, { recursive: true, force: true })
   }
 })

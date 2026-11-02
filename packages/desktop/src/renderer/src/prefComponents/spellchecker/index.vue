@@ -1,31 +1,40 @@
 <template>
   <div class="pref-spellchecker">
-    <h4>{{ t('preferences.spellchecker.title') }}</h4>
+    <h4 v-if="!embedded">
+      {{ t('preferences.spellchecker.title') }}
+    </h4>
     <compound>
       <template #head>
-        <bool
-          :description="t('preferences.spellchecker.enableSpellChecking')"
-          :bool="spellcheckerEnabled"
-          :on-change="handleSpellcheckerEnabled"
-        />
+        <h6 class="title">
+          {{ t('preferences.spellchecker.title') }}
+        </h6>
       </template>
       <template #children>
         <bool
-          :description="t('preferences.spellchecker.hideMarksForErrors')"
+          id="setting-spellcheckerEnabled"
+          :description="preferenceLabel('spellcheckerEnabled')"
+          :bool="spellcheckerEnabled"
+          :on-change="handleSpellcheckerEnabled"
+        />
+        <bool
+          id="setting-spellcheckerNoUnderline"
+          :description="preferenceLabel('spellcheckerNoUnderline')"
           :bool="spellcheckerNoUnderline"
           :disable="!spellcheckerEnabled"
           :on-change="(value) => onSelectChange('spellcheckerNoUnderline', value)"
         />
         <bool
           v-show="isOsx"
-          :description="t('preferences.spellchecker.autoDetectLanguage')"
+          id="setting-spellcheckerAutoDetectLanguage"
+          :description="preferenceLabel('spellcheckerAutoDetectLanguage')"
           :bool="true"
           :disable="true"
           :on-change="noop"
         />
         <cur-select
           v-show="!isOsx"
-          :description="t('preferences.spellchecker.defaultLanguage')"
+          id="setting-spellcheckerLanguage"
+          :description="preferenceLabel('spellcheckerLanguage')"
           :value="spellcheckerLanguage"
           :options="availableDictionaries"
           :disable="!spellcheckerEnabled"
@@ -41,7 +50,10 @@
       {{ t('preferences.spellchecker.autoDetectDescription') }}
     </div>
 
-    <div v-if="!isOsx && spellcheckerEnabled">
+    <div
+      v-if="!isOsx && spellcheckerEnabled"
+      id="setting-customDictionary"
+    >
       <h6 class="title">
         {{ t('preferences.spellchecker.customDictionary.title') }}
       </h6>
@@ -85,6 +97,10 @@
 </template>
 
 <script setup lang="ts">
+defineProps<{ embedded?: boolean }>()
+
+import { preferenceLabel } from '@/prefComponents/registry'
+
 import log from 'electron-log'
 import { usePreferencesStore } from '@/store/preferences'
 import type { PreferencesState } from '@/store/preferences'
@@ -270,18 +286,10 @@ const handleDeleteClick = (selectedItem: CustomDictionaryWord): void => {
 .pref-spellchecker div.el-select-dropdown {
   background: var(--floatBgColor);
   border-color: var(--floatBorderColor);
-  & .popper__arrow {
-    display: none;
-  }
 }
 .pref-spellchecker input.el-input__inner {
-  height: 30px;
   background: transparent;
   color: var(--editorColor);
   border-color: var(--editorColor10);
-}
-.pref-spellchecker .el-input__icon,
-.pref-spellchecker .el-input__inner {
-  line-height: 30px;
 }
 </style>

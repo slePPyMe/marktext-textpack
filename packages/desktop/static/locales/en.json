@@ -245,7 +245,7 @@
       "cancel": "Cancel",
       "openFolder": "Add Folder…",
       "showMoreMatches": "Show more matches",
-      "searchInFolders": "Search in added folders",
+      "searchInFolders": "Find in Folder",
       "partialSearch": "Some folders could not be searched.",
       "noSearchableFolders": "No available folders to search."
     },
@@ -271,6 +271,7 @@
       "expand": "Expand table of contents",
       "collapse": "Collapse table of contents",
       "empty": "No headings",
+      "resize": "Resize table of contents",
       "title": "Table Of Contents",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all"
@@ -279,6 +280,21 @@
       "files": "Files",
       "search": "Search",
       "settings": "Settings"
+    },
+    "move": {
+      "title": "Move file or folder",
+      "confirm": "Move",
+      "question": "Move \"{name}\"?",
+      "detail": "From: {source}\nTo: {destination}\n\nThis changes the actual file location. Relative links and image paths may be affected.",
+      "directoryContents": "The folder and all its contents will be moved.",
+      "completed": "Moved successfully.",
+      "invalidTarget": "Choose another folder within the same open root. Linked paths and moving a folder into itself are not supported.",
+      "crossDevice": "Moving between volumes is not supported here. Use your system file manager.",
+      "conflict": "The destination already contains an item with this name. Rename it before trying again.",
+      "missing": "The source or destination no longer exists. Refresh the folder and try again.",
+      "permission": "The item could not be moved. Check folder permissions and whether another application is using it.",
+      "openElsewhere": "Close this file and any documents inside this folder in other MarkText windows before moving it.",
+      "destinationOpen": "A document is already open at the destination path. Close it before trying again."
     }
   },
   "titleBar": {
@@ -400,103 +416,16 @@
     "title": "Preferences",
     "learnMore": "Learn more about {name}",
     "search": {
-      "placeholder": "Search preferences...",
-      "categories": {
-        "general": "General",
-        "editor": "Editor",
-        "markdown": "Markdown",
-        "theme": "Theme",
-        "image": "Image",
-        "view": "View",
-        "searcher": "Searcher",
-        "watcher": "Watcher",
-        "spelling": "Spelling",
-        "custom css": "Custom CSS"
-      },
-      "items": {
-        "autoSave": "Automatically save the content being edited",
-        "autoSaveDelay": "The time in ms after a change that the file is saved",
-        "titleBarStyle": "The title bar style (Windows and Linux system only)",
-        "openFilesInNewWindow": "Open files in a new window",
-        "openFilesInPreviewMode": "Open sidebar files in preview tabs",
-        "openFolderInNewWindow": "Open folder via menu in a new window",
-        "zoom": "The zoom level. Between 0.5 and 2.0 inclusive",
-        "hideScrollbar": "Whether to hide scrollbars",
-        "wordWrapInToc": "Whether to enable word wrap in TOC",
-        "fileSortBy": "Sort files in opened folder by created time, modified time and title",
-        "startUpAction": "The action after MarkText startup, open the last edited content, open the specified folder or blank page",
-        "restoreLayoutState": "Restore previous editor state on startup",
-        "defaultDirectoryToOpen": "The default directory that should be opened on startup when startUp=folder",
-        "language": "The language MarkText uses",
-        "editorFontFamily": "Editor font family",
-        "fontSize": "Font size in pixels",
-        "lineHeight": "Line Height",
-        "wrapCodeBlocks": "Wrap text inside code blocks",
-        "editorLineWidth": "Defines the maximum editor area width. An empty string or suffixes of ch (characters), px (pixels) or % (percentage) are allowed",
-        "codeFontSize": "Font size in code Block, the range is 12 ~ 18",
-        "codeFontFamily": "Code font family. Applies to inline code and code blocks.",
-        "codeBlockLineNumbers": "Whether to show the line numbers",
-        "sourceCodeLineNumbers": "Show line numbers in source code mode",
-        "trimUnnecessaryCodeBlockEmptyLines": "Trim the beginning and ending empty lines in code block",
-        "autoPairBracket": "Automatically brackets when editing",
-        "autoPairMarkdownSyntax": "Autocomplete markdown syntax",
-        "autoPairQuote": "Automatic completion of quotes",
-        "endOfLine": "The newline character used at the end of each line. The default value is default, which selects your operating system's default newline character",
-        "defaultEncoding": "The default file encoding",
-        "autoGuessEncoding": "Try to automatically guess the file encoding when opening files",
-        "trimTrailingNewline": "The trim trailing newline option",
-        "textDirection": "The writing text direction",
-        "hideQuickInsertHint": "Hide hint for quickly creating paragraphs",
-        "hideLinkPopup": "Hide link popup when the cursor is hover on the link",
-        "autoCheck": "Whether to automatically check related task",
-        "preferLooseListItem": "The preferred list type",
-        "bulletListMarker": "The marker used in bullet list",
-        "orderListDelimiter": "The delimiter used in order list",
-        "preferHeadingStyle": "The preferred heading style in MarkText",
-        "tabSize": "Replace the tab with x spaces",
-        "listIndentation": "Select the indent of list",
-        "frontmatterType": "The frontmatter type",
-        "superSubScript": "Enable pandoc's markdown extension superscript and subscript",
-        "footnote": "Enable pandoc's markdown extension footnote",
-        "texMathDollars": "Enable pandoc's markdown extension tex_math_dollars",
-        "texMathGfm": "Enable pandoc's markdown extension tex_math_gfm",
-        "texMathSingleBackslash": "Enable pandoc's markdown extension tex_math_single_backslash",
-        "texMathDoubleBackslash": "Enable pandoc's markdown extension tex_math_double_backslash",
-        "highlightSyntax": "Enable the non-standard ==text== highlight syntax",
-        "inlineDiff": "Enable the non-standard {+ … +} / [- … -] inline diff syntax",
-        "multilineBlockquote": "Enable the non-standard >>> … >>> multiline blockquote syntax",
-        "githubAlerts": "GitHub Alerts",
-        "isHtmlEnabled": "Enable HTML rendering",
-        "softNewlineAsSpace": "Treat soft newlines as spaces",
-        "sequenceTheme": "Sequence diagram theme",
-        "mermaidLightTheme": "Mermaid theme for light MarkText themes",
-        "mermaidDarkTheme": "Mermaid theme for dark MarkText themes",
-        "plantumlServer": "PlantUML server URL",
-        "theme": "Select the theme used in MarkText",
-        "followSystemTheme": "Follow System Theme",
-        "lightModeTheme": "Theme to use when system is in light mode",
-        "darkModeTheme": "Theme to use when system is in dark mode",
-        "spellcheckerEnabled": "Whether spell checking is enabled",
-        "spellcheckerNoUnderline": "Don't underline spelling mistakes",
-        "spellcheckerLanguage": "The spell checker language",
-        "imageInsertAction": "The default behavior after insert image from local folder",
-        "imagePreferRelativeDirectory": "Whether to prefer the relative image directory",
-        "imageRelativeDirectoryBase": "Where relative images are copied",
-        "imageRelativeDirectoryName": "The relative image folder name",
-        "autoNormalizeLineEndings": "Automatically normalize line endings when opening files. When disabled, files are opened as-is.",
-        "fileSortOrder": "Sort order for files in opened folders: ascending or descending.",
-        "openedFilesInSidebar": "Whether to show opened files in the sidebar.",
-        "showPandocConvert": "Show the Pandoc conversion menu. Requires Pandoc to be installed."
-      }
+      "placeholder": "Search preferences..."
     },
     "categories": {
       "general": "General",
-      "editor": "Editor",
+      "appearance": "Appearance",
+      "editor": "Editing",
+      "files": "Files & saving",
       "markdown": "Markdown",
-      "spelling": "Spelling",
-      "theme": "Theme",
-      "image": "Image",
-      "keybindings": "Keybindings"
+      "images": "Images & export",
+      "keybindings": "Keyboard shortcuts"
     },
     "general": {
       "title": "General",
@@ -516,36 +445,50 @@
         "hideScrollbars": "Hide scrollbars",
         "openFilesInNewWindow": "Open files in new window",
         "openFoldersInNewWindow": "Open folders in new window",
-        "zoom": "Zoom"
+        "zoom": "Zoom",
+        "openFilesInNewWindowNote": "When enabled, files open in a new window. When disabled, they open in tabs in the current window.",
+        "openFoldersInNewWindowNote": "When enabled, folders open in a new window. When disabled, they replace the folder in the current window."
       },
       "startup": {
-        "title": "Startup Options",
-        "layoutOptions": "Layout Options",
-        "startupFilesFolders": "Startup Files/Folders",
-        "restorePreviousState": "Restore previous editor state",
-        "openBlankState": "Open blank state",
-        "openDefaultDirectory": "Open default directory",
-        "openLastFolder": "Restore opened folder",
-        "restoreAll": "Restore all opened files and folders",
+        "title": "Startup and recovery",
+        "openDefaultDirectory": "Open the selected folder",
+        "openLastFolder": "Open the last workspace",
+        "restoreAll": "Restore all windows",
         "selectFolder": "Select Folder",
-        "openBlankPage": "Open blank page"
+        "openBlankPage": "New blank document",
+        "action": "On startup",
+        "restoreLastWindow": "Restore the last active window",
+        "restoreLayoutState": "Restore window layout",
+        "restoreLayoutStateNote": "Restore window size, position, and layouts such as the sidebar on restart.",
+        "restoreEditors": "Restore opened files",
+        "restoreEditorsNote": "Reopen the previous file tabs on restart.",
+        "restoreViewState": "Restore reading positions and selections",
+        "restoreViewStateNote": "Return to the previous reading position and selection when restoring a file.",
+        "failure": "The settings could not be saved. Your previous settings are still in use."
       },
       "pandoc": {
         "title": "Pandoc Conversion",
-        "description": "Show the Pandoc conversion menu",
-        "detailedDescription": "Requires Pandoc to be installed",
+        "description": "Enable Pandoc conversion",
+        "detailedDescription": "Show format conversion commands in the menu. Requires Pandoc to be installed.",
         "found": "Found: {path}",
-        "notFound": "Not found",
-        "recheck": "Re-check"
+        "notFound": "Not found"
       },
       "sidebar": {
-        "title": "Sidebar",
+        "title": "Sidebar and table of contents",
         "wrapTextInToc": "Wrap text in table of contents",
+        "tocPosition": "Default table of contents position",
+        "tocLeft": "Left",
+        "tocRight": "Right",
         "showOpenedFiles": "Show opened files",
         "autoReveal": "Reveal the active file in the sidebar",
         "openFilesInPreviewMode": "Open sidebar files in preview tabs. Editing or double-clicking keeps the tab open.",
-        "excludePatterns": "Exclude patterns",
-        "excludePatternsNotes": "Exclude patterns (Notes)",
+        "excludePatterns": "File tree exclusion rules",
+        "excludePatternsNotes": "Paths matching any glob rule are excluded from the file tree. Press Enter to add a rule and click × to remove one; commas within a rule are preserved. Reopen the folder to fully apply changes.",
+        "removePattern": "Remove",
+        "newPattern": "New exclusion rule",
+        "patternExample": "For example: **/drafts/** or *.tmp",
+        "patternSaveError": "Could not save exclusion rules. The saved rules have been kept. Please try again.",
+        "patternHelp": "Glob pattern syntax",
         "fileSortBy": {
           "title": "File Sort By",
           "creationTime": "Creation Time",
@@ -560,25 +503,24 @@
           "newestFirst": "Newest First"
         }
       },
-      "misc": {
-        "title": "Miscellaneous",
-        "language": {
-          "title": "Language",
-          "english": "English",
-          "chinese": "简体中文",
-          "traditionalChinese": "繁體中文",
-          "spanish": "Español",
-          "french": "Français",
-          "german": "Deutsch",
-          "japanese": "日本語",
-          "korean": "한국어",
-          "dutch": "Nederlands",
-          "portuguese": "Português",
-          "turkish": "Türkçe",
-          "russian": "Русский",
-          "italian": "Italiano"
-        }
-      }
+      "language": {
+        "title": "Language",
+        "english": "English",
+        "chinese": "简体中文",
+        "traditionalChinese": "繁體中文",
+        "spanish": "Español",
+        "french": "Français",
+        "german": "Deutsch",
+        "japanese": "日本語",
+        "korean": "한국어",
+        "dutch": "Nederlands",
+        "portuguese": "Português",
+        "turkish": "Türkçe",
+        "russian": "Русский",
+        "italian": "Italiano",
+        "label": "Interface language"
+      },
+      "openingMode": "Opening mode"
     },
     "editor": {
       "title": "Editor",
@@ -587,7 +529,7 @@
         "fontSize": "Font size",
         "lineHeight": "Line height",
         "fontFamily": "Font family",
-        "maxWidth": "Max width",
+        "maxWidth": "Maximum editor content width",
         "maxWidthNotes": "Maximum width of editor content. Enter a number followed by px, ch (characters) or %, e.g. 800px, 80ch or 60%. Leave empty to use the default width.",
         "maxWidthInvalid": "Enter a number followed by px, ch or %, e.g. 800px.",
         "codeFontFamily": "Code font family",
@@ -595,20 +537,21 @@
       },
       "codeBlock": {
         "title": "Code Block",
-        "fontSize": "Font size",
+        "fontSize": "Code block font size",
         "showLineNumbers": "Show line numbers",
         "removeEmptyLines": "Remove empty lines"
       },
       "writingBehavior": {
-        "title": "Writing Behavior",
+        "title": "Writing preferences",
         "autoCloseBrackets": "Auto close brackets",
-        "autoCompleteMarkdown": "Auto complete markdown",
+        "autoCompleteMarkdown": "Auto-pair Markdown markers",
         "autoCloseQuotes": "Auto close quotes"
       },
       "fileRepresentation": {
         "title": "File Representation",
-        "tabWidth": "Tab width",
-        "lineSeparator": "Line separator",
+        "tabWidth": "Tab key input",
+        "tabInputNotes": "Choose spaces or a real tab character. Existing tabs use four-column tab stops. In lists and tables, Tab adjusts nesting or moves between cells.",
+        "lineSeparator": "Default file line ending",
         "defaultEncoding": "Default encoding",
         "autoDetectEncoding": "Auto detect encoding",
         "trailingNewlines": {
@@ -633,7 +576,7 @@
         },
         "hideQuickInsertHint": "Hide quick insert hint",
         "hideLinkPopup": "Hide link popup",
-        "autoCheck": "Auto check",
+        "autoCheck": "Link parent and child tasks",
         "autoNormalizeLineEndings": "Auto-normalize line endings to LF on open",
         "wrapCodeBlocks": "Wrap code blocks",
         "sourceCodeLineNumbers": "Show line numbers in source code mode"
@@ -649,7 +592,7 @@
       "folderSetting": {
         "title": "Folder Setting",
         "globalFolder": "Global image folder",
-        "open": "Open",
+        "open": "Choose folder…",
         "showInFolder": "Show in Folder",
         "preferRelative": "Prefer relative directory",
         "relativeCopyLocation": "Copy image relative to",
@@ -660,22 +603,19 @@
       },
       "uploader": {
         "title": "Image Uploader",
-        "currentUploader": "Current Uploader: {name}",
-        "picgoNotInstalled": "PicGo is not installed",
-        "picgoInstalled": "PicGo is installed",
-        "picgoDetectionFailed": "PicGo detection failed",
+        "picgoNotInstalled": "PicGo-Core is not installed",
+        "picgoInstalled": "PicGo-Core is installed",
+        "picgoDetectionFailed": "PicGo-Core detection failed",
         "debugInfo": "Debug Info",
         "npmInstallCommand": "npm install picgo -g",
         "yarnInstallCommand": "yarn global add picgo",
         "pnpmInstallCommand": "pnpm add -g picgo",
         "chooseInstallMethod": "Choose installation method:",
-        "retestPicgo": "Retest",
         "lastDetectionTime": "Last Detection Time",
-        "picgoDetection": "PicGo Detection",
         "usageGuide": {
-          "title": "PicGo Basic Usage Guide",
+          "title": "PicGo-Core Basic Usage Guide",
           "step1": "Configure Uploader",
-          "step1Description": "Use the following command to configure PicGo uploader:",
+          "step1Description": "Use the following command to configure PicGo-Core uploader:",
           "step2": "Upload Images",
           "step2Description": "Use the following command to upload images:",
           "step3": "View Configuration",
@@ -683,19 +623,15 @@
           "documentation": "View full documentation"
         },
         "lastSuccessTime": "Last success time",
-        "neverDetected": "Never detected",
-        "neverSuccessful": "Never successful",
         "scriptDescription": "Script Description",
         "scriptLocation": "Script Location",
-        "save": "Save",
-        "saveConfig": "Save Configuration",
-        "scriptConfigSaved": "Script configuration saved",
         "services": {
-          "picgo": "PicGo",
+          "picgo": "PicGo-Core",
           "cliScript": "CLI Script"
         },
         "pleaseInstall": "Please install",
-        "scriptPath": "Script path"
+        "scriptPath": "Script path",
+        "invalidScript": "Enter the path to an existing executable script."
       },
       "defaultBehavior": "The default behavior after pasting or dragging the image to MarkText"
     },
@@ -705,11 +641,11 @@
         "title": "Extensions",
         "superSubScript": "Super/Sub script",
         "footnote": "Footnote",
-        "footnoteNotes": "Footnote notes",
         "texMathDollars": "TeX math with $ and $$",
         "texMathGfm": "GitHub TeX math ($`…`$ and ```math)",
         "texMathSingleBackslash": "TeX math with single-backslash delimiters",
         "texMathDoubleBackslash": "TeX math with double-backslash delimiters",
+        "fancyLists": "Letter and Roman numeral lists",
         "highlightSyntax": "Highlight (==text==)",
         "inlineDiff": "Inline diff ({+ … +})",
         "multilineBlockquote": "Multiline blockquote (>>>)",
@@ -768,42 +704,47 @@
     },
     "theme": {
       "title": "Theme",
-      "followSystemTheme": "Follow System Theme",
-      "followSystemNote": "Following the system locks the theme list below. Turn this off to switch themes freely.",
+      "followSystemTheme": "Follow system appearance",
+      "followSystemNote": "Choose separate themes for dark and light modes below.",
       "modeThemes": "Theme Selection",
       "lightModeTheme": "Light mode theme",
       "darkModeTheme": "Dark mode theme",
       "customCss": "Custom CSS",
-      "importCustomThemes": "Import custom themes",
-      "importTheme": "Import Theme",
-      "openFolder": "Open Folder",
-      "openThemesFolder": "Open themes folder"
+      "chooseTheme": "Choose theme",
+      "chooseFor": "Choose {name}",
+      "searchThemes": "Search themes",
+      "filterLabel": "Theme type",
+      "filter": {
+        "all": "All",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "noResults": "No themes match your search."
     },
     "keybindings": {
       "title": "Keybindings",
-      "description": "Customize keyboard shortcuts",
-      "save": "Save",
+      "description": "To change a shortcut, select its key combination, then press the new key combination",
       "restoreDefaults": "Restore defaults",
       "debugOptions": "Debug Options",
       "dumpKeyboardInfo": "Dump Keyboard Info",
       "failedToSave": "Failed to save keybindings",
-      "keyInputDialog": {
-        "instructions": "Press the key combination you want to assign",
-        "invalidKeybinding": "Invalid key combination",
-        "placeholder": "Press keys..."
-      },
-      "online": "Online",
+      "online": "Keyboard shortcut documentation",
       "saveError": "Error saving keybindings",
       "shortcutInUse": "Shortcut in use",
-      "shortcutInUseMessage": "This shortcut is already assigned to {accelerator}",
-      "table": {
-        "description": "Description",
-        "edit": "Edit",
-        "keyCombination": "Key Combination",
-        "options": "Options",
-        "reset": "Reset",
-        "unbind": "Unbind"
+      "shortcutInUseMessage": "{accelerator} is already assigned to {commands}.",
+      "windowAndNavigation": "Window and navigation",
+      "loadError": "Could not load keyboard shortcuts.",
+      "reload": "Reload",
+      "viewConflict": "View {name}",
+      "editShortcut": "Edit shortcut for {name}",
+      "unbound": "Not assigned",
+      "recorder": {
+        "placeholder": "Press key combination",
+        "invalidKeybinding": "Invalid key combination"
       }
+    },
+    "fontStack": {
+      "noMatches": "No matching fonts"
     },
     "selectFont": "Select Font",
     "spellchecker": {
@@ -821,6 +762,16 @@
       "enableSpellChecking": "Enable spell checking",
       "hideMarksForErrors": "Hide marks for spelling errors",
       "title": "Spell Checker"
+    },
+    "explanations": {
+      "taskCascade": "Checking a parent updates its subtasks; changing subtasks updates their parent.",
+      "markdownPairs": "Complete paired Markdown markers such as asterisks, underscores and backticks as you type.",
+      "lineEndings": "Used for new files and files with mixed or undetected line endings. Existing LF or CRLF files keep their detected format."
+    },
+    "commandDetection": {
+      "checking": "Checking…",
+      "recheck": "Check again",
+      "failed": "Detection failed. Please check again."
     }
   },
   "about": {
@@ -1038,6 +989,11 @@
     "unexpectedError": "Unexpected spellchecker error"
   },
   "editor": {
+    "imageDrop": {
+      "saveTitle": "Save document to use a relative image directory",
+      "saveMessage": "Saving the document will store the image in the configured relative directory. Canceling will store the image in the global image directory.",
+      "failed": "Could not insert the image"
+    },
     "export": {
       "error": "Export error",
       "errorExporting": "Error exporting {type} file",

@@ -1,377 +1,291 @@
 <template>
   <div class="pref-keybindings">
     <h4>{{ t('preferences.keybindings.title') }}</h4>
-    <section class="keybindings">
-      <div class="text">
-        {{ t('preferences.keybindings.description') }}
-        <icon-tooltip :content="t('preferences.keybindings.online')">
-          <button
-            type="button"
-            class="plain-button link"
-            :aria-label="t('preferences.keybindings.online')"
-            @click="openKeybindingDocs"
+    <setting-note class="shortcut-introduction">
+      {{ t('preferences.keybindings.description') }}
+      <help-link
+        class="shortcut-docs"
+        href="https://marktext.me/docs/key-bindings"
+        :label="t('preferences.keybindings.online')"
+      />
+    </setting-note>
+    <div
+      class="shortcut-content"
+      :aria-busy="loading"
+    >
+      <p
+        v-if="loadError"
+        role="alert"
+        class="shortcut-load-error"
+      >
+        {{ t('preferences.keybindings.loadError') }}
+        <el-button @click="keybindings.ensureLoaded()">
+          {{ t('preferences.keybindings.reload') }}
+        </el-button>
+      </p>
+      <section
+        v-for="group in groups"
+        :key="group.id"
+        class="shortcut-group"
+        :aria-labelledby="`shortcut-group-${group.id}`"
+      >
+        <h5 :id="`shortcut-group-${group.id}`">
+          {{ t(commandGroupLabels[group.id]) }}
+        </h5>
+        <ul class="shortcut-list">
+          <li
+            v-for="command in group.commands"
+            :key="command.id"
+            class="shortcut-row"
           >
-            <LinkIcon
-              :size="14"
-              class="link-icon"
-            />
-          </button>
-        </icon-tooltip>.
-      </div>
-      <el-table
-        :data="keybindingList"
-        style="width: 100%"
+            <div class="shortcut-command">
+              <el-switch
+                :model-value="Boolean(command.accelerator)"
+                :aria-label="command.description"
+                :disabled="isSaving || loading"
+                @change="handleToggle(command, $event)"
+              />
+              <span
+                :id="settingTargetId(keybindingKey(command.id))"
+                class="shortcut-name"
+              >{{ command.description }}</span>
+            </div>
+            <div class="shortcut-row-controls">
+              <shortcut-recorder
+                v-if="selectedShortcutId === command.id"
+                :command-name="command.description"
+                @commit="onKeybinding(command.id, $event)"
+                @cancel="cancelRecording"
+              />
+              <button
+                v-else
+                type="button"
+                class="shortcut-accelerator"
+                :class="{ 'is-unbound': !command.accelerator }"
+                :aria-label="t('preferences.keybindings.editShortcut', { name: command.description })"
+                :disabled="isSaving || !command.accelerator"
+                @click="handleEditClick(command)"
+              >
+                <kbd v-if="command.accelerator || command.defaultAccelerator">{{ acceleratorToLabel(command.accelerator || command.defaultAccelerator, isMac) }}</kbd>
+                <span v-else>{{ t('preferences.keybindings.unbound') }}</span>
+              </button>
+            </div>
+          </li>
+        </ul>
+      </section>
+      <details
+        v-if="showDebugTools"
+        class="keyboard-debug"
       >
-        <el-table-column
-          prop="description"
-          :label="t('preferences.keybindings.table.description')"
-          min-width="220"
-        />
-        <el-table-column
-          prop="accelerator"
-          :label="t('preferences.keybindings.table.keyCombination')"
-          min-width="160"
-        />
-        <el-table-column
-          :label="t('preferences.keybindings.table.options')"
-          min-width="90"
-        >
-          <template #default="scope">
-            <icon-tooltip :content="t('preferences.keybindings.table.edit')">
-              <el-button
-                type="text"
-                size="small"
-                :aria-label="t('preferences.keybindings.table.edit')"
-                @click="handleEditClick(scope.$index, scope.row)"
-              >
-                <Edit
-                  width="14"
-                  height="14"
-                />
-              </el-button>
-            </icon-tooltip>
-            <icon-tooltip :content="t('preferences.keybindings.table.reset')">
-              <el-button
-                type="text"
-                size="small"
-                :aria-label="t('preferences.keybindings.table.reset')"
-                @click="handleResetClick(scope.$index, scope.row)"
-              >
-                <RefreshRight
-                  width="14"
-                  height="14"
-                />
-              </el-button>
-            </icon-tooltip>
-            <icon-tooltip :content="t('preferences.keybindings.table.unbind')">
-              <el-button
-                type="text"
-                size="small"
-                :aria-label="t('preferences.keybindings.table.unbind')"
-                @click="handleUnbindClick(scope.$index, scope.row)"
-              >
-                <Delete
-                  width="14"
-                  height="14"
-                />
-              </el-button>
-            </icon-tooltip>
-          </template>
-        </el-table-column>
-      </el-table>
-    </section>
-    <section class="footer">
-      <separator />
+        <summary>{{ t('preferences.keybindings.debugOptions') }}</summary>
+        <el-button @click="dumpKeyboardInformation">
+          {{ t('preferences.keybindings.dumpKeyboardInfo') }}
+        </el-button>
+      </details>
+    </div>
+    <footer class="footer">
       <el-button
-        size="medium"
-        @click="saveKeybindings"
-      >
-        {{ t('preferences.keybindings.save') }}
-      </el-button>
-      <el-button
-        size="medium"
+        :disabled="loading || isSaving || !hasCustomBindings"
         @click="restoreDefaults"
       >
         {{ t('preferences.keybindings.restoreDefaults') }}
       </el-button>
-    </section>
-    <section
-      v-if="showDebugTools"
-      class="keyboard-debug"
-    >
-      <separator />
-      <div>
-        <strong>{{ t('preferences.keybindings.debugOptions') }}:</strong>
-      </div>
-      <el-button
-        size="medium"
-        @click="dumpKeyboardInformation"
-      >
-        {{ t('preferences.keybindings.dumpKeyboardInfo') }}
-      </el-button>
-    </section>
-    <key-input-dialog
-      :show-with-id="selectedShortcutId"
-      :on-commit="onKeybinding"
-    />
+    </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import log from 'electron-log'
-import { setKeyboardLayout } from '@hfelix/electron-localshortcut'
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import Separator from '../common/separator/index.vue'
-import KeyInputDialog from './key-input-dialog.vue'
-import KeybindingConfigurator from './KeybindingConfigurator'
+import { computed, ref, onMounted, watch, nextTick } from 'vue'
+import { storeToRefs } from 'pinia'
+import SettingNote from '../common/settingNote.vue'
+import ShortcutRecorder from './shortcutRecorder.vue'
 import type { UiKeybinding } from './KeybindingConfigurator'
+import { useKeybindingsStore } from '@/store/keybindings'
+import { commandGroups, commandGroupLabels, getCommandGroup, keybindingKey } from './groups'
+import { useRouter } from 'vue-router'
 import notice from '@/services/notification'
-import { Edit, RefreshRight, Delete } from '@element-plus/icons-vue'
-import LinkIcon from '@/components/icons/LinkIcon.vue'
-import IconTooltip from '@/components/iconTooltip/index.vue'
+import { settingTargetId, openSetting } from '../settingLocation'
+import { acceleratorToLabel } from '@/util/accelerator'
+import { isMac } from '@/util'
+import HelpLink from '../common/helpLink.vue'
 import { useI18n } from 'vue-i18n'
 
-const { t, locale } = useI18n()
-
-const showDebugTools = ref<boolean>(false)
-const keybindingConfigurator = ref<KeybindingConfigurator | null>(null)
+const { t } = useI18n()
+const keybindings = useKeybindingsStore()
+const { commands: keybindingList, hasCustomBindings, saving: isSaving, loading, loadError, conflict } = storeToRefs(keybindings)
+const groups = computed(() => commandGroups.map(id => ({
+  id,
+  commands: keybindingList.value.filter(command => getCommandGroup(command.id) === id)
+})).filter(group => group.commands.length > 0))
+const router = useRouter()
+watch(conflict, (value) => {
+  if (!value) return
+  notice.notify({
+    type: 'warning',
+    title: t('preferences.keybindings.shortcutInUse'),
+    message: t('preferences.keybindings.shortcutInUseMessage', {
+      accelerator: value.accelerator,
+      commands: value.commands.map(command => command.description).join(', ')
+    }),
+    actions: value.commands.map(command => ({
+      label: t('preferences.keybindings.viewConflict', { name: command.description }),
+      onClick: () => { void openSetting(router, 'keybindings', keybindingKey(command.id)) }
+    }))
+  })
+})
 const selectedShortcutId = ref<string | null>(null)
-const keybindingList = ref<UiKeybinding[]>([])
-
-const rebuildKeybindingList = (): void => {
-  if (keybindingConfigurator.value) {
-    keybindingList.value = keybindingConfigurator.value.rebuildKeybindingList()
-  }
-}
-
-watch(locale, () => {
-  rebuildKeybindingList()
-})
-
-onMounted(() => {
-  window.electron.ipcRenderer
-    .invoke('mt::keybinding-get-keyboard-info')
-    .then(({ layout, keymap }) => {
-      // Update the key mapper to prevent problems on non-US keyboards.
-      setKeyboardLayout(layout, keymap)
-    })
-    .catch((error) => log.error('Error while loading keyboard information for settings:', error))
-
-  window.electron.ipcRenderer
-    .invoke('mt::keybinding-get-pref-keybindings')
-    .then(({ defaultKeybindings, userKeybindings }) => {
-      const configurator = new KeybindingConfigurator(defaultKeybindings, userKeybindings)
-      keybindingConfigurator.value = configurator
-      keybindingList.value = configurator.getKeybindings()
-    })
-    .catch((error) => log.error('Error while loading keyboard information for settings:', error))
-
-  // Show keyboard debugging tools which has been moved from CLI because we
-  // need an active window on Windows.
-  showDebugTools.value = Boolean(window.marktext?.env?.debug)
-})
-
-onUnmounted(() => {
-  keybindingList.value = []
-  keybindingConfigurator.value = null
-})
-
-const openKeybindingDocs = (): void => {
-  window.electron.shell.openExternal(
-    'https://marktext.me/docs/key-bindings'
-  )
-}
-
-const saveKeybindings = (): void => {
-  if (keybindingConfigurator.value && keybindingList.value.length > 0) {
-    keybindingConfigurator.value
-      .save()
-      .then((success) => {
-        if (!success) {
-          notice.notify({
-            title: t('preferences.keybindings.failedToSave'),
-            type: 'error',
-            message: t('preferences.keybindings.saveError')
-          })
-        }
-      })
-      .catch((error) => log.error(error))
-  }
-}
+const showDebugTools = Boolean(window.marktext?.env?.debug)
+onMounted(() => { void keybindings.ensureLoaded() })
 
 const restoreDefaults = (): void => {
-  if (!keybindingConfigurator.value) return
-  keybindingConfigurator.value
-    .resetAll()
-    .then((success) => {
-      if (!success) {
-        notice.notify({
-          title: t('preferences.keybindings.failedToSave'),
-          type: 'error',
-          message: t('preferences.keybindings.saveError')
-        })
-      }
-    })
-    .catch((error) => log.error(error))
-}
-
-const handleEditClick = (index: number, entry: UiKeybinding | undefined): void => {
-  if (index >= 0 && entry) {
-    selectedShortcutId.value = entry.id
-  }
-}
-
-const handleResetClick = (_index: number, entry: UiKeybinding): void => {
-  if (!keybindingConfigurator.value) return
-  const { id } = entry
-  const success = keybindingConfigurator.value.resetToDefault(id)
-  if (!success) {
-    handleDuplicateShortcut(id, keybindingConfigurator.value.getDefaultAccelerator(id) ?? '')
-  }
-}
-
-const handleUnbindClick = (_index: number, entry: UiKeybinding): void => {
-  keybindingConfigurator.value?.unbind(entry.id)
-}
-
-const onKeybinding = (value: string | null): void => {
-  const selectedId = selectedShortcutId.value
-  if (value && selectedId && keybindingConfigurator.value) {
-    const success = keybindingConfigurator.value.change(selectedId, value)
-    if (!success) {
-      handleDuplicateShortcut(selectedId, value)
-    }
-  }
   selectedShortcutId.value = null
+  void keybindings.resetAll()
 }
-
-const handleDuplicateShortcut = (_id: string, accelerator: string): void => {
-  notice.notify({
-    title: t('preferences.keybindings.shortcutInUse'),
-    type: 'warning',
-    message: t('preferences.keybindings.shortcutInUseMessage', { accelerator })
-  })
+const handleEditClick = (entry: UiKeybinding): void => {
+  if (!isSaving.value && entry.accelerator) selectedShortcutId.value = entry.id
 }
-
+const focusShortcut = (id: string): void => {
+  const row = document.getElementById(settingTargetId(keybindingKey(id)))?.closest('li')
+  row?.querySelector<HTMLButtonElement>('.shortcut-accelerator')?.focus()
+}
+const cancelRecording = (restoreFocus = false): void => {
+  const id = selectedShortcutId.value
+  selectedShortcutId.value = null
+  if (restoreFocus && id) {
+    void nextTick(() => focusShortcut(id))
+  }
+}
+const handleToggle = (entry: UiKeybinding, enabled: boolean | string | number): void => {
+  if (isSaving.value) return
+  cancelRecording()
+  if (enabled) {
+    if (entry.defaultAccelerator) {
+      void keybindings.reset(entry.id)
+    } else {
+      selectedShortcutId.value = entry.id
+    }
+  } else {
+    void keybindings.unbind(entry.id)
+  }
+}
+const onKeybinding = async(id: string, value: string): Promise<void> => {
+  cancelRecording()
+  await keybindings.change(id, value)
+  await nextTick()
+  focusShortcut(id)
+}
 const dumpKeyboardInformation = (): void => {
   window.electron.ipcRenderer.send('mt::keybinding-debug-dump-keyboard-info')
 }
 </script>
 
 <style scoped>
-.pref-keybindings {
-  & .keyboard-debug,
-  & .keybindings {
-    font-size: 14px;
-    margin: 20px 0;
-    color: var(--editorColor);
-    & .link {
-      cursor: pointer;
-    }
-  }
-  & .keybindings > div.text {
-    margin-bottom: 10px;
-  }
-  & .link {
-    color: var(--themeColor);
-    cursor: pointer;
-    & .link-icon {
-      margin-left: 2px;
-      vertical-align: -2px;
-      opacity: 0.7;
-      color: var(--iconColor);
-    }
-    & .link-icon:hover {
-      color: var(--themeColor);
-    }
-  }
-  & button.el-button {
-    font-size: 13px;
-  }
-}
-.el-table,
-.el-table__expanded-cell {
-  background: var(--editorBgColor);
-}
-/* 24px is the minimum target size in WCAG 2.5.8; the rows put three of these
-   buttons 4px apart, too close for the spacing exception. */
-.el-table button {
-  min-width: 24px;
-  min-height: 24px;
-  padding: 5px;
-  margin: 4px 0px;
-  color: var(--themeColor);
-  background: none;
-  border: none;
-}
-.el-table button:not(:last-child) {
-  margin-right: 4px;
-}
-.el-table button:hover,
-.el-table button:active {
-  opacity: 0.9;
-  background: none;
-}
-</style>
-<style>
-.pref-keybindings .el-table table {
-  margin: 0;
-  border: none;
-}
-.pref-keybindings .el-table th,
-.pref-keybindings .el-table tr {
-  background: var(--editorBgColor) !important;
-}
-/* Element Plus colours table text with its own --el-text-color-regular grey,
-   which the app never themes — so the list rendered as low-contrast grey on
-   every theme (≈2.3:1 on dark themes, well below WCAG AA). Use the theme's own
-   editor text colour so the bindings stay readable everywhere (#3937). */
-.pref-keybindings .el-table,
-.pref-keybindings .el-table th.el-table__cell,
-.pref-keybindings .el-table td.el-table__cell {
+.pref-keybindings.pref-setting {
+  --shortcut-footer-height: 65px;
+
+  container-type: normal;
+  margin-bottom: var(--shortcut-footer-height);
   color: var(--editorColor);
 }
-.pref-keybindings .el-table th.el-table__cell.is-leaf,
-.pref-keybindings .el-table th,
-.pref-keybindings .el-table td {
-  border: none;
+.shortcut-introduction { margin: 20px 0 28px; }
+.shortcut-docs {
+  margin-left: 4px;
+  vertical-align: -2px;
 }
-.pref-keybindings .el-table th.el-table__cell.is-leaf:last-child,
-.pref-keybindings .el-table th:last-child,
-.pref-keybindings .el-table td:last-child {
-  border-right: 1px solid var(--tableBorderColor);
+.shortcut-content { container-type: inline-size; }
+.shortcut-group + .shortcut-group { margin-top: 28px; }
+.shortcut-group h5 {
+  margin: 0 0 8px;
+  color: var(--editorColor80);
+  font-size: 14px;
 }
-.pref-keybindings .el-table--border::after,
-.pref-keybindings .el-table--group::after,
-.pref-keybindings .el-table::before,
-.pref-keybindings .el-table__fixed-right::before,
-.pref-keybindings .el-table__fixed::before {
-  background: var(--tableBorderColor);
-}
-/* Element Plus paints the hovered row via --el-table-row-hover-bg-color, which
-   defaults to the light --el-fill-color-light — a near-white bar that hides the
-   theme-coloured text on dark themes. Point it at the theme's own selection
-   colour so hovered rows stay readable on every theme (follow-up to #3937). */
-.pref-keybindings .el-table {
-  --el-table-row-hover-bg-color: var(--selectionColor);
-}
-.pref-keybindings .el-table .el-table__cell {
-  padding: 2px 0;
+.shortcut-list {
+  list-style: none;
   margin: 0;
+  padding: 0;
 }
-.pref-keybindings .el-table,
-.pref-keybindings .el-table .el-table__inner-wrapper,
-.pref-keybindings .el-table .el-table__body-wrapper,
-.pref-keybindings .el-table .el-scrollbar,
-.pref-keybindings .el-table .el-scrollbar__wrap,
-.pref-keybindings .el-table .el-scrollbar__view {
-  height: auto !important;
-  max-height: none !important;
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--editorColor10);
+  font-size: 14px;
 }
-.pref-keybindings .el-table .el-scrollbar__wrap {
-  overflow: visible !important;
+.shortcut-row:last-child { border-bottom: none; }
+.shortcut-command {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
-.pref-keybindings .el-table .el-scrollbar__bar {
-  display: none !important;
+.shortcut-command .el-switch { flex-shrink: 0; }
+.shortcut-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.shortcut-row-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.shortcut-accelerator {
+  min-width: 44px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--editorColor80);
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+  transition: background-color 120ms ease;
+}
+.shortcut-accelerator kbd {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+}
+.shortcut-accelerator.is-unbound { color: var(--editorColor50); }
+.shortcut-accelerator:not(:disabled):hover { background: var(--editorColor10); }
+.shortcut-accelerator:focus-visible {
+  outline: 2px solid var(--themeColor);
+  outline-offset: 2px;
+}
+.shortcut-accelerator:disabled { opacity: 0.5; cursor: default; }
+.footer {
+  position: fixed;
+  left: var(--prefSideBarWidth);
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  height: var(--shortcut-footer-height);
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  padding: 16px 40px;
+  background: var(--editorBgColor);
+  border-top: 1px solid var(--editorColor10);
+}
+.keyboard-debug {
+  margin-top: 28px;
+  font-size: 14px;
+}
+.keyboard-debug summary { cursor: pointer; margin-bottom: 12px; }
+.shortcut-load-error { font-size: 14px; }
+@container (max-width: 480px) {
+  .shortcut-row { gap: 8px; }
+  .shortcut-row-controls { gap: 0; }
+  .shortcut-accelerator { min-width: 44px; padding: 6px 10px; }
 }
 </style>

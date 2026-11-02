@@ -245,7 +245,7 @@
       "cancel": "Annuleren",
       "openFolder": "Add Folder…",
       "showMoreMatches": "Meer resultaten tonen",
-      "searchInFolders": "Search in added folders",
+      "searchInFolders": "Zoeken in map",
       "partialSearch": "Some folders could not be searched.",
       "noSearchableFolders": "No available folders to search."
     },
@@ -271,6 +271,7 @@
       "expand": "Inhoudsopgave uitklappen",
       "collapse": "Inhoudsopgave inklappen",
       "empty": "Geen koppen",
+      "resize": "Breedte van inhoudsopgave aanpassen",
       "title": "Inhoudsopgave",
       "expandAll": "Alles uitklappen",
       "collapseAll": "Alles inklappen"
@@ -279,6 +280,21 @@
       "files": "Bestanden",
       "search": "Zoeken",
       "settings": "Instellingen"
+    },
+    "move": {
+      "title": "Move file or folder",
+      "confirm": "Move",
+      "question": "Move \"{name}\"?",
+      "detail": "From: {source}\nTo: {destination}\n\nThis changes the actual file location. Relative links and image paths may be affected.",
+      "directoryContents": "The folder and all its contents will be moved.",
+      "completed": "Moved successfully.",
+      "invalidTarget": "Choose another folder within the same open root. Linked paths and moving a folder into itself are not supported.",
+      "crossDevice": "Moving between volumes is not supported here. Use your system file manager.",
+      "conflict": "The destination already contains an item with this name. Rename it before trying again.",
+      "missing": "The source or destination no longer exists. Refresh the folder and try again.",
+      "permission": "The item could not be moved. Check folder permissions and whether another application is using it.",
+      "openElsewhere": "Close this file and any documents inside this folder in other MarkText windows before moving it.",
+      "destinationOpen": "A document is already open at the destination path. Close it before trying again."
     }
   },
   "titleBar": {
@@ -400,102 +416,15 @@
     "title": "Voorkeuren",
     "learnMore": "Meer informatie over {name}",
     "search": {
-      "placeholder": "Voorkeuren zoeken...",
-      "categories": {
-        "general": "Algemeen",
-        "editor": "Editor",
-        "markdown": "Markdown",
-        "theme": "Thema",
-        "image": "Afbeelding",
-        "view": "Weergave",
-        "searcher": "Zoeker",
-        "watcher": "Watcher",
-        "spelling": "Spelling",
-        "custom css": "Aangepaste CSS"
-      },
-      "items": {
-        "autoSave": "Automatisch de bewerkte inhoud opslaan",
-        "autoSaveDelay": "De tijd in ms na een wijziging voordat het bestand wordt opgeslagen",
-        "titleBarStyle": "De titelbalkstijl (alleen Windows en Linux)",
-        "openFilesInNewWindow": "Bestanden openen in een nieuw venster",
-        "openFilesInPreviewMode": "Bestanden in de zijbalk openen in voorbeeldtabbladen",
-        "openFolderInNewWindow": "Map openen via menu in een nieuw venster",
-        "zoom": "Het zoomniveau. Tussen 0,5 en 2,0",
-        "hideScrollbar": "Schuifbalken verbergen",
-        "wordWrapInToc": "Tekstterugloop in inhoudsopgave",
-        "fileSortBy": "Bestanden sorteren op aanmaaktijd, wijzigingstijd of titel",
-        "startUpAction": "De actie na het opstarten van MarkText",
-        "restoreLayoutState": "Vorige editorstatus herstellen bij opstarten",
-        "defaultDirectoryToOpen": "De standaardmap die geopend wordt bij opstarten",
-        "language": "De taal die MarkText gebruikt",
-        "editorFontFamily": "Lettertype van de editor",
-        "fontSize": "Lettergrootte in pixels",
-        "lineHeight": "Regelhoogte",
-        "wrapCodeBlocks": "Tekst terugloop in codeblokken",
-        "editorLineWidth": "Maximale breedte van het editorgebied",
-        "codeFontSize": "Lettergrootte in codeblokken (12-18)",
-        "codeFontFamily": "Lettertype voor code. Van toepassing op inlinecode en codeblokken.",
-        "codeBlockLineNumbers": "Regelnummers tonen",
-        "sourceCodeLineNumbers": "Regelnummers tonen in broncodeweergave",
-        "trimUnnecessaryCodeBlockEmptyLines": "Lege regels aan begin en einde van codeblokken verwijderen",
-        "autoPairBracket": "Automatisch haakjes aanvullen bij bewerken",
-        "autoPairMarkdownSyntax": "Markdown-syntax automatisch aanvullen",
-        "autoPairQuote": "Automatisch aanhalingstekens aanvullen",
-        "endOfLine": "Het regeleindeteken aan het einde van elke regel",
-        "defaultEncoding": "De standaard bestandscodering",
-        "autoGuessEncoding": "Probeer automatisch de bestandscodering te detecteren",
-        "trimTrailingNewline": "Optie voor afsluitende lege regels",
-        "textDirection": "De schrijfrichting van de tekst",
-        "hideQuickInsertHint": "Hint voor snel invoegen verbergen",
-        "hideLinkPopup": "Link-popup verbergen als cursor op link staat",
-        "autoCheck": "Automatisch gerelateerde taak aanvinken",
-        "preferLooseListItem": "Het voorkeurs lijsttype",
-        "bulletListMarker": "Het teken voor opsommingslijsten",
-        "orderListDelimiter": "Het scheidingsteken voor genummerde lijsten",
-        "preferHeadingStyle": "De voorkeursstijl voor koppen",
-        "tabSize": "Tab vervangen door x spaties",
-        "listIndentation": "Inspringkeuze voor lijsten",
-        "frontmatterType": "Het type Front Matter",
-        "superSubScript": "Pandoc superscript en subscript inschakelen",
-        "footnote": "Pandoc voetnoten inschakelen",
-        "texMathDollars": "Pandocs markdown-extensie tex_math_dollars inschakelen",
-        "texMathGfm": "Pandocs markdown-extensie tex_math_gfm inschakelen",
-        "texMathSingleBackslash": "Pandocs markdown-extensie tex_math_single_backslash inschakelen",
-        "texMathDoubleBackslash": "Pandocs markdown-extensie tex_math_double_backslash inschakelen",
-        "highlightSyntax": "De niet-standaard ==tekst==-markeringssyntaxis inschakelen",
-        "inlineDiff": "De niet-standaard inline-diff-syntaxis {+ … +} / [- … -] inschakelen",
-        "multilineBlockquote": "De niet-standaard meerregelige citaatsyntaxis >>> … >>> inschakelen",
-        "githubAlerts": "GitHub-meldingen",
-        "isHtmlEnabled": "HTML-weergave inschakelen",
-        "softNewlineAsSpace": "Zachte regeleinden als spaties behandelen",
-        "sequenceTheme": "Sequentiediagram thema",
-        "mermaidLightTheme": "Mermaid-thema voor lichte MarkText-thema's",
-        "mermaidDarkTheme": "Mermaid-thema voor donkere MarkText-thema's",
-        "plantumlServer": "PlantUML server-URL",
-        "theme": "Selecteer het thema voor MarkText",
-        "followSystemTheme": "Systeemthema volgen",
-        "lightModeTheme": "Thema voor lichte modus",
-        "darkModeTheme": "Thema voor donkere modus",
-        "spellcheckerEnabled": "Spellingcontrole inschakelen",
-        "spellcheckerNoUnderline": "Spelfouten niet onderstrepen",
-        "spellcheckerLanguage": "Taal voor spellingcontrole",
-        "imageInsertAction": "Standaardgedrag na invoegen van afbeelding",
-        "imagePreferRelativeDirectory": "Relatieve afbeeldingsmap prefereren",
-        "imageRelativeDirectoryBase": "Waar relatieve afbeeldingen worden gekopieerd",
-        "imageRelativeDirectoryName": "Naam van de relatieve afbeeldingsmap",
-        "autoNormalizeLineEndings": "Regeleindes automatisch normaliseren bij het openen van bestanden. Indien uitgeschakeld worden bestanden ongewijzigd geopend.",
-        "fileSortOrder": "Sorteervolgorde voor bestanden in geopende mappen: oplopend of aflopend.",
-        "openedFilesInSidebar": "Geopende bestanden tonen in de zijbalk.",
-        "showPandocConvert": "Het Pandoc-conversiemenu tonen. Vereist een installatie van Pandoc."
-      }
+      "placeholder": "Voorkeuren zoeken..."
     },
     "categories": {
       "general": "Algemeen",
-      "editor": "Editor",
+      "appearance": "Uiterlijk",
+      "editor": "Bewerken",
+      "files": "Bestanden en opslaan",
       "markdown": "Markdown",
-      "spelling": "Spelling",
-      "theme": "Thema",
-      "image": "Afbeelding",
+      "images": "Afbeeldingen en export",
       "keybindings": "Sneltoetsen"
     },
     "general": {
@@ -516,36 +445,50 @@
         "hideScrollbars": "Schuifbalken verbergen",
         "openFilesInNewWindow": "Bestanden in nieuw venster openen",
         "openFoldersInNewWindow": "Mappen in nieuw venster openen",
-        "zoom": "Zoom"
+        "zoom": "Zoom",
+        "openFilesInNewWindowNote": "Indien ingeschakeld, openen bestanden in een nieuw venster. Anders openen ze in tabbladen in het huidige venster.",
+        "openFoldersInNewWindowNote": "Indien ingeschakeld, openen mappen in een nieuw venster. Anders vervangen ze de map in het huidige venster."
       },
       "startup": {
-        "title": "Opstartopties",
-        "layoutOptions": "Lay-outopties",
-        "startupFilesFolders": "Opstartbestanden/-mappen",
-        "restorePreviousState": "Vorige editorstatus herstellen",
-        "openBlankState": "Lege status openen",
-        "openDefaultDirectory": "Standaardmap openen",
-        "openLastFolder": "Geopende map herstellen",
-        "restoreAll": "Alle geopende bestanden en mappen herstellen",
+        "title": "Opstarten en herstellen",
+        "openDefaultDirectory": "Geselecteerde map openen",
+        "openLastFolder": "Laatste werkruimte openen",
+        "restoreAll": "Alle vensters herstellen",
         "selectFolder": "Map selecteren",
-        "openBlankPage": "Lege pagina openen"
+        "openBlankPage": "Nieuw leeg document",
+        "action": "Bij opstarten",
+        "restoreLastWindow": "Het laatst actieve venster herstellen",
+        "restoreLayoutState": "Vensterindeling herstellen",
+        "restoreLayoutStateNote": "Herstel bij het opnieuw starten de venstergrootte, positie en indeling, zoals de zijbalk.",
+        "restoreEditors": "Geopende bestanden herstellen",
+        "restoreEditorsNote": "Open bij het opnieuw starten de vorige bestandstabbladen opnieuw.",
+        "restoreViewState": "Leesposities en selecties herstellen",
+        "restoreViewStateNote": "Herstel de vorige leespositie en selectie bij het herstellen van een bestand.",
+        "failure": "De instellingen konden niet worden opgeslagen. De vorige instellingen blijven in gebruik."
       },
       "pandoc": {
         "title": "Pandoc-conversie",
-        "description": "Het Pandoc-conversiemenu tonen",
-        "detailedDescription": "Vereist een installatie van Pandoc",
+        "description": "Pandoc-conversie inschakelen",
+        "detailedDescription": "Toont conversieopdrachten in het menu. Pandoc moet geïnstalleerd zijn.",
         "found": "Gevonden: {path}",
-        "notFound": "Niet gevonden",
-        "recheck": "Opnieuw controleren"
+        "notFound": "Niet gevonden"
       },
       "sidebar": {
-        "title": "Zijbalk",
+        "title": "Zijbalk en inhoudsopgave",
         "wrapTextInToc": "Tekstterugloop in inhoudsopgave",
+        "tocPosition": "Positie van de inhoudsopgave",
+        "tocLeft": "Links",
+        "tocRight": "Rechts",
         "showOpenedFiles": "Geopende bestanden tonen",
         "autoReveal": "Actief bestand tonen in de zijbalk",
         "openFilesInPreviewMode": "Bestanden in de zijbalk openen in voorbeeldtabbladen. Bewerken of dubbelklikken houdt het tabblad open.",
-        "excludePatterns": "Uitsluitpatronen",
-        "excludePatternsNotes": "Uitsluitpatronen (opmerkingen)",
+        "excludePatterns": "Uitsluitregels voor de bestandsboom",
+        "excludePatternsNotes": "Paden die overeenkomen met een glob-regel worden uitgesloten van de bestandsboom. Druk op Enter om een regel toe te voegen en klik op × om deze te verwijderen; komma’s binnen een regel blijven behouden. Open de map opnieuw om alle wijzigingen toe te passen.",
+        "removePattern": "Verwijderen",
+        "newPattern": "Nieuwe uitsluitregel",
+        "patternExample": "Bijvoorbeeld: **/drafts/** of *.tmp",
+        "patternSaveError": "De uitsluitregels konden niet worden opgeslagen. De opgeslagen regels zijn behouden. Probeer het opnieuw.",
+        "patternHelp": "Syntaxis van glob-patronen",
         "fileSortBy": {
           "title": "Bestanden sorteren op",
           "creationTime": "Aanmaaktijd",
@@ -560,25 +503,24 @@
           "newestFirst": "Nieuwste eerst"
         }
       },
-      "misc": {
-        "title": "Diversen",
-        "language": {
-          "title": "Taal",
-          "english": "English",
-          "chinese": "简体中文",
-          "traditionalChinese": "繁體中文",
-          "spanish": "Español",
-          "french": "Français",
-          "german": "Deutsch",
-          "japanese": "日本語",
-          "korean": "한국어",
-          "dutch": "Nederlands",
-          "portuguese": "Português",
-          "turkish": "Türkçe",
-          "russian": "Русский",
-          "italian": "Italiano"
-        }
-      }
+      "language": {
+        "title": "Taal",
+        "english": "English",
+        "chinese": "简体中文",
+        "traditionalChinese": "繁體中文",
+        "spanish": "Español",
+        "french": "Français",
+        "german": "Deutsch",
+        "japanese": "日本語",
+        "korean": "한국어",
+        "dutch": "Nederlands",
+        "portuguese": "Português",
+        "turkish": "Türkçe",
+        "russian": "Русский",
+        "italian": "Italiano",
+        "label": "Interfacetaal"
+      },
+      "openingMode": "Openingsmodus"
     },
     "editor": {
       "title": "Editor",
@@ -587,7 +529,7 @@
         "fontSize": "Lettergrootte",
         "lineHeight": "Regelhoogte",
         "fontFamily": "Lettertypefamilie",
-        "maxWidth": "Maximale breedte",
+        "maxWidth": "Maximale breedte van de editorinhoud",
         "maxWidthNotes": "Maximale breedte van editorinhoud. Voer een getal in gevolgd door px, ch (tekens) of %, bijvoorbeeld 800px, 80ch of 60%. Laat leeg om de standaardbreedte te gebruiken.",
         "maxWidthInvalid": "Voer een getal in gevolgd door px, ch of %, bijvoorbeeld 800px.",
         "codeFontFamily": "Lettertype voor code",
@@ -595,20 +537,21 @@
       },
       "codeBlock": {
         "title": "Codeblok",
-        "fontSize": "Lettergrootte",
+        "fontSize": "Lettergrootte van codeblokken",
         "showLineNumbers": "Regelnummers tonen",
         "removeEmptyLines": "Lege regels verwijderen"
       },
       "writingBehavior": {
-        "title": "Schrijfgedrag",
+        "title": "Schrijfvoorkeuren",
         "autoCloseBrackets": "Haakjes automatisch sluiten",
-        "autoCompleteMarkdown": "Markdown automatisch aanvullen",
+        "autoCompleteMarkdown": "Markdown-markeringen als paar aanvullen",
         "autoCloseQuotes": "Aanhalingstekens automatisch sluiten"
       },
       "fileRepresentation": {
         "title": "Bestandsweergave",
-        "tabWidth": "Tabbreedte",
-        "lineSeparator": "Regelscheidingsteken",
+        "tabWidth": "Invoer met de Tab-toets",
+        "tabInputNotes": "Choose spaces or a real tab character. Existing tabs use four-column tab stops. In lists and tables, Tab adjusts nesting or moves between cells.",
+        "lineSeparator": "Standaard regeleinde voor bestanden",
         "defaultEncoding": "Standaardcodering",
         "autoDetectEncoding": "Codering automatisch detecteren",
         "trailingNewlines": {
@@ -633,7 +576,7 @@
         },
         "hideQuickInsertHint": "Hint snel invoegen verbergen",
         "hideLinkPopup": "Link-popup verbergen",
-        "autoCheck": "Automatisch aanvinken",
+        "autoCheck": "Bovenliggende taken en subtaken koppelen",
         "autoNormalizeLineEndings": "Regeleindes automatisch normaliseren naar LF bij openen",
         "wrapCodeBlocks": "Codeblokken terugloopbaar",
         "sourceCodeLineNumbers": "Regelnummers tonen in broncodeweergave"
@@ -649,7 +592,7 @@
       "folderSetting": {
         "title": "Mapinstelling",
         "globalFolder": "Globale afbeeldingsmap",
-        "open": "Openen",
+        "open": "Map kiezen…",
         "showInFolder": "Tonen in map",
         "preferRelative": "Relatieve map prefereren",
         "relativeCopyLocation": "Afbeelding kopiëren relatief aan",
@@ -660,22 +603,19 @@
       },
       "uploader": {
         "title": "Afbeeldings-uploader",
-        "currentUploader": "Huidige uploader: {name}",
-        "picgoNotInstalled": "PicGo is niet geïnstalleerd",
-        "picgoInstalled": "PicGo is geïnstalleerd",
-        "picgoDetectionFailed": "PicGo-detectie mislukt",
+        "picgoNotInstalled": "PicGo-Core is niet geïnstalleerd",
+        "picgoInstalled": "PicGo-Core is geïnstalleerd",
+        "picgoDetectionFailed": "PicGo-Core-detectie mislukt",
         "debugInfo": "Foutopsporingsinformatie",
         "npmInstallCommand": "npm install picgo -g",
         "yarnInstallCommand": "yarn global add picgo",
         "pnpmInstallCommand": "pnpm add -g picgo",
         "chooseInstallMethod": "Kies installatiemethode:",
-        "retestPicgo": "Opnieuw testen",
         "lastDetectionTime": "Laatste detectietijd",
-        "picgoDetection": "PicGo-detectie",
         "usageGuide": {
-          "title": "PicGo basisgebruikshandleiding",
+          "title": "PicGo-Core basisgebruikshandleiding",
           "step1": "Uploader configureren",
-          "step1Description": "Gebruik de volgende opdracht om PicGo-uploader te configureren:",
+          "step1Description": "Gebruik de volgende opdracht om PicGo-Core-uploader te configureren:",
           "step2": "Afbeeldingen uploaden",
           "step2Description": "Gebruik de volgende opdracht om afbeeldingen te uploaden:",
           "step3": "Configuratie bekijken",
@@ -683,19 +623,15 @@
           "documentation": "Volledige documentatie bekijken"
         },
         "lastSuccessTime": "Laatste succestijd",
-        "neverDetected": "Nooit gedetecteerd",
-        "neverSuccessful": "Nooit succesvol",
         "scriptDescription": "Scriptbeschrijving",
         "scriptLocation": "Scriptlocatie",
-        "save": "Opslaan",
-        "saveConfig": "Configuratie opslaan",
-        "scriptConfigSaved": "Scriptconfiguratie opgeslagen",
         "services": {
-          "picgo": "PicGo",
+          "picgo": "PicGo-Core",
           "cliScript": "CLI-script"
         },
         "pleaseInstall": "Installeer a.u.b.",
-        "scriptPath": "Scriptpad"
+        "scriptPath": "Scriptpad",
+        "invalidScript": "Voer het pad naar een bestaand uitvoerbaar script in."
       },
       "defaultBehavior": "Het standaardgedrag na plakken of slepen van een afbeelding naar MarkText"
     },
@@ -705,11 +641,11 @@
         "title": "Extensies",
         "superSubScript": "Super-/subscript",
         "footnote": "Voetnoot",
-        "footnoteNotes": "Voetnoten",
         "texMathDollars": "TeX-wiskunde met $ en $$",
         "texMathGfm": "GitHub TeX-wiskunde ($`…`$ en ```math)",
         "texMathSingleBackslash": "TeX-wiskunde met enkele backslash",
         "texMathDoubleBackslash": "TeX-wiskunde met dubbele backslash",
+        "fancyLists": "Lijsten met letters en Romeinse cijfers",
         "highlightSyntax": "Markeren (==tekst==)",
         "inlineDiff": "Inline diff ({+ … +})",
         "multilineBlockquote": "Meerregelig citaat (>>>)",
@@ -768,42 +704,47 @@
     },
     "theme": {
       "title": "Thema",
-      "followSystemTheme": "Systeemthema volgen",
-      "followSystemNote": "Het systeemthema volgen vergrendelt de themalijst hieronder. Schakel dit uit om vrij van thema te wisselen.",
+      "followSystemTheme": "Systeemweergave volgen",
+      "followSystemNote": "Kies hieronder afzonderlijke thema’s voor de donkere en lichte modus.",
       "modeThemes": "Themaselectie",
       "lightModeTheme": "Thema lichte modus",
       "darkModeTheme": "Thema donkere modus",
       "customCss": "Aangepaste CSS",
-      "importCustomThemes": "Aangepaste thema's importeren",
-      "importTheme": "Thema importeren",
-      "openFolder": "Map openen",
-      "openThemesFolder": "Themamap openen"
+      "chooseTheme": "Thema kiezen",
+      "chooseFor": "{name} kiezen",
+      "searchThemes": "Thema’s zoeken",
+      "filterLabel": "Thematype",
+      "filter": {
+        "all": "Alle",
+        "light": "Licht",
+        "dark": "Donker"
+      },
+      "noResults": "Geen overeenkomende thema’s."
     },
     "keybindings": {
       "title": "Sneltoetsen",
-      "description": "Sneltoetsen aanpassen",
-      "save": "Opslaan",
+      "description": "Selecteer de toetsencombinatie en druk op de nieuwe combinatie om een sneltoets te wijzigen",
       "restoreDefaults": "Standaardwaarden herstellen",
       "debugOptions": "Foutopsporingsopties",
       "dumpKeyboardInfo": "Toetsenbordinformatie exporteren",
       "failedToSave": "Opslaan van sneltoetsen mislukt",
-      "keyInputDialog": {
-        "instructions": "Druk de gewenste toetscombinatie in",
-        "invalidKeybinding": "Ongeldige toetscombinatie",
-        "placeholder": "Druk toetsen in..."
-      },
-      "online": "Online",
+      "online": "Documentatie over sneltoetsen",
       "saveError": "Fout bij opslaan sneltoetsen",
       "shortcutInUse": "Sneltoets in gebruik",
-      "shortcutInUseMessage": "Deze sneltoets is al toegewezen aan {accelerator}",
-      "table": {
-        "description": "Beschrijving",
-        "edit": "Bewerken",
-        "keyCombination": "Toetscombinatie",
-        "options": "Opties",
-        "reset": "Herstellen",
-        "unbind": "Loskoppelen"
+      "shortcutInUseMessage": "{accelerator} is al toegewezen aan {commands}.",
+      "windowAndNavigation": "Vensters en navigatie",
+      "loadError": "Sneltoetsen konden niet worden geladen.",
+      "reload": "Opnieuw laden",
+      "viewConflict": "{name} bekijken",
+      "editShortcut": "Sneltoets voor {name} bewerken",
+      "unbound": "Niet toegewezen",
+      "recorder": {
+        "placeholder": "Druk op de toetsencombinatie",
+        "invalidKeybinding": "Ongeldige toetscombinatie"
       }
+    },
+    "fontStack": {
+      "noMatches": "Geen overeenkomende lettertypen"
     },
     "selectFont": "Lettertype selecteren",
     "spellchecker": {
@@ -821,6 +762,16 @@
       "enableSpellChecking": "Spellingcontrole inschakelen",
       "hideMarksForErrors": "Markering voor spelfouten verbergen",
       "title": "Spellingcontrole"
+    },
+    "explanations": {
+      "taskCascade": "Een bovenliggende taak aanvinken werkt subtaken bij; gewijzigde subtaken werken hun bovenliggende taak bij.",
+      "markdownPairs": "Vult tijdens het typen paren Markdown-markeringen aan, zoals sterretjes, underscores en backticks.",
+      "lineEndings": "Voor nieuwe bestanden en gemengde of niet-herkende regeleinden. LF- en CRLF-bestanden behouden hun gedetecteerde formaat."
+    },
+    "commandDetection": {
+      "checking": "Controleren…",
+      "recheck": "Opnieuw controleren",
+      "failed": "Detectie mislukt. Controleer opnieuw."
     }
   },
   "about": {
@@ -1038,6 +989,11 @@
     "unexpectedError": "Onverwachte fout in spellingcontrole"
   },
   "editor": {
+    "imageDrop": {
+      "saveTitle": "Sla het document op om een relatieve afbeeldingenmap te gebruiken",
+      "saveMessage": "Als u het document opslaat, wordt de afbeelding in de ingestelde relatieve map opgeslagen. Als u annuleert, wordt de afbeelding in de algemene afbeeldingenmap opgeslagen.",
+      "failed": "De afbeelding kon niet worden ingevoegd"
+    },
     "export": {
       "error": "Exportfout",
       "errorExporting": "Fout bij exporteren van {type}-bestand",

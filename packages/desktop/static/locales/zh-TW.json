@@ -245,7 +245,7 @@
       "cancel": "取消",
       "openFolder": "加入資料夾…",
       "showMoreMatches": "顯示更多符合項目",
-      "searchInFolders": "在已加入的資料夾中搜尋",
+      "searchInFolders": "在資料夾中尋找",
       "partialSearch": "部分資料夾無法搜尋。",
       "noSearchableFolders": "沒有可供搜尋的資料夾。"
     },
@@ -271,6 +271,7 @@
       "expand": "展開目錄",
       "collapse": "收起目錄",
       "empty": "尚無標題",
+      "resize": "調整目錄寬度",
       "title": "目錄",
       "expandAll": "全部展開",
       "collapseAll": "全部折疊"
@@ -279,6 +280,21 @@
       "files": "檔案",
       "search": "搜尋",
       "settings": "設定"
+    },
+    "move": {
+      "title": "Move file or folder",
+      "confirm": "Move",
+      "question": "Move \"{name}\"?",
+      "detail": "From: {source}\nTo: {destination}\n\nThis changes the actual file location. Relative links and image paths may be affected.",
+      "directoryContents": "The folder and all its contents will be moved.",
+      "completed": "Moved successfully.",
+      "invalidTarget": "Choose another folder within the same open root. Linked paths and moving a folder into itself are not supported.",
+      "crossDevice": "Moving between volumes is not supported here. Use your system file manager.",
+      "conflict": "The destination already contains an item with this name. Rename it before trying again.",
+      "missing": "The source or destination no longer exists. Refresh the folder and try again.",
+      "permission": "The item could not be moved. Check folder permissions and whether another application is using it.",
+      "openElsewhere": "Close this file and any documents inside this folder in other MarkText windows before moving it.",
+      "destinationOpen": "A document is already open at the destination path. Close it before trying again."
     }
   },
   "titleBar": {
@@ -400,103 +416,16 @@
     "title": "偏好設定",
     "learnMore": "了解更多：{name}",
     "search": {
-      "placeholder": "搜尋偏好設定…",
-      "categories": {
-        "general": "一般",
-        "editor": "編輯器",
-        "markdown": "Markdown",
-        "theme": "主題",
-        "image": "圖片",
-        "view": "檢視",
-        "searcher": "搜尋器",
-        "watcher": "監聽器",
-        "spelling": "拼字",
-        "custom css": "自訂 CSS"
-      },
-      "items": {
-        "autoSave": "自動儲存正在編輯的內容",
-        "autoSaveDelay": "檔案儲存前的延遲時間（毫秒）",
-        "autoNormalizeLineEndings": "開啟檔案時自動將行尾標準化。停用時，檔案會以原樣開啟",
-        "titleBarStyle": "標題欄樣式（僅限 Windows 和 Linux 系統）",
-        "openFilesInNewWindow": "在新視窗中開啟檔案",
-        "openFilesInPreviewMode": "在預覽分頁中開啟側邊欄檔案",
-        "openFolderInNewWindow": "透過選單在新視窗中開啟資料夾",
-        "zoom": "縮放層級。介於 0.5 和 2.0 之間",
-        "hideScrollbar": "是否隱藏捲軸",
-        "wordWrapInToc": "是否在目錄中啟用自動換行",
-        "fileSortBy": "按建立時間、修改時間和標題對開啟資料夾中的檔案進行排序",
-        "startUpAction": "MarkText 啟動後的操作，開啟最後編輯的內容、開啟指定資料夾或空白頁面",
-        "restoreLayoutState": "啟動時還原上次編輯器狀態",
-        "defaultDirectoryToOpen": "當 startUp=folder 時啟動時應開啟的預設目錄",
-        "language": "MarkText 使用的語言",
-        "editorFontFamily": "編輯器字型系列",
-        "fontSize": "字型大小（像素）",
-        "lineHeight": "行高",
-        "wrapCodeBlocks": "在程式碼區塊內自動換行",
-        "editorLineWidth": "定義編輯器區域的最大寬度。允許空字串或 ch（字元）、px（像素）或 %（百分比）後綴",
-        "codeFontSize": "程式碼區塊中的字型大小，範圍是 12 ~ 18",
-        "codeFontFamily": "程式碼字型：適用於行內程式碼和程式碼區塊。",
-        "codeBlockLineNumbers": "是否顯示行號",
-        "sourceCodeLineNumbers": "在原始碼模式中顯示行號",
-        "trimUnnecessaryCodeBlockEmptyLines": "修剪程式碼區塊開頭和結尾的空行",
-        "autoPairBracket": "編輯時自動配對括號",
-        "autoPairMarkdownSyntax": "自動完成 Markdown 語法",
-        "autoPairQuote": "自動完成引號",
-        "endOfLine": "每行結尾使用的換行字元。預設值為 default，會選擇您作業系統的預設換行字元",
-        "defaultEncoding": "預設檔案編碼",
-        "autoGuessEncoding": "開啟檔案時嘗試自動猜測檔案編碼",
-        "trimTrailingNewline": "修剪尾隨換行選項",
-        "textDirection": "文本書寫方向",
-        "hideQuickInsertHint": "隱藏快速建立段落的提示",
-        "hideLinkPopup": "當游標懸停在連結上時隱藏連結彈出視窗",
-        "autoCheck": "是否自動檢查相關任務",
-        "preferLooseListItem": "首選清單類型",
-        "bulletListMarker": "項目符號清單中使用的標記",
-        "orderListDelimiter": "有序清單中使用的分隔符",
-        "preferHeadingStyle": "MarkText 中的首選標題樣式",
-        "tabSize": "用 x 個空格替換製表符",
-        "listIndentation": "選擇清單的縮排",
-        "frontmatterType": "前言類型",
-        "superSubScript": "啟用 Pandoc 的 Markdown 擴充功能上標和下標",
-        "footnote": "啟用 Pandoc 的 Markdown 擴充功能腳註",
-        "texMathDollars": "啟用 Pandoc 的 Markdown 擴充 tex_math_dollars",
-        "texMathGfm": "啟用 Pandoc 的 Markdown 擴充 tex_math_gfm",
-        "texMathSingleBackslash": "啟用 Pandoc 的 Markdown 擴充 tex_math_single_backslash",
-        "texMathDoubleBackslash": "啟用 Pandoc 的 Markdown 擴充 tex_math_double_backslash",
-        "highlightSyntax": "啟用非標準的 ==文字== 螢光標記語法",
-        "inlineDiff": "啟用非標準的行內差異語法 {+ … +} / [- … -]",
-        "multilineBlockquote": "啟用非標準的多行引用區塊語法 >>> … >>>",
-        "githubAlerts": "GitHub 提示區塊",
-        "isHtmlEnabled": "啟用 HTML 轉譯",
-        "softNewlineAsSpace": "將軟換行視為空格",
-        "sequenceTheme": "序列圖主題",
-        "mermaidLightTheme": "MarkText 使用淺色主題時的 Mermaid 主題",
-        "mermaidDarkTheme": "MarkText 使用深色主題時的 Mermaid 主題",
-        "plantumlServer": "PlantUML 伺服器 URL",
-        "theme": "選擇 MarkText 中使用的主題",
-        "followSystemTheme": "跟隨系統主題",
-        "lightModeTheme": "系統處於淺色模式時使用的主題",
-        "darkModeTheme": "系統處於深色模式時使用的主題",
-        "spellcheckerEnabled": "是否啟用拼字檢查",
-        "spellcheckerNoUnderline": "不要為拼字錯誤加上底線",
-        "spellcheckerLanguage": "拼字檢查器語言",
-        "imageInsertAction": "從本地資料夾插入圖片後的預設行為",
-        "imagePreferRelativeDirectory": "是否首選相對圖片目錄",
-        "imageRelativeDirectoryBase": "相對圖片的複製位置",
-        "imageRelativeDirectoryName": "相對圖片資料夾名稱",
-        "fileSortOrder": "開啟資料夾中檔案的排序順序：遞增或遞減",
-        "openedFilesInSidebar": "是否在側邊欄中顯示已開啟的檔案",
-        "showPandocConvert": "顯示 Pandoc 轉換選單。需要先安裝 Pandoc。"
-      }
+      "placeholder": "搜尋偏好設定…"
     },
     "categories": {
       "general": "一般",
-      "editor": "編輯器",
+      "appearance": "外觀",
+      "editor": "編輯",
+      "files": "檔案與儲存",
       "markdown": "Markdown",
-      "spelling": "拼字",
-      "theme": "主題",
-      "image": "圖片",
-      "keybindings": "按鍵綁定"
+      "images": "圖片與匯出",
+      "keybindings": "快捷鍵"
     },
     "general": {
       "title": "一般",
@@ -516,36 +445,50 @@
         "hideScrollbars": "隱藏捲軸",
         "openFilesInNewWindow": "在新視窗中開啟檔案",
         "openFoldersInNewWindow": "在新視窗中開啟資料夾",
-        "zoom": "縮放"
+        "zoom": "縮放",
+        "openFilesInNewWindowNote": "啟用後，檔案會在新視窗中開啟；停用後，會在目前視窗的分頁中開啟。",
+        "openFoldersInNewWindowNote": "啟用後，資料夾會在新視窗中開啟；停用後，會在目前視窗中開啟並取代目前的資料夾。"
       },
       "startup": {
-        "title": "啟動",
-        "layoutOptions": "版面配置選項",
-        "startupFilesFolders": "啟動檔案/資料夾",
-        "restorePreviousState": "還原上次編輯器狀態",
-        "openBlankState": "開啟空白狀態",
-        "openDefaultDirectory": "開啟預設目錄",
-        "openLastFolder": "恢復開啟的資料夾",
-        "restoreAll": "還原所有已開啟的檔案和資料夾",
+        "title": "啟動與還原",
+        "openDefaultDirectory": "開啟指定資料夾",
+        "openLastFolder": "開啟上次工作區",
+        "restoreAll": "還原全部視窗",
         "selectFolder": "選擇資料夾",
-        "openBlankPage": "開啟空白頁面"
+        "openBlankPage": "新增空白文件",
+        "action": "啟動時",
+        "restoreLastWindow": "還原最後使用的視窗",
+        "restoreLayoutState": "還原視窗配置",
+        "restoreLayoutStateNote": "重新啟動時，還原視窗大小、位置及側邊欄等版面配置。",
+        "restoreEditors": "還原已開啟的檔案",
+        "restoreEditorsNote": "重新啟動時，重新開啟上次的檔案分頁。",
+        "restoreViewState": "還原閱讀位置與選取範圍",
+        "restoreViewStateNote": "還原檔案時，回到上次閱讀位置並還原選取範圍。",
+        "failure": "無法儲存設定，仍使用先前的設定。"
       },
       "pandoc": {
         "title": "Pandoc 轉換",
-        "description": "顯示 Pandoc 轉換選單",
-        "detailedDescription": "需要先安裝 Pandoc",
+        "description": "啟用 Pandoc 格式轉換",
+        "detailedDescription": "在選單中顯示格式轉換命令，需要先安裝 Pandoc。",
         "found": "已找到：{path}",
-        "notFound": "未找到",
-        "recheck": "重新檢測"
+        "notFound": "未找到"
       },
       "sidebar": {
-        "title": "側邊欄",
+        "title": "側邊欄與目錄",
         "wrapTextInToc": "在目錄中換行文字",
+        "tocPosition": "預設目錄位置",
+        "tocLeft": "左側",
+        "tocRight": "右側",
         "showOpenedFiles": "顯示已開啟的檔案",
         "autoReveal": "在側邊欄中定位目前檔案",
         "openFilesInPreviewMode": "按一下側邊欄檔案時重複使用預覽分頁；編輯或按兩下後保留該分頁",
-        "excludePatterns": "排除模式",
-        "excludePatternsNotes": "排除模式（備註）",
+        "excludePatterns": "檔案樹排除規則",
+        "excludePatternsNotes": "符合任意 glob 規則的路徑將從檔案樹中排除。按 Enter 新增規則，按一下 × 刪除；規則內的逗號會保留。重新開啟資料夾以完整套用變更。",
+        "removePattern": "刪除",
+        "newPattern": "新增排除規則",
+        "patternExample": "例如：**/drafts/** 或 *.tmp",
+        "patternSaveError": "無法儲存排除規則，已保留原有規則，請重試。",
+        "patternHelp": "glob 規則語法",
         "fileSortBy": {
           "title": "檔案排序方式",
           "creationTime": "建立時間",
@@ -560,25 +503,24 @@
           "newestFirst": "從新到舊"
         }
       },
-      "misc": {
-        "title": "其他",
-        "language": {
-          "title": "語言",
-          "english": "English",
-          "chinese": "簡體中文",
-          "traditionalChinese": "繁體中文",
-          "spanish": "Español",
-          "french": "Français",
-          "german": "Deutsch",
-          "japanese": "日本語",
-          "korean": "한국어",
-          "dutch": "Nederlands",
-          "portuguese": "Português",
-          "turkish": "Türkçe",
-          "russian": "Русский",
-          "italian": "Italiano"
-        }
-      }
+      "language": {
+        "title": "語言",
+        "english": "English",
+        "chinese": "簡體中文",
+        "traditionalChinese": "繁體中文",
+        "spanish": "Español",
+        "french": "Français",
+        "german": "Deutsch",
+        "japanese": "日本語",
+        "korean": "한국어",
+        "dutch": "Nederlands",
+        "portuguese": "Português",
+        "turkish": "Türkçe",
+        "russian": "Русский",
+        "italian": "Italiano",
+        "label": "介面語言"
+      },
+      "openingMode": "開啟模式"
     },
     "editor": {
       "title": "編輯器",
@@ -587,7 +529,7 @@
         "fontSize": "字型大小",
         "lineHeight": "行高",
         "fontFamily": "字型系列",
-        "maxWidth": "最大寬度",
+        "maxWidth": "編輯器內容最大寬度",
         "maxWidthNotes": "編輯器內容的最大寬度。數字後需帶單位 px、ch（字元數）或 %，例如 800px、80ch、60%。留空則使用預設寬度。",
         "maxWidthInvalid": "請輸入數字並帶上單位 px、ch 或 %，例如 800px。",
         "codeFontFamily": "程式碼字型",
@@ -595,20 +537,21 @@
       },
       "codeBlock": {
         "title": "程式碼區塊",
-        "fontSize": "字型大小",
+        "fontSize": "程式碼區塊字型大小",
         "showLineNumbers": "顯示行號",
         "removeEmptyLines": "移除空行"
       },
       "writingBehavior": {
-        "title": "寫作行為",
+        "title": "寫作偏好",
         "autoCloseBrackets": "自動關閉括號",
-        "autoCompleteMarkdown": "自動完成 Markdown",
+        "autoCompleteMarkdown": "自動補全 Markdown 成對標記",
         "autoCloseQuotes": "自動關閉引號"
       },
       "fileRepresentation": {
         "title": "檔案表示",
-        "tabWidth": "Tab 寬度",
-        "lineSeparator": "行分隔符",
+        "tabWidth": "Tab 鍵輸入",
+        "tabInputNotes": "選擇插入空格或真正的定位字元。已有定位字元按四欄定位點顯示。清單和表格中的 Tab 用於調整層級或切換儲存格。",
+        "lineSeparator": "預設檔案換行符號",
         "defaultEncoding": "預設編碼",
         "autoDetectEncoding": "自動偵測編碼",
         "trailingNewlines": {
@@ -633,7 +576,7 @@
         },
         "hideQuickInsertHint": "隱藏快速插入提示",
         "hideLinkPopup": "隱藏連結彈出視窗",
-        "autoCheck": "自動檢查",
+        "autoCheck": "連動勾選父子任務",
         "autoNormalizeLineEndings": "開啟時自動將行尾標準化為 LF",
         "wrapCodeBlocks": "換行程式碼區塊",
         "sourceCodeLineNumbers": "在原始碼模式中顯示行號"
@@ -649,7 +592,7 @@
       "folderSetting": {
         "title": "資料夾設定",
         "globalFolder": "全域圖片資料夾",
-        "open": "開啟",
+        "open": "選擇資料夾…",
         "showInFolder": "在資料夾中顯示",
         "preferRelative": "偏好相對目錄",
         "relativeCopyLocation": "圖片相對複製到",
@@ -660,21 +603,19 @@
       },
       "uploader": {
         "title": "圖片上傳器",
-        "currentUploader": "目前上傳器：{name}",
-        "picgoNotInstalled": "PicGo 未安裝",
-        "picgoInstalled": "PicGo 已安裝",
-        "picgoDetectionFailed": "PicGo 偵測失敗",
+        "picgoNotInstalled": "PicGo-Core 未安裝",
+        "picgoInstalled": "PicGo-Core 已安裝",
+        "picgoDetectionFailed": "PicGo-Core 偵測失敗",
         "debugInfo": "除錯資訊",
         "npmInstallCommand": "npm install picgo",
         "yarnInstallCommand": "yarn add picgo",
         "pnpmInstallCommand": "pnpm add picgo",
         "chooseInstallMethod": "選擇安裝方法：",
-        "retestPicgo": "重新檢測",
         "lastDetectionTime": "上次檢測時間",
         "usageGuide": {
-          "title": "PicGo 基本使用說明",
+          "title": "PicGo-Core 基本使用說明",
           "step1": "設定上傳器",
-          "step1Description": "使用以下命令設定 PicGo 上傳器：",
+          "step1Description": "使用以下命令設定 PicGo-Core 上傳器：",
           "step2": "上傳圖片",
           "step2Description": "使用以下命令上傳圖片：",
           "step3": "檢視設定",
@@ -683,19 +624,14 @@
         },
         "scriptDescription": "腳本描述",
         "scriptLocation": "腳本位置",
-        "save": "儲存",
-        "saveConfig": "儲存設定",
-        "scriptConfigSaved": "腳本設定已儲存",
         "services": {
-          "picgo": "PicGo",
+          "picgo": "PicGo-Core",
           "cliScript": "CLI 腳本"
         },
         "pleaseInstall": "請安裝",
         "scriptPath": "腳本路徑",
-        "picgoDetection": "PicGo 偵測",
         "lastSuccessTime": "上次成功時間",
-        "neverDetected": "從未偵測",
-        "neverSuccessful": "從未成功"
+        "invalidScript": "請輸入存在且可執行的指令碼路徑。"
       },
       "defaultBehavior": "貼上或拖曳圖片到 MarkText 後的預設行為"
     },
@@ -705,11 +641,11 @@
         "title": "擴充功能",
         "superSubScript": "上標/下標",
         "footnote": "腳註",
-        "footnoteNotes": "腳註備註",
         "texMathDollars": "使用 $ 與 $$ 的 TeX 數學公式",
         "texMathGfm": "GitHub 的 TeX 數學公式（$`…`$ 與 ```math）",
         "texMathSingleBackslash": "使用單反斜線分隔符的 TeX 數學公式",
         "texMathDoubleBackslash": "使用雙反斜線分隔符的 TeX 數學公式",
+        "fancyLists": "字母與羅馬數字清單",
         "highlightSyntax": "螢光標記 (==文字==)",
         "inlineDiff": "行內差異 ({+ … +})",
         "multilineBlockquote": "多行引用區塊 (>>>)",
@@ -768,42 +704,47 @@
     },
     "theme": {
       "title": "主題",
-      "followSystemTheme": "跟隨系統主題",
-      "followSystemNote": "跟隨系統主題時，下方主題列表無法切換。關閉後即可自由切換。",
+      "followSystemTheme": "跟隨系統外觀",
+      "followSystemNote": "可以在下方分別選擇深色模式和淺色模式下的主題。",
       "modeThemes": "主題選擇",
       "lightModeTheme": "淺色模式主題",
       "darkModeTheme": "深色模式主題",
       "customCss": "自訂 CSS",
-      "importCustomThemes": "匯入自訂主題",
-      "importTheme": "匯入主題",
-      "openFolder": "開啟資料夾",
-      "openThemesFolder": "開啟主題資料夾"
+      "chooseTheme": "選擇主題",
+      "chooseFor": "選擇{name}",
+      "searchThemes": "搜尋主題",
+      "filterLabel": "主題類型",
+      "filter": {
+        "all": "全部",
+        "light": "淺色",
+        "dark": "深色"
+      },
+      "noResults": "沒有符合的主題。"
     },
     "keybindings": {
       "title": "按鍵綁定",
-      "description": "自訂鍵盤快捷鍵",
-      "save": "儲存",
+      "description": "若要變更快捷鍵，請選取組合鍵，然後按下新的組合鍵",
       "restoreDefaults": "還原預設值",
       "debugOptions": "除錯選項",
       "dumpKeyboardInfo": "傾印鍵盤資訊",
       "failedToSave": "儲存按鍵綁定失敗",
-      "keyInputDialog": {
-        "instructions": "按下您要指派的按鍵組合",
-        "invalidKeybinding": "無效的按鍵組合",
-        "placeholder": "按下按鍵…"
-      },
-      "online": "線上",
+      "online": "快捷鍵文件",
       "saveError": "儲存按鍵綁定時發生錯誤",
       "shortcutInUse": "快捷鍵使用中",
-      "shortcutInUseMessage": "此快捷鍵已指派給 {accelerator}",
-      "table": {
-        "description": "描述",
-        "edit": "編輯",
-        "keyCombination": "按鍵組合",
-        "options": "選項",
-        "reset": "重設",
-        "unbind": "解除綁定"
+      "shortcutInUseMessage": "{accelerator} 已被「{commands}」使用。",
+      "windowAndNavigation": "視窗與導覽",
+      "loadError": "無法載入快捷鍵。",
+      "reload": "重新載入",
+      "viewConflict": "檢視「{name}」",
+      "editShortcut": "修改「{name}」的快捷鍵",
+      "unbound": "未綁定",
+      "recorder": {
+        "placeholder": "按下組合鍵",
+        "invalidKeybinding": "無效的按鍵組合"
       }
+    },
+    "fontStack": {
+      "noMatches": "沒有符合的字型"
     },
     "selectFont": "選擇字型",
     "spellchecker": {
@@ -821,6 +762,16 @@
       "enableSpellChecking": "啟用拼字檢查",
       "hideMarksForErrors": "隱藏拼字錯誤標記",
       "title": "拼字檢查"
+    },
+    "explanations": {
+      "taskCascade": "勾選或取消父任務時同步更新子任務；子任務狀態變更時同步更新父任務。",
+      "markdownPairs": "輸入星號、底線、反引號等 Markdown 標記時，自動補全配對標記。",
+      "lineEndings": "用於新檔案及換行符號混合或無法偵測的檔案。既有 LF 或 CRLF 檔案保留偵測到的格式。"
+    },
+    "commandDetection": {
+      "checking": "偵測中…",
+      "recheck": "重新偵測",
+      "failed": "偵測失敗，請重新偵測。"
     }
   },
   "about": {
@@ -1038,6 +989,11 @@
     "unexpectedError": "意外的拼字檢查錯誤"
   },
   "editor": {
+    "imageDrop": {
+      "saveTitle": "儲存文件以使用相對圖片目錄",
+      "saveMessage": "儲存文件後，圖片將存入設定的相對目錄。取消儲存將把圖片存入全域圖片目錄。",
+      "failed": "圖片插入失敗"
+    },
     "export": {
       "error": "匯出錯誤",
       "errorExporting": "匯出 {type} 檔案時發生錯誤",

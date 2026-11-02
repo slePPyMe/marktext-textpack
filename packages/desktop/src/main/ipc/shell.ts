@@ -1,6 +1,8 @@
-import { ipcMain, shell, clipboard, nativeImage } from 'electron'
+import { ipcMain, shell, clipboard } from 'electron'
 import log from 'electron-log'
-import * as plist from 'plist'
+import { fileURLToPath } from 'url'
+import type { ClipboardImageWriteOptions } from '@shared/types/ipc'
+import { writeClipboardImage } from './clipboardImage'
 
 export const registerShellHandlers = (): void => {
   ipcMain.handle('mt::shell::open-external', async(_e, url: string) => {
@@ -31,58 +33,45 @@ export const registerShellHandlers = (): void => {
     }
   })
 
-  ipcMain.handle('mt::clipboard::write-text', (_e, text: string) => {
+  ipcMain.handle('mt::clipboard::write-text', async(_e, text: string) => {
     try {
-      clipboard.writeText(text)
+      await clipboard.writeText(text)
       return true
     } catch {
       return false
     }
   })
-  ipcMain.handle('mt::clipboard::write-image', (_e, png: Uint8Array) => {
-    try {
-      const image = nativeImage.createFromBuffer(Buffer.from(png))
-      if (image.isEmpty()) return false
-      clipboard.writeImage(image)
-      return true
-    } catch (err) {
-      log.error('clipboard.writeImage failed:', err)
-      return false
+  ipcMain.handle(
+    'mt::clipboard::write-image',
+    async(event, png: Uint8Array, options?: ClipboardImageWriteOptions) => {
+      try {
+        return await writeClipboardImage(event.sender.id, png, options)
+      } catch (err) {
+        log.error('clipboard.write failed:', err)
+        return false
+      }
     }
-  })
+  )
 
-  ipcMain.handle('mt::clipboard::read-text', () => {
+  ipcMain.handle('mt::clipboard::read-text', async() => {
     try {
-      return clipboard.readText()
+      return await clipboard.readText()
     } catch {
       return ''
     }
   })
 
-  ipcMain.handle('mt::clipboard::guess-file-path', () => {
+  ipcMain.handle('mt::clipboard::guess-file-path', async() => {
     try {
-      if (process.platform === 'darwin') {
-        if (clipboard.has('NSFilenamesPboardType')) {
-          const parsed = plist.parse(clipboard.read('NSFilenamesPboardType'))
-          return Array.isArray(parsed) && parsed.length ? parsed[0] : ''
+      // Electron maps native file references to this MIME type on all platforms.
+      const items = await clipboard.read()
+      for (const item of items) {
+        if (!item.types.includes('text/uri-list')) continue
+        const blob = await item.getType('text/uri-list')
+        const uri = (await blob.text()).split(/\r?\n/).find((line) => /^file:\/\//i.test(line))
+        if (uri) {
+          return fileURLToPath(uri)
         }
-        return ''
-      }
-      if (process.platform === 'win32') {
-        // `FileNameW` is a UTF-16LE, NUL-separated list of file paths.
-        // `clipboard.read(format)` decodes the raw bytes as UTF-8, which garbles
-        // non-ASCII (e.g. Chinese) characters; read the Buffer and decode it as
-        // UTF-16LE instead, then take the first non-empty entry.
-        const buffer = clipboard.readBuffer('FileNameW')
-        if (buffer.length > 0) {
-          return (
-            buffer
-              .toString('utf16le')
-              .split('\u0000')
-              .find((p) => p.length > 0) ?? ''
-          )
-        }
-        return ''
       }
       return ''
     } catch (err) {

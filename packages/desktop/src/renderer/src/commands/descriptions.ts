@@ -113,6 +113,7 @@ const COMMAND_KEY_MAP: Record<string, string> = {
   'window.toggle-full-screen': 'commands.window.toggleFullScreen',
 
   'window.zoomIn': 'commands.window.zoomIn',
+  'window.resetZoom': 'menu.window.resetZoom',
   'window.zoomOut': 'commands.window.zoomOut',
 
   'window.change-theme': 'commands.window.changeTheme',
@@ -161,6 +162,8 @@ const COMMAND_KEY_MAP: Record<string, string> = {
 
   'spellchecker.switch-language': 'commands.spellchecker.switchLanguage'
 }
+
+export const commandLabelKey = (id: string): string => COMMAND_KEY_MAP[id] ?? id
 
 export default (id: string): string => {
   // Resolve descriptions on each call so language changes take effect immediately.

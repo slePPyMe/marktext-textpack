@@ -4,7 +4,8 @@
       {{ t('preferences.image.folderSetting.title') }}
     </h6>
     <text-box
-      :description="t('preferences.image.folderSetting.globalFolder')"
+      id="setting-imageFolderPath"
+      :description="preferenceLabel('imageFolderPath')"
       :input="imageFolderPath"
       :regex-validator="/^(?:$|([a-zA-Z]:)?[\/\\].*$)/"
       :default-value="folderPathPlaceholder"
@@ -12,13 +13,13 @@
     />
     <div>
       <el-button
-        size="mini"
+        size="default"
         @click="modifyImageFolderPath(undefined)"
       >
         {{ t('preferences.image.folderSetting.open') }}
       </el-button>
       <el-button
-        size="mini"
+        size="default"
         @click="openImageFolder"
       >
         {{ t('preferences.image.folderSetting.showInFolder') }}
@@ -27,7 +28,8 @@
     <compound>
       <template #head>
         <bool
-          :description="t('preferences.image.folderSetting.preferRelative')"
+          id="setting-imagePreferRelativeDirectory"
+          :description="preferenceLabel('imagePreferRelativeDirectory')"
           more="https://marktext.me/docs/images"
           :bool="imagePreferRelativeDirectory"
           :on-change="(value) => onSelectChange('imagePreferRelativeDirectory', value)"
@@ -35,14 +37,16 @@
       </template>
       <template #children>
         <CurSelect
-          :description="t('preferences.image.folderSetting.relativeCopyLocation')"
+          id="setting-imageRelativeDirectoryBase"
+          :description="preferenceLabel('imageRelativeDirectoryBase')"
           :value="imageRelativeDirectoryBase"
           :disable="!imagePreferRelativeDirectory"
           :options="imageRelativeDirectoryBaseOptions"
           :on-change="(value) => onSelectChange('imageRelativeDirectoryBase', value)"
         />
         <text-box
-          :description="t('preferences.image.folderSetting.relativeFolderName')"
+          id="setting-imageRelativeDirectoryName"
+          :description="preferenceLabel('imageRelativeDirectoryName')"
           :input="imageRelativeDirectoryName"
           :disable="!imagePreferRelativeDirectory"
           :regex-validator="/^(?:$|(?![a-zA-Z]:)[^\/\\].*$)/"
@@ -58,6 +62,8 @@
 </template>
 
 <script setup lang="ts">
+import { preferenceLabel } from '@/prefComponents/registry'
+
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'

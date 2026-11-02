@@ -25,8 +25,11 @@ import { ChangeSource } from '../types';
 import { deepClone, hasPick, isHTMLElement } from '../utils';
 import { getBlock } from '../utils/dom';
 import logger from '../utils/logger';
+import { isIndentShortcut, isTabKey } from '../utils/tab';
 import { attachDragDropImageHandlers } from './dragDropImage';
+import { TextDrag } from './dragDropText';
 import { attachLinkMouseHandlers } from './linkMouseEvents';
+import { handleIndentShortcut, handleTabSelection, shouldHandleIndentation } from './tab';
 import { EditTransactions } from './transactions';
 
 const debug = logger('editor:');
@@ -279,6 +282,7 @@ export class Editor {
     clipboard: Clipboard;
     history: History;
     scrollPage: Nullable<ScrollPage> = null;
+    textDrag: TextDrag | null = null;
 
     private _activeContentBlock: Nullable<Content> = null;
     private _inputSelection: Nullable<TSelectionState> | undefined;
@@ -341,6 +345,7 @@ export class Editor {
         // as a new `![](src)` block. Cleanup is likewise handled by
         // `detachAllDomEvents`.
         attachDragDropImageHandlers(muya);
+        this.textDrag = new TextDrag(muya);
         if (options.focus !== false)
             this.focus();
     }
@@ -349,7 +354,12 @@ export class Editor {
         const { domNode } = this._muya;
 
         // Native input moves the DOM caret before the input handler runs (#5258).
-        this._muya.eventCenter.attachDOMEvent(domNode, 'beforeinput', () => {
+        this._muya.eventCenter.attachDOMEvent(domNode, 'beforeinput', (event) => {
+            // Browser rich-text commands must not mutate DOM outside the document model.
+            if (event instanceof InputEvent && event.inputType.startsWith('format')) {
+                event.preventDefault();
+                return;
+            }
             if (this._muya.isReadOnly || this._isComposing)
                 return;
             this.transactions.flush();
@@ -361,8 +371,11 @@ export class Editor {
                 return;
             if (!this._isContentEvent(event))
                 return;
-            if (this._handlePreviewClick(event))
+            const previewTarget = this._getPreviewClickTarget(event);
+            if (previewTarget) {
+                this._handlePreviewClick(previewTarget, event);
                 return;
+            }
             const selectionResult = this.selection.getTextSelection();
             const anchorBlock = selectionResult?.anchor.block;
             const isSelectionInSameBlock = selectionResult?.isSelectionInSameBlock;
@@ -378,6 +391,14 @@ export class Editor {
                 return;
             }
 
+            if (selectionResult && shouldHandleIndentation(event, selectionResult, this._isComposing)) {
+                if (isIndentShortcut(event))
+                    handleIndentShortcut(this._muya, event, selectionResult);
+                else
+                    handleTabSelection(this._muya, event, selectionResult);
+                return;
+            }
+
             if (!isSelectionInSameBlock || !anchorBlock) {
                 this.activeContentBlock = null;
                 if (event.type === 'keyup' && selectionResult) {
@@ -388,30 +409,7 @@ export class Editor {
             }
 
             this.activeContentBlock = anchorBlock;
-
-            switch (event.type) {
-                case 'click': {
-                    anchorBlock.clickHandler(event);
-                    break;
-                }
-                case 'input': {
-                    anchorBlock.inputHandler(event);
-                    break;
-                }
-                case 'keydown': {
-                    anchorBlock.keydownHandler(event);
-                    break;
-                }
-                case 'keyup': {
-                    anchorBlock.keyupHandler(event);
-                    break;
-                }
-                case 'compositionend':
-                case 'compositionstart': {
-                    anchorBlock.composeHandler(event);
-                    break;
-                }
-            }
+            this._dispatchContentEvent(anchorBlock, event);
         };
 
         merge(
@@ -431,7 +429,7 @@ export class Editor {
                 ? this._inputSelection
                 : this.selection.getSelectionState();
             try {
-                this.transact(() => eventHandler(event), false, selection);
+                this.transact(() => eventHandler(event), isTabKey(event) || isIndentShortcut(event), selection);
             }
             finally {
                 if (event.type === 'compositionend')
@@ -449,17 +447,41 @@ export class Editor {
             || (event.target instanceof Node && !!findContentDOM(event.target));
     }
 
-    private _handlePreviewClick(event: Event): boolean {
+    private _dispatchContentEvent(block: Content, event: Event): void {
+        switch (event.type) {
+            case 'click':
+                block.clickHandler(event);
+                break;
+            case 'input':
+                block.inputHandler(event);
+                break;
+            case 'keydown':
+                block.keydownHandler(event);
+                break;
+            case 'keyup':
+                block.keyupHandler(event);
+                break;
+            case 'compositionend':
+            case 'compositionstart':
+                block.composeHandler(event);
+                break;
+        }
+    }
+
+    private _getPreviewClickTarget(event: Event): Element | null {
         if (event.type !== 'click' || !(event.target instanceof Element)
             || !event.target.closest(`.${CLASS_NAMES.MU_MATH_RENDER}, .${CLASS_NAMES.MU_RUBY_RENDER}`)) {
-            return false;
+            return null;
         }
-        const block = getBlock(findContentDOM(event.target));
+        return event.target;
+    }
+
+    private _handlePreviewClick(target: Element, event: Event): void {
+        const block = getBlock(findContentDOM(target));
         if (block?.isContent()) {
             this.activeContentBlock = block;
             block.clickHandler(event);
         }
-        return true;
     }
 
     focus() {
@@ -638,6 +660,7 @@ export class Editor {
     }
 
     setContent(content: TState[] | string, autoFocus = false) {
+        this.textDrag?.cancel(false);
         this.transactions.assertStandalone();
         this.transactions.cancel();
         this.selection.cancel();

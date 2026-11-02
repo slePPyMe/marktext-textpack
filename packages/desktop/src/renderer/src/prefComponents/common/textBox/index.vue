@@ -1,68 +1,49 @@
 <template>
-  <section
+  <setting-row
     class="pref-text-box-item"
-    :class="{ 'ag-underdevelop': disable }"
+    :description="description"
+    :notes="notes"
+    :more="more"
+    :disabled="disable"
+    :wide="wide"
   >
-    <div
-      class="description"
-      style="display: flex; align-items: center"
-    >
-      <span>{{ description }}:</span>
-      <icon-tooltip
-        v-if="more"
-        :content="t('preferences.learnMore', { name: description })"
+    <template #default="{ descriptionId }">
+      <el-input
+        v-model="inputText"
+        :aria-label="description"
+        :aria-describedby="descriptionId"
+        :aria-invalid="invalidInput"
+        :disabled="disable"
+        class="input"
+        :class="{ error: invalidInput }"
+        :placeholder="defaultValue"
+        clearable
+        @input="handleInput"
+        @change="flushPending"
+      />
+      <div
+        v-if="invalidInput && errorMessage"
+        class="error-message"
+        role="alert"
       >
-        <button
-          type="button"
-          class="plain-button"
-          :aria-label="t('preferences.learnMore', { name: description })"
-          @click="handleMoreClick"
-        >
-          <LinkIcon :size="14" />
-        </button>
-      </icon-tooltip>
-    </div>
-    <el-input
-      v-model="inputText"
-      :aria-label="description"
-      class="input"
-      :class="{ error: invalidInput }"
-      :placeholder="defaultValue"
-      size="small"
-      clearable
-      @input="handleInput"
-    />
-    <div
-      v-if="invalidInput && errorMessage"
-      class="error-message"
-    >
-      {{ errorMessage }}
-    </div>
-    <div
-      v-if="notes"
-      class="notes"
-    >
-      {{ notes }}
-    </div>
-  </section>
+        {{ errorMessage }}
+      </div>
+    </template>
+  </setting-row>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import LinkIcon from '@/components/icons/LinkIcon.vue'
-import IconTooltip from '@/components/iconTooltip/index.vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
+import SettingRow from '../settingRow.vue'
 import type { PrefControlBaseProps } from '../types'
 
-const { t } = useI18n()
-
 interface TextBoxProps extends PrefControlBaseProps {
-  notes?: string
   input: string
   onChange: (value: string) => void
   defaultValue?: string
   emitTime?: number
   regexValidator?: RegExp
+  validate?: (value: string) => boolean | Promise<boolean>
   errorMessage?: string
 }
 
@@ -78,97 +59,71 @@ const props = withDefaults(defineProps<TextBoxProps>(), {
 })
 
 let inputTimer: ReturnType<typeof setTimeout> | null = null
+let revision = 0
+let pending: { value: string; revision: number } | null = null
 const inputText = ref(props.input)
 const invalidInput = ref(false)
 
-watch(
-  () => props.input,
-  (value, oldValue) => {
-    if (value !== oldValue) {
-      inputText.value = value
+const clearTimer = (): void => {
+  if (inputTimer) clearTimeout(inputTimer)
+  inputTimer = null
+}
+
+watch(() => props.input, value => {
+  revision++
+  clearTimer()
+  pending = null
+  inputText.value = value
+  invalidInput.value = false
+})
+
+const validateAndEmit = async(edit: { value: string; revision: number }): Promise<void> => {
+  let valid = true
+  if (props.validate) {
+    try {
+      valid = await props.validate(edit.value)
+    } catch {
+      valid = false
     }
   }
-)
+  if (edit.revision !== revision) return
+  invalidInput.value = !valid
+  if (valid) props.onChange(edit.value)
+}
 
-const handleMoreClick = () => {
-  if (typeof props.more === 'string') {
-    window.electron.shell.openExternal(props.more)
+const flushPending = (): void => {
+  clearTimer()
+  const edit = pending
+  pending = null
+  if (edit) void validateAndEmit(edit)
+}
+
+const handleInput = (value: string): void => {
+  revision++
+  clearTimer()
+  pending = null
+  const valid = props.regexValidator.test(value)
+  invalidInput.value = !valid
+  if (!valid) return
+  pending = { value, revision }
+  if (props.emitTime === 0) {
+    flushPending()
+  } else {
+    inputTimer = setTimeout(flushPending, props.emitTime)
   }
 }
 
-const handleInput = (value: string) => {
-  const result = props.regexValidator.test(value)
-  invalidInput.value = !result
+// Leaving a category must not drop an edit that is still waiting for its debounce.
+onBeforeUnmount(flushPending)
 
-  if (result) {
-    if (inputTimer) {
-      clearTimeout(inputTimer)
-    }
-
-    if (props.emitTime === 0) {
-      props.onChange(value)
-      return
-    }
-
-    inputTimer = setTimeout(() => {
-      inputTimer = null
-      props.onChange(value)
-    }, props.emitTime)
-  }
-}
 </script>
 
 <style>
-.pref-text-box-item {
-  font-size: 14px;
-  user-select: none;
-  margin: 12px 0;
-  color: var(--editorColor);
-  width: 100%;
-  & div {
-    background: transparent;
-    color: var(--editorColor);
-    border-color: var(--editorColor10);
-  }
-  & input.el-input__inner {
-    height: 30px;
-    background: transparent;
-    border: none;
-    padding-right: 15px;
-    &::placeholder {
-      color: var(--editorColor30);
-    }
-  }
-  & .input {
-    width: 100%;
-  }
-  & .el-input.is-active .el-input__inner,
-  & .el-input__inner:focus {
-    border-color: var(--themeColor);
-  }
-  & .el-input__icon,
-  & .el-input__inner {
-    line-height: 30px;
-  }
-  & .description {
-    margin-bottom: 10px;
-  }
-  & svg {
-    margin-left: 4px;
-    cursor: pointer;
-    opacity: 0.7;
-    color: var(--iconColor);
-  }
-  & svg:hover {
-    color: var(--themeColor);
-  }
-}
-.pref-text-box-item .el-input.error input {
-  color: #f56c6c;
-}
 .pref-text-box-item .error-message {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: #f56c6c;
+  color: var(--deleteColor);
+  margin-top: 6px;
+}
+.pref-text-box-item .el-input.error {
+  --el-input-border-color: var(--deleteColor);
 }
 </style>

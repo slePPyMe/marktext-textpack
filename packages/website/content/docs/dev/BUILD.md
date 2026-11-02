@@ -4,7 +4,7 @@ MarkText is built from the pnpm workspace at the repository root. Compiling the 
 
 ## Prerequisites
 
-- Node.js `>=20.19.0` and pnpm `>=10`. Use the pnpm version pinned by `packageManager` in the root `package.json`.
+- Node.js `>=22.12.0` and pnpm `>=10`. Use the pnpm version pinned by `packageManager` in the root `package.json`.
 - Python 3 and a C++ toolchain for native dependencies. Release CI selects Python 3.12.
 - Build on the target operating system: Linux, macOS or Windows. The release workflow builds x64 and arm64 on native runners.
 
@@ -99,5 +99,22 @@ pnpm --filter @muyajs/core lint:types
 pnpm --filter @muyajs/core test
 pnpm --filter @muyajs/core test:spec
 ```
+
+### Native image checks
+
+On a development or packaged build, check these interactions using the real
+system clipboard, file manager and screenshot tool:
+
+- Drag a local PNG/JPEG into a saved document with image insertion set to copy
+  to a folder. Verify the image renders, the copy exists in the configured image
+  folder, and the Markdown points to it. Also check dragging a browser image URL.
+- Copy an image bitmap in a browser and paste it into the editor. Verify the
+  image renders and follows the configured copy/upload action.
+- On macOS, use the application's screenshot action and select a region.
+  Verify the captured image is inserted and persisted.
+
+Record the application commit, platform and result. Engine tests simulate
+clipboard/drop data and mock host callbacks, so these checks cover native
+integration beyond those assertions.
 
 For the documentation site, see [Website development](WEBSITE.md).

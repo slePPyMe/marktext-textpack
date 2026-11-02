@@ -245,7 +245,7 @@
       "cancel": "Annuler",
       "openFolder": "Add Folder…",
       "showMoreMatches": "Afficher plus de correspondances",
-      "searchInFolders": "Search in added folders",
+      "searchInFolders": "Rechercher dans le dossier",
       "partialSearch": "Some folders could not be searched.",
       "noSearchableFolders": "No available folders to search."
     },
@@ -271,6 +271,7 @@
       "expand": "Développer la table des matières",
       "collapse": "Réduire la table des matières",
       "empty": "Aucun titre",
+      "resize": "Redimensionner la table des matières",
       "title": "Table des matières",
       "expandAll": "Tout développer",
       "collapseAll": "Tout réduire"
@@ -279,6 +280,21 @@
       "files": "Fichiers",
       "search": "Rechercher",
       "settings": "Paramètres"
+    },
+    "move": {
+      "title": "Move file or folder",
+      "confirm": "Move",
+      "question": "Move \"{name}\"?",
+      "detail": "From: {source}\nTo: {destination}\n\nThis changes the actual file location. Relative links and image paths may be affected.",
+      "directoryContents": "The folder and all its contents will be moved.",
+      "completed": "Moved successfully.",
+      "invalidTarget": "Choose another folder within the same open root. Linked paths and moving a folder into itself are not supported.",
+      "crossDevice": "Moving between volumes is not supported here. Use your system file manager.",
+      "conflict": "The destination already contains an item with this name. Rename it before trying again.",
+      "missing": "The source or destination no longer exists. Refresh the folder and try again.",
+      "permission": "The item could not be moved. Check folder permissions and whether another application is using it.",
+      "openElsewhere": "Close this file and any documents inside this folder in other MarkText windows before moving it.",
+      "destinationOpen": "A document is already open at the destination path. Close it before trying again."
     }
   },
   "titleBar": {
@@ -400,102 +416,15 @@
     "title": "Préférences",
     "learnMore": "En savoir plus sur {name}",
     "search": {
-      "placeholder": "Rechercher dans les préférences...",
-      "categories": {
-        "general": "Général",
-        "editor": "Éditeur",
-        "markdown": "Markdown",
-        "theme": "Thème",
-        "image": "Image",
-        "view": "Affichage",
-        "searcher": "Recherche",
-        "watcher": "Surveillant",
-        "spelling": "Orthographe",
-        "custom css": "CSS personnalisé"
-      },
-      "items": {
-        "autoSave": "Sauvegarder automatiquement le contenu en cours d'édition",
-        "autoSaveDelay": "Le temps en ms après un changement avant que le fichier soit sauvegardé",
-        "autoNormalizeLineEndings": "Normaliser automatiquement les fins de ligne à l'ouverture des fichiers. Lorsque désactivé, les fichiers sont ouverts tels quels.",
-        "titleBarStyle": "Le style de la barre de titre (systèmes Windows et Linux uniquement)",
-        "openFilesInNewWindow": "Ouvrir les fichiers dans une nouvelle fenêtre",
-        "openFilesInPreviewMode": "Ouvrir les fichiers de la barre latérale dans des onglets d’aperçu",
-        "openFolderInNewWindow": "Ouvrir le dossier via le menu dans une nouvelle fenêtre",
-        "zoom": "Le niveau de zoom. Entre 0.5 et 2.0 inclus",
-        "hideScrollbar": "Masquer les barres de défilement",
-        "wordWrapInToc": "Activer le retour à la ligne dans la table des matières",
-        "fileSortBy": "Trier les fichiers dans le dossier ouvert par heure de création, heure de modification et titre",
-        "startUpAction": "L'action après le démarrage de MarkText, ouvrir le dernier contenu édité, ouvrir le dossier spécifié ou une page vierge",
-        "restoreLayoutState": "Restaurer l'état précédent de l'éditeur au démarrage",
-        "defaultDirectoryToOpen": "Le répertoire par défaut qui devrait être ouvert au démarrage quand startUp=folder",
-        "language": "La langue utilisée par MarkText",
-        "editorFontFamily": "Famille de police de l'éditeur",
-        "fontSize": "Taille de police en pixels",
-        "lineHeight": "Hauteur de ligne",
-        "wrapCodeBlocks": "Retour à la ligne dans les blocs de code",
-        "editorLineWidth": "Définit la largeur maximale de la zone d'édition. Une chaîne vide ou des suffixes de ch (caractères), px (pixels) ou % (pourcentage) sont autorisés",
-        "codeFontSize": "Taille de police dans le bloc de code, la plage est de 12 ~ 18",
-        "codeFontFamily": "Police du code. S’applique au code en ligne et aux blocs de code.",
-        "codeBlockLineNumbers": "Afficher les numéros de ligne",
-        "sourceCodeLineNumbers": "Afficher les numéros de ligne en mode code source",
-        "trimUnnecessaryCodeBlockEmptyLines": "Supprimer les lignes vides au début et à la fin du bloc de code",
-        "autoPairBracket": "Parenthèses automatiques lors de l'édition",
-        "autoPairMarkdownSyntax": "Complétion automatique de la syntaxe markdown",
-        "autoPairQuote": "Complétion automatique des guillemets",
-        "endOfLine": "Le caractère de nouvelle ligne utilisé à la fin de chaque ligne. La valeur par défaut est default, qui sélectionne le caractère de nouvelle ligne par défaut de votre système d'exploitation",
-        "defaultEncoding": "L'encodage de fichier par défaut",
-        "autoGuessEncoding": "Essayer de deviner automatiquement l'encodage du fichier lors de l'ouverture des fichiers",
-        "trimTrailingNewline": "L'option de suppression des nouvelles lignes de fin",
-        "textDirection": "La direction d'écriture du texte",
-        "hideQuickInsertHint": "Masquer l'indice pour créer rapidement des paragraphes",
-        "hideLinkPopup": "Masquer la popup de lien quand le curseur survole le lien",
-        "autoCheck": "Cocher automatiquement la tâche associée",
-        "preferLooseListItem": "Le type de liste préféré",
-        "bulletListMarker": "Le marqueur utilisé dans la liste à puces",
-        "orderListDelimiter": "Le délimiteur utilisé dans la liste ordonnée",
-        "preferHeadingStyle": "Le style de titre préféré dans MarkText",
-        "tabSize": "Remplacer la tabulation par x espaces",
-        "listIndentation": "Sélectionner l'indentation de liste",
-        "frontmatterType": "Le type de frontmatter",
-        "superSubScript": "Activer l'extension markdown de pandoc pour exposant et indice",
-        "footnote": "Activer l'extension markdown de pandoc pour note de bas de page",
-        "texMathDollars": "Activer l'extension markdown de pandoc tex_math_dollars",
-        "texMathGfm": "Activer l'extension markdown de pandoc tex_math_gfm",
-        "texMathSingleBackslash": "Activer l'extension markdown de pandoc tex_math_single_backslash",
-        "texMathDoubleBackslash": "Activer l'extension markdown de pandoc tex_math_double_backslash",
-        "highlightSyntax": "Activer la syntaxe de surlignage non standard ==texte==",
-        "inlineDiff": "Activer la syntaxe de diff en ligne non standard {+ … +} / [- … -]",
-        "multilineBlockquote": "Activer la syntaxe de citation multiligne non standard >>> … >>>",
-        "githubAlerts": "Alertes GitHub",
-        "isHtmlEnabled": "Activer le rendu HTML",
-        "softNewlineAsSpace": "Traiter les sauts de ligne simples comme des espaces",
-        "sequenceTheme": "Thème du diagramme de séquence",
-        "mermaidLightTheme": "Thème Mermaid pour les thèmes clairs de MarkText",
-        "mermaidDarkTheme": "Thème Mermaid pour les thèmes sombres de MarkText",
-        "plantumlServer": "URL du serveur PlantUML",
-        "theme": "Sélectionner le thème utilisé dans MarkText",
-        "followSystemTheme": "Suivre le thème du système",
-        "lightModeTheme": "Thème à utiliser lorsque le système est en mode clair",
-        "darkModeTheme": "Thème à utiliser lorsque le système est en mode sombre",
-        "spellcheckerEnabled": "La vérification orthographique est-elle activée",
-        "spellcheckerNoUnderline": "Ne pas souligner les erreurs d'orthographe",
-        "spellcheckerLanguage": "La langue du vérificateur orthographique",
-        "imageInsertAction": "Le comportement par défaut après insertion d'image depuis un dossier local",
-        "imagePreferRelativeDirectory": "Préférer le répertoire d'image relatif",
-        "imageRelativeDirectoryBase": "Où les images relatives sont copiées",
-        "imageRelativeDirectoryName": "Le nom du dossier d'image relatif",
-        "fileSortOrder": "Ordre de tri des fichiers dans les dossiers ouverts : croissant ou décroissant.",
-        "openedFilesInSidebar": "Afficher ou non les fichiers ouverts dans la barre latérale.",
-        "showPandocConvert": "Afficher le menu de conversion Pandoc. Nécessite l'installation de Pandoc."
-      }
+      "placeholder": "Rechercher dans les préférences..."
     },
     "categories": {
       "general": "Général",
-      "editor": "Éditeur",
+      "appearance": "Apparence",
+      "editor": "Édition",
+      "files": "Fichiers et enregistrement",
       "markdown": "Markdown",
-      "spelling": "Orthographe",
-      "theme": "Thème",
-      "image": "Image",
+      "images": "Images et exportation",
       "keybindings": "Raccourcis clavier"
     },
     "general": {
@@ -516,36 +445,50 @@
         "hideScrollbars": "Masquer les barres de défilement",
         "openFilesInNewWindow": "Ouvrir les fichiers dans une nouvelle fenêtre",
         "openFoldersInNewWindow": "Ouvrir les dossiers dans une nouvelle fenêtre",
-        "zoom": "Zoom"
+        "zoom": "Zoom",
+        "openFilesInNewWindowNote": "Si cette option est activée, les fichiers s’ouvrent dans une nouvelle fenêtre. Sinon, ils s’ouvrent dans des onglets de la fenêtre actuelle.",
+        "openFoldersInNewWindowNote": "Si cette option est activée, les dossiers s’ouvrent dans une nouvelle fenêtre. Sinon, ils remplacent le dossier de la fenêtre actuelle."
       },
       "startup": {
-        "title": "Démarrage",
-        "layoutOptions": "Options de mise en page",
-        "startupFilesFolders": "Fichiers/dossiers au démarrage",
-        "restorePreviousState": "Restaurer l'état précédent de l'éditeur",
-        "openBlankState": "Ouvrir un état vierge",
-        "openDefaultDirectory": "Ouvrir le répertoire par défaut",
-        "openLastFolder": "Restaurer le dossier ouvert",
-        "restoreAll": "Restaurer tous les fichiers et dossiers ouverts",
+        "title": "Démarrage et restauration",
+        "openDefaultDirectory": "Ouvrir le dossier sélectionné",
+        "openLastFolder": "Ouvrir le dernier espace de travail",
+        "restoreAll": "Restaurer toutes les fenêtres",
         "selectFolder": "Sélectionner un dossier",
-        "openBlankPage": "Ouvrir une page vierge"
+        "openBlankPage": "Nouveau document vierge",
+        "action": "Au démarrage",
+        "restoreLastWindow": "Restaurer la dernière fenêtre active",
+        "restoreLayoutState": "Restaurer la disposition des fenêtres",
+        "restoreLayoutStateNote": "Restaurer la taille, la position et la disposition des éléments comme la barre latérale au redémarrage.",
+        "restoreEditors": "Restaurer les fichiers ouverts",
+        "restoreEditorsNote": "Rouvrir les onglets de fichiers précédents au redémarrage.",
+        "restoreViewState": "Restaurer les positions de lecture et les sélections",
+        "restoreViewStateNote": "Retrouver la dernière position de lecture et la sélection lors de la restauration d’un fichier.",
+        "failure": "Les paramètres n’ont pas pu être enregistrés. Les paramètres précédents restent en vigueur."
       },
       "pandoc": {
         "title": "Conversion Pandoc",
-        "description": "Afficher le menu de conversion Pandoc",
-        "detailedDescription": "Nécessite l'installation de Pandoc",
+        "description": "Activer la conversion Pandoc",
+        "detailedDescription": "Affiche les commandes de conversion dans le menu. Nécessite l’installation de Pandoc.",
         "found": "Trouvé : {path}",
-        "notFound": "Introuvable",
-        "recheck": "Revérifier"
+        "notFound": "Introuvable"
       },
       "sidebar": {
-        "title": "Barre latérale",
+        "title": "Barre latérale et table des matières",
         "wrapTextInToc": "Retour à la ligne dans la table des matières",
+        "tocPosition": "Position de la table des matières",
+        "tocLeft": "À gauche",
+        "tocRight": "À droite",
         "showOpenedFiles": "Afficher les fichiers ouverts",
         "autoReveal": "Afficher le fichier actif dans la barre latérale",
         "openFilesInPreviewMode": "Ouvrir les fichiers de la barre latérale dans des onglets d’aperçu. La modification ou le double-clic conserve l’onglet.",
-        "excludePatterns": "Motifs d'exclusion",
-        "excludePatternsNotes": "Notes sur les motifs d'exclusion",
+        "excludePatterns": "Règles d’exclusion de l’arborescence des fichiers",
+        "excludePatternsNotes": "Les chemins correspondant à une règle glob sont exclus de l’arborescence des fichiers. Appuyez sur Entrée pour ajouter une règle et cliquez sur × pour la supprimer ; les virgules au sein d’une règle sont conservées. Rouvrez le dossier pour appliquer toutes les modifications.",
+        "removePattern": "Supprimer",
+        "newPattern": "Nouvelle règle d’exclusion",
+        "patternExample": "Par exemple : **/drafts/** ou *.tmp",
+        "patternSaveError": "Impossible d’enregistrer les règles d’exclusion. Les règles enregistrées ont été conservées. Réessayez.",
+        "patternHelp": "Syntaxe des motifs glob",
         "fileSortBy": {
           "title": "Trier les fichiers par",
           "creationTime": "Heure de création",
@@ -560,25 +503,24 @@
           "newestFirst": "Plus récent en premier"
         }
       },
-      "misc": {
-        "title": "Divers",
-        "language": {
-          "title": "Langue",
-          "english": "English",
-          "chinese": "简体中文",
-          "traditionalChinese": "繁體中文",
-          "spanish": "Español",
-          "french": "Français",
-          "german": "Deutsch",
-          "japanese": "日本語",
-          "korean": "한국어",
-          "dutch": "Nederlands",
-          "portuguese": "Português",
-          "turkish": "Türkçe",
-          "russian": "Русский",
-          "italian": "Italiano"
-        }
-      }
+      "language": {
+        "title": "Langue",
+        "english": "English",
+        "chinese": "简体中文",
+        "traditionalChinese": "繁體中文",
+        "spanish": "Español",
+        "french": "Français",
+        "german": "Deutsch",
+        "japanese": "日本語",
+        "korean": "한국어",
+        "dutch": "Nederlands",
+        "portuguese": "Português",
+        "turkish": "Türkçe",
+        "russian": "Русский",
+        "italian": "Italiano",
+        "label": "Langue de l’interface"
+      },
+      "openingMode": "Mode d’ouverture"
     },
     "editor": {
       "title": "Éditeur",
@@ -587,7 +529,7 @@
         "fontSize": "Taille de police",
         "lineHeight": "Hauteur de ligne",
         "fontFamily": "Famille de police",
-        "maxWidth": "Largeur maximale",
+        "maxWidth": "Largeur maximale du contenu de l’éditeur",
         "maxWidthNotes": "Largeur maximale du contenu de l'éditeur. Saisissez un nombre suivi de px, ch (caractères) ou %, par exemple 800px, 80ch ou 60%. Laissez vide pour utiliser la largeur par défaut.",
         "maxWidthInvalid": "Saisissez un nombre suivi de px, ch ou %, par exemple 800px.",
         "codeFontFamily": "Police du code",
@@ -595,20 +537,21 @@
       },
       "codeBlock": {
         "title": "Bloc de code",
-        "fontSize": "Taille de police",
+        "fontSize": "Taille de police des blocs de code",
         "showLineNumbers": "Afficher les numéros de ligne",
         "removeEmptyLines": "Supprimer les lignes vides"
       },
       "writingBehavior": {
-        "title": "Comportement d'écriture",
+        "title": "Préférences de rédaction",
         "autoCloseBrackets": "Fermeture automatique des crochets",
-        "autoCompleteMarkdown": "Autocomplétion Markdown",
+        "autoCompleteMarkdown": "Compléter les paires de marqueurs Markdown",
         "autoCloseQuotes": "Fermeture automatique des guillemets"
       },
       "fileRepresentation": {
         "title": "Représentation de fichier",
-        "tabWidth": "Largeur de tabulation",
-        "lineSeparator": "Séparateur de ligne",
+        "tabWidth": "Saisie avec la touche Tab",
+        "tabInputNotes": "Choose spaces or a real tab character. Existing tabs use four-column tab stops. In lists and tables, Tab adjusts nesting or moves between cells.",
+        "lineSeparator": "Fin de ligne par défaut des fichiers",
         "defaultEncoding": "Encodage par défaut",
         "autoDetectEncoding": "Détection automatique de l'encodage",
         "trailingNewlines": {
@@ -633,7 +576,7 @@
         },
         "hideQuickInsertHint": "Masquer l'indice d'insertion rapide",
         "hideLinkPopup": "Masquer la popup de lien",
-        "autoCheck": "Vérification automatique",
+        "autoCheck": "Lier les tâches parentes et leurs sous-tâches",
         "autoNormalizeLineEndings": "Normaliser automatiquement les fins de ligne en LF à l'ouverture",
         "wrapCodeBlocks": "Retour à la ligne des blocs de code",
         "sourceCodeLineNumbers": "Afficher les numéros de ligne en mode code source"
@@ -649,7 +592,7 @@
       "folderSetting": {
         "title": "Paramètres de dossier",
         "globalFolder": "Dossier d'images global",
-        "open": "Ouvrir",
+        "open": "Choisir un dossier…",
         "showInFolder": "Afficher dans le dossier",
         "preferRelative": "Préférer le répertoire relatif",
         "relativeCopyLocation": "Copier l'image relativement à",
@@ -660,21 +603,19 @@
       },
       "uploader": {
         "title": "Téléchargeur d'images",
-        "currentUploader": "Téléverseur actuel : {name}",
-        "picgoNotInstalled": "PicGo non installé",
-        "picgoInstalled": "PicGo installé",
-        "picgoDetectionFailed": "Échec de la détection PicGo",
+        "picgoNotInstalled": "PicGo-Core non installé",
+        "picgoInstalled": "PicGo-Core installé",
+        "picgoDetectionFailed": "Échec de la détection PicGo-Core",
         "debugInfo": "Informations de débogage",
         "npmInstallCommand": "npm install picgo -g",
         "yarnInstallCommand": "yarn global add picgo",
         "pnpmInstallCommand": "pnpm add -g picgo",
         "chooseInstallMethod": "Choisir la méthode d'installation :",
-        "retestPicgo": "Retester",
         "lastDetectionTime": "Dernière détection",
         "usageGuide": {
-          "title": "Guide d'utilisation de base PicGo",
+          "title": "Guide d'utilisation de base PicGo-Core",
           "step1": "Configurer l'uploader",
-          "step1Description": "Utilisez la commande suivante pour configurer l'uploader PicGo :",
+          "step1Description": "Utilisez la commande suivante pour configurer l'uploader PicGo-Core :",
           "step2": "Télécharger des images",
           "step2Description": "Utilisez la commande suivante pour télécharger des images :",
           "step3": "Voir la configuration",
@@ -683,19 +624,14 @@
         },
         "scriptDescription": "Description du script",
         "scriptLocation": "Emplacement du script",
-        "save": "Enregistrer",
-        "saveConfig": "Enregistrer la configuration",
-        "scriptConfigSaved": "Configuration du script enregistrée",
         "services": {
-          "picgo": "PicGo",
+          "picgo": "PicGo-Core",
           "cliScript": "Script CLI"
         },
         "pleaseInstall": "Veuillez installer",
         "scriptPath": "Chemin du script",
-        "picgoDetection": "Détection PicGo",
         "lastSuccessTime": "Dernière heure de succès",
-        "neverDetected": "Jamais détecté",
-        "neverSuccessful": "Jamais réussi"
+        "invalidScript": "Saisissez le chemin d’un script existant et exécutable."
       },
       "defaultBehavior": "Comportement par défaut après avoir collé ou glissé une image dans MarkText"
     },
@@ -705,11 +641,11 @@
         "title": "Extensions",
         "superSubScript": "Exposant/Indice",
         "footnote": "Note de bas de page",
-        "footnoteNotes": "Notes de bas de page",
         "texMathDollars": "Maths TeX avec $ et $$",
         "texMathGfm": "Maths TeX de GitHub ($`…`$ et ```math)",
         "texMathSingleBackslash": "Maths TeX avec barre oblique inverse simple",
         "texMathDoubleBackslash": "Maths TeX avec barre oblique inverse double",
+        "fancyLists": "Listes à lettres et chiffres romains",
         "highlightSyntax": "Surlignage (==texte==)",
         "inlineDiff": "Diff en ligne ({+ … +})",
         "multilineBlockquote": "Citation multiligne (>>>)",
@@ -768,42 +704,47 @@
     },
     "theme": {
       "title": "Thème",
-      "followSystemTheme": "Suivre le thème du système",
-      "followSystemNote": "Suivre le thème du système verrouille la liste des thèmes ci-dessous. Désactivez cette option pour changer librement de thème.",
+      "followSystemTheme": "Suivre l’apparence du système",
+      "followSystemNote": "Choisissez ci-dessous un thème pour le mode sombre et un autre pour le mode clair.",
       "modeThemes": "Sélection du thème",
       "lightModeTheme": "Thème en mode clair",
       "darkModeTheme": "Thème en mode sombre",
       "customCss": "CSS personnalisé",
-      "importCustomThemes": "Importer des thèmes personnalisés",
-      "importTheme": "Importer un thème",
-      "openFolder": "Ouvrir le dossier",
-      "openThemesFolder": "Ouvrir le dossier des thèmes"
+      "chooseTheme": "Choisir un thème",
+      "chooseFor": "Choisir {name}",
+      "searchThemes": "Rechercher des thèmes",
+      "filterLabel": "Type de thème",
+      "filter": {
+        "all": "Tous",
+        "light": "Clair",
+        "dark": "Sombre"
+      },
+      "noResults": "Aucun thème ne correspond."
     },
     "keybindings": {
       "title": "Raccourcis clavier",
-      "description": "Personnaliser les raccourcis clavier",
-      "save": "Enregistrer",
+      "description": "Pour modifier un raccourci, sélectionnez sa combinaison de touches, puis appuyez sur la nouvelle combinaison",
       "restoreDefaults": "Restaurer les valeurs par défaut",
       "debugOptions": "Options de débogage",
       "dumpKeyboardInfo": "Vider les informations du clavier",
       "failedToSave": "Échec de l'enregistrement des raccourcis clavier",
-      "keyInputDialog": {
-        "instructions": "Appuyez sur la combinaison de touches que vous souhaitez assigner",
-        "invalidKeybinding": "Raccourci clavier invalide",
-        "placeholder": "Appuyez sur les touches..."
-      },
-      "online": "En ligne",
+      "online": "Documentation des raccourcis clavier",
       "saveError": "Erreur lors de l'enregistrement des raccourcis clavier",
       "shortcutInUse": "Raccourci en cours d'utilisation",
-      "shortcutInUseMessage": "Ce raccourci est déjà assigné à {accelerator}",
-      "table": {
-        "description": "Description",
-        "edit": "Modifier",
-        "keyCombination": "Combinaison de touches",
-        "options": "Options",
-        "reset": "Réinitialiser",
-        "unbind": "Délier"
+      "shortcutInUseMessage": "{accelerator} est déjà attribué à {commands}.",
+      "windowAndNavigation": "Fenêtres et navigation",
+      "loadError": "Impossible de charger les raccourcis clavier.",
+      "reload": "Recharger",
+      "viewConflict": "Voir {name}",
+      "editShortcut": "Modifier le raccourci de {name}",
+      "unbound": "Non attribué",
+      "recorder": {
+        "placeholder": "Appuyez sur la combinaison de touches",
+        "invalidKeybinding": "Raccourci clavier invalide"
       }
+    },
+    "fontStack": {
+      "noMatches": "Aucune police correspondante"
     },
     "selectFont": "Sélectionner une police",
     "spellchecker": {
@@ -821,6 +762,16 @@
       "enableSpellChecking": "Activer la vérification orthographique",
       "hideMarksForErrors": "Masquer les marques d'erreurs orthographiques",
       "title": "Vérification orthographique"
+    },
+    "explanations": {
+      "taskCascade": "Cocher une tâche parente met à jour ses sous-tâches ; modifier les sous-tâches met à jour leur parent.",
+      "markdownPairs": "Complète les paires de marqueurs Markdown, comme les astérisques, les tirets bas et les accents graves, pendant la saisie.",
+      "lineEndings": "Utilisée pour les nouveaux fichiers et les fins de ligne mixtes ou non détectées. Les fichiers LF ou CRLF conservent leur format détecté."
+    },
+    "commandDetection": {
+      "checking": "Vérification…",
+      "recheck": "Vérifier à nouveau",
+      "failed": "La détection a échoué. Veuillez réessayer."
     }
   },
   "about": {
@@ -1038,6 +989,11 @@
     "unexpectedError": "Erreur inattendue du correcteur orthographique"
   },
   "editor": {
+    "imageDrop": {
+      "saveTitle": "Enregistrer le document pour utiliser un dossier relatif pour les images",
+      "saveMessage": "Si vous enregistrez le document, l’image sera stockée dans le dossier relatif configuré. Si vous annulez, l’image sera stockée dans le dossier global des images.",
+      "failed": "Impossible d’insérer l’image"
+    },
     "export": {
       "error": "Erreur d'exportation",
       "errorExporting": "Erreur lors de l'exportation du fichier {type}",

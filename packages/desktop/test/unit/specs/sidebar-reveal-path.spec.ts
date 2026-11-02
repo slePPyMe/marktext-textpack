@@ -1,21 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
-// `@/store/layout` reads localStorage at module load. Node 25 exposes a global
-// localStorage stub whose methods are missing, so install a working one before
-// the store modules import.
 vi.hoisted(() => {
-  const store = new Map<string, string>()
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => store.set(key, String(value)),
-      removeItem: (key: string) => store.delete(key),
-      clear: () => store.clear()
-    }
-  })
-
   const w = globalThis as unknown as {
     window?: {
       marktext?: { env?: { windowId?: number } }
@@ -58,7 +44,7 @@ vi.mock('@/services/notification', () => ({
   default: { notify: vi.fn(), name: 'notify' }
 }))
 
-import { expandAncestors } from '@/store/treeCtrl'
+import { expandAncestors, findTreeNode } from '@/store/treeCtrl'
 import { useProjectStore } from '@/store/project'
 
 interface FileFixture {
@@ -111,7 +97,49 @@ const createTree = (): FolderFixture =>
     folder('/project/c', [], [file('/project/c/other.md')])
   ], [file('/project/root.md')])
 
+describe('findTreeNode path identity', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each(['/PROJECT', '/project/A', '/project/a/b/DEEP.md'])('matches %s on a case-insensitive filesystem', pathname => {
+    vi.spyOn(window.fileUtils, 'isSamePathSync').mockImplementation((a, b) => a.toLowerCase() === b.toLowerCase())
+    const tree = createTree()
+    const node = findTreeNode(tree, pathname)
+    expect(node?.pathname).toBe(pathname.toLowerCase())
+  })
+
+  it('keeps differently cased paths distinct on a case-sensitive filesystem', () => {
+    vi.spyOn(window.fileUtils, 'isSamePathSync').mockImplementation((a, b) => a === b)
+    const tree = createTree()
+    tree.files.push(file('/project/ROOT.md'))
+    expect(findTreeNode(tree, '/project/root.md')).toBe(tree.files[0])
+    expect(findTreeNode(tree, '/project/ROOT.md')).toBe(tree.files[1])
+    expect(findTreeNode(tree, '/project/Root.md')).toBeUndefined()
+  })
+
+  it('finds a differently cased file before revealing its ancestors', () => {
+    vi.spyOn(window.fileUtils, 'isSamePathSync').mockImplementation((a, b) => a.toLowerCase() === b.toLowerCase())
+    setActivePinia(createPinia())
+    const store = useProjectStore()
+    const tree = createTree()
+    store.APPLY_ROOTS({ revision: 1, roots: [{ key: tree.pathname, pathname: tree.pathname, watchToken: 'root', status: 'ready' }], reason: 'restore' })
+    store.roots[0].tree = tree
+
+    expect(store.FIND_TREE_NODE('/project/a/b/DEEP.md')?.pathname).toBe('/project/a/b/deep.md')
+    expect(store.REVEAL_PATH('/project/a/b/DEEP.md')).toBe(true)
+    expect(store.roots[0].tree.folders[0].folders[0].isCollapsed).toBe(false)
+    expect(store.roots[0].tree.folders[1].isCollapsed).toBe(true)
+  })
+})
+
 describe('expandAncestors', () => {
+  it('reveals a folder without expanding that folder or unrelated branches', () => {
+    const tree = createTree()
+    const chain = expandAncestors(tree, '/project/a/b')
+    expect(chain?.map(folder => folder.pathname)).toEqual(['/project/a'])
+    expect(tree.folders[0].isCollapsed).toBe(false)
+    expect(tree.folders[0].folders[0].isCollapsed).toBe(true)
+    expect(tree.folders[1].isCollapsed).toBe(true)
+  })
   it('expands exactly the folders leading to the file', () => {
     const tree = createTree()
 
@@ -165,7 +193,9 @@ describe('project store REVEAL_PATH', () => {
 
   it('expands the ancestors of a tracked file', () => {
     const store = useProjectStore()
-    store.projectTree = createTree()
+    const restoredTree = createTree()
+    store.APPLY_ROOTS({ revision: 1, roots: [{ key: restoredTree.pathname, pathname: restoredTree.pathname, watchToken: 'root', status: 'ready' }], reason: 'restore' })
+    store.roots[0].tree = restoredTree
 
     expect(store.REVEAL_PATH('/project/a/b/deep.md')).toBe(true)
     expect(folderNamed(store.projectTree?.folders ?? [], '/project/a').isCollapsed).toBe(false)
@@ -173,7 +203,9 @@ describe('project store REVEAL_PATH', () => {
 
   it('reports untracked files without touching the tree', () => {
     const store = useProjectStore()
-    store.projectTree = createTree()
+    const restoredTree = createTree()
+    store.APPLY_ROOTS({ revision: 1, roots: [{ key: restoredTree.pathname, pathname: restoredTree.pathname, watchToken: 'root', status: 'ready' }], reason: 'restore' })
+    store.roots[0].tree = restoredTree
 
     expect(store.REVEAL_PATH('/elsewhere/file.md')).toBe(false)
     expect(folderNamed(store.projectTree?.folders ?? [], '/project/a').isCollapsed).toBe(true)

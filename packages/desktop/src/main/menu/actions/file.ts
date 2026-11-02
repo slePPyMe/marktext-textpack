@@ -1,4 +1,4 @@
-import { rename as fsRename } from 'fs-extra'
+
 import { stat } from 'fs/promises'
 import path from 'path'
 import {
@@ -12,7 +12,7 @@ import {
   type WebContents
 } from 'electron'
 import log from 'electron-log'
-import { isDirectory, isFile, exists } from 'common/filesystem'
+import { isDirectory, isFile } from 'common/filesystem'
 import {
   DOCUMENT_EXTENSIONS,
   MARKDOWN_EXTENSIONS,
@@ -20,15 +20,13 @@ import {
   isDocumentFile
 } from 'common/filesystem/paths'
 import { checkUpdates, userSetting } from './marktext'
-import { showTabBar } from './view'
 import { COMMANDS } from '../../commands'
 import type { CommandManager } from '../../commands'
 import { EXTENSION_HASN, PANDOC_EXTENSIONS, URL_REG } from '../../config'
 import { normalizeAndResolvePath, resolveLocalLinkTarget, writeFile } from '../../filesystem'
-import { writeDocumentFile } from '../../filesystem/document'
-import { moveTextPackSession } from '../../filesystem/textpack'
+
 import { documentWrites } from '../../filesystem/documentWrites'
-import { getPath, getRecommendTitleFromMarkdownString } from '../../utils'
+import { getPath } from '../../utils'
 import pandoc, {
   PANDOC_EXPORT_FORMATS,
   formatLinksMedia,
@@ -39,7 +37,14 @@ import pandoc, {
   shouldMirrorMedia
 } from '../../utils/pandoc'
 import { t, getCurrentLanguage } from '../../i18n'
-import type { PandocExportPayload, TabOptions, UnsavedFile } from '@shared/types/files'
+import type { PandocExportPayload, TabOptions } from '@shared/types/files'
+
+export interface ManagedFileActions {
+  rename(id: string, pathname: string): Promise<void>
+  move(id: string): Promise<void>
+}
+export type ManagedFileActionsProvider = (sender: WebContents) => ManagedFileActions | undefined
+let managedFileActions: ManagedFileActionsProvider = () => undefined
 
 type Win = BrowserWindow | null | undefined
 
@@ -49,10 +54,6 @@ interface PageOptions {
   pageSizeHeight?: number
   isLandscape?: boolean
 }
-
-// TODO(refactor): "save" and "save as" should be moved to the editor window (editor.js) and
-// the renderer should communicate only with the editor window for file relevant stuff.
-// E.g. "mt::save-tabs" --> "mt::window-save-tabs$wid:<windowId>"
 
 const getExportExtensionFilter = (type: string): Electron.FileFilter[] | undefined => {
   if (type === 'pdf') {
@@ -199,7 +200,8 @@ const handlePandocExport = async(e: IpcMainEvent, payload: PandocExportPayload):
     texMathDollars,
     texMathGfm,
     texMathSingleBackslash,
-    texMathDoubleBackslash
+    texMathDoubleBackslash,
+    fancyLists
   } = payload
   // The save dialog and pandoc's link resolution both need the document's folder.
   const sourceDir = pathname ? path.dirname(pathname) : undefined
@@ -225,7 +227,8 @@ const handlePandocExport = async(e: IpcMainEvent, payload: PandocExportPayload):
         texMathDollars: texMathDollars === true,
         texMathGfm: texMathGfm === true,
         texMathSingleBackslash: texMathSingleBackslash === true,
-        texMathDoubleBackslash: texMathDoubleBackslash === true
+        texMathDoubleBackslash: texMathDoubleBackslash === true,
+        fancyLists: fancyLists === true
       },
       await getReaderExtensions()
     )
@@ -283,132 +286,6 @@ const handleResponseForPrint = async(e: IpcMainEvent): Promise<void> => {
   })
 }
 
-const handleResponseForSave = async(
-  e: IpcMainEvent,
-  id: string,
-  filename: string,
-  pathname: string | undefined,
-  markdown: string,
-  options: UnsavedFile['options'],
-  defaultPath?: string,
-  saveAs = false
-): Promise<string | void> => {
-  const win = BrowserWindow.fromWebContents(e.sender)
-  if (!win) return
-  registerDocumentOwner(e.sender)
-  const writeEpoch = documentWrites.capture(e.sender.id, id)
-  if (writeEpoch === null) return
-  let recommendFilename = getRecommendTitleFromMarkdownString(markdown)
-  if (!recommendFilename) {
-    recommendFilename = filename || 'Untitled'
-  }
-
-  // CLI buffers have a target pathname before their first disk write.
-  const alreadyExistOnDisk = !!pathname && !options.isPendingCreation
-
-  if (!saveAs && pathname && options.isPendingCreation && (await exists(pathname))) {
-    const { response } = await dialog.showMessageBox(win, {
-      type: 'warning',
-      buttons: [t('dialog.replace'), t('dialog.cancel')],
-      defaultId: 1,
-      cancelId: 1,
-      message: t('dialog.fileExists', { filename: pathname })
-    })
-    if (response !== 0) return
-  }
-
-  let filePath = pathname
-
-  if (saveAs || !filePath) {
-    const { filePath: dialogPath, canceled } = await dialog.showSaveDialog(win, {
-      defaultPath:
-        saveAs && pathname
-          ? pathname
-          : path.join(defaultPath || getPath('documents'), `${recommendFilename}.md`),
-      properties: ['showOverwriteConfirmation'],
-      filters: [
-        { name: 'Markdown document', extensions: [...MARKDOWN_EXTENSIONS] },
-        { name: 'TextPack document', extensions: ['textpack'] }
-      ]
-    })
-    if (canceled || !dialogPath) return
-    filePath = dialogPath
-  }
-
-  const destination = path.resolve(!saveAs && !path.extname(filePath) ? `${filePath}.md` : filePath)
-  // SaveOptions is partial on the IPC surface; renderer save requests supply all document options.
-  return documentWrites
-    .write(e.sender.id, id, writeEpoch, () =>
-      writeDocumentFile(destination, markdown, options, pathname, saveAs ? 'saveAs' : 'save')
-    )
-    .then((descriptor) => {
-      if (!descriptor) return
-      if (!alreadyExistOnDisk || pathname !== destination || descriptor.documentKind === 'textpack') {
-        if (pathname && pathname !== destination) {
-          ipcMain.emit('window-change-file-path', win.id, destination, pathname)
-        } else if (!alreadyExistOnDisk) {
-          ipcMain.emit('window-add-file-path', win.id, destination)
-        }
-        if (!alreadyExistOnDisk) ipcMain.emit('menu-add-recently-used', destination)
-        else if (pathname === destination) ipcMain.emit('window-file-saved', win.id, destination)
-
-        const newFilename = path.basename(destination)
-        win.webContents.send('mt::set-pathname', {
-          id,
-          pathname: destination,
-          filename: newFilename,
-          savedMarkdown: markdown,
-          ...descriptor
-        })
-      } else {
-        ipcMain.emit('window-file-saved', win.id, destination)
-      }
-      win.webContents.send('mt::tab-saved', id, descriptor.markdown ?? markdown)
-      return id
-    })
-    .catch((err: unknown) => {
-      log.error('Error while saving:', err)
-      const msg = err instanceof Error ? err.message : String(err)
-      win.webContents.send('mt::tab-save-failure', id, msg)
-    })
-}
-
-const showUnsavedFilesMessage = async(
-  win: BrowserWindow,
-  files: UnsavedFile[]
-): Promise<{ needSave: boolean } | null> => {
-  const { response } = await dialog.showMessageBox(win, {
-    type: 'warning',
-    buttons: [
-      t(files.some((file) => file.readOnly) ? 'readingMode.closeSave' : 'dialog.save'),
-      t('dialog.dontSave'),
-      t('dialog.cancel')
-    ],
-    defaultId: 0,
-    message: t('dialog.saveChanges', {
-      count: files.length,
-      type: files.length === 1 ? t('dialog.file') : t('dialog.files'),
-      files: files.map((f) => f.filename).join('\n')
-    }),
-    detail: t('dialog.changesWillBeLost'),
-    cancelId: 2,
-    noLink: true
-  })
-
-  switch (response) {
-    case 0:
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({ needSave: true })
-        })
-      })
-    case 1:
-      return { needSave: false }
-    default:
-      return null
-  }
-}
-
 const noticePandocNotFound = (win: BrowserWindow, titleKey = 'dialog.importWarning'): void => {
   win.webContents.send('mt::pandoc-not-exists', {
     title: t(titleKey),
@@ -430,126 +307,6 @@ const openPandocFile = async(windowId: number, pathname: string): Promise<void> 
 const removePrintServiceFromWindow = (win: BrowserWindow): void => {
   win.webContents.send('mt::print-service-clearup')
 }
-
-
-ipcMain.on('mt::save-tabs', (e, unsavedFiles: UnsavedFile[]) => {
-  Promise.all(
-    unsavedFiles.map((file) =>
-      handleResponseForSave(
-        e,
-        file.id,
-        file.filename,
-        file.pathname,
-        file.markdown,
-        file.options,
-        file.defaultPath
-      )
-    )
-  ).catch(log.error)
-})
-
-ipcMain.on('mt::save-and-close-tabs', async(e, unsavedFiles: UnsavedFile[]) => {
-  const win = BrowserWindow.fromWebContents(e.sender)
-  if (!win) {
-    return
-  }
-  const userResult = await showUnsavedFilesMessage(win, unsavedFiles)
-  if (!userResult) {
-    return
-  }
-
-  const { needSave } = userResult
-  if (needSave) {
-    await unlockDocumentsForSave(e, unsavedFiles)
-    Promise.all(
-      unsavedFiles.map((file) =>
-        handleResponseForSave(
-          e,
-          file.id,
-          file.filename,
-          file.pathname,
-          file.markdown,
-          file.options,
-          file.defaultPath
-        )
-      )
-    )
-      .then((arr) => {
-        const tabIds = arr.filter((id): id is string => id != null)
-        win.webContents.send('mt::force-close-tabs-by-id', tabIds)
-      })
-      .catch((err: unknown) => {
-        log.error('Error while save all:', err)
-      })
-  } else {
-    const tabIds = unsavedFiles.map((f) => f.id)
-    win.webContents.send('mt::force-close-tabs-by-id', tabIds)
-  }
-})
-
-ipcMain.on(
-  'mt::response-file-save-as',
-  (e, id, filename, pathname, markdown, options, defaultPath) =>
-    handleResponseForSave(e, id, filename, pathname, markdown, options, defaultPath, true)
-)
-
-ipcMain.on('mt::close-window-confirm', async(e, unsavedFiles: UnsavedFile[]) => {
-  const win = BrowserWindow.fromWebContents(e.sender)
-  if (!win) {
-    return
-  }
-  const userResult = await showUnsavedFilesMessage(win, unsavedFiles)
-  if (!userResult) {
-    return
-  }
-
-  const { needSave } = userResult
-  if (needSave) {
-    await unlockDocumentsForSave(e, unsavedFiles)
-    Promise.all(
-      unsavedFiles.map((file) =>
-        handleResponseForSave(
-          e,
-          file.id,
-          file.filename,
-          file.pathname,
-          file.markdown,
-          file.options,
-          file.defaultPath
-        )
-      )
-    )
-      .then((savedIds) => {
-        if (savedIds.every((id) => typeof id === 'string')) {
-          win.webContents.send('mt::finish-close-window')
-        }
-      })
-      .catch((err: unknown) => {
-        log.error('Error while saving before quit:', err)
-
-        const msg = err instanceof Error ? err.message : String(err)
-        dialog
-          .showMessageBox(win, {
-            type: 'error',
-            buttons: [t('dialog.close'), t('dialog.keepOpen')],
-            message: t('dialog.saveFailure'),
-            detail: msg
-          })
-          .then(({ response }) => {
-            if (win.id && response === 0) {
-              ipcMain.emit('window-close-by-id', win.id)
-            }
-          })
-      })
-  } else {
-    win.webContents.send(
-      'mt::discard-and-close-window',
-      unsavedFiles.map((file) => file.id)
-    )
-  }
-})
-
-ipcMain.on('mt::response-file-save', handleResponseForSave as Parameters<typeof ipcMain.on>[1])
 
 ipcMain.on('mt::response-export', handleResponseForExport as Parameters<typeof ipcMain.on>[1])
 
@@ -586,81 +343,15 @@ interface RenamePayload {
   newPathname: string
 }
 
-ipcMain.on('mt::rename', async(e, { id, pathname, newPathname }: RenamePayload) => {
-  if (pathname === newPathname) return
-  const win = BrowserWindow.fromWebContents(e.sender)
-  if (!win) {
-    return
-  }
-
-  const doRename = (): void => {
-    fsRename(pathname, newPathname, (err: NodeJS.ErrnoException | null) => {
-      if (err) {
-        log.error(`mt::rename: Cannot rename "${pathname}" to "${newPathname}".\n${err.stack}`)
-        return
-      }
-
-      ipcMain.emit('window-change-file-path', win.id, newPathname, pathname)
-      moveTextPackSession(pathname, newPathname)
-      ipcMain.emit('menu-add-recently-used', newPathname)
-      e.sender.send('mt::set-pathname', {
-        id,
-        pathname: newPathname,
-        filename: path.basename(newPathname)
-      })
-    })
-  }
-
-  if (!(await exists(newPathname))) {
-    doRename()
-  } else {
-    const { response } = await dialog.showMessageBox(win, {
-      type: 'warning',
-      buttons: [t('dialog.replace'), t('dialog.cancel')],
-      defaultId: 1,
-      message: t('dialog.fileExists', { filename: path.basename(newPathname) }),
-      cancelId: 1,
-      noLink: true
-    })
-
-    if (response === 0) {
-      doRename()
-    }
-  }
+ipcMain.on('mt::rename', async(e, { id, newPathname }: RenamePayload) => {
+  const operations = managedFileActions(e.sender)
+  if (operations) await operations.rename(id, newPathname)
 })
 
-ipcMain.on(
-  'mt::response-file-move-to',
-  async(e, { id, pathname }: { id: string; pathname: string }) => {
-    const win = BrowserWindow.fromWebContents(e.sender)
-    if (!win) {
-      return
-    }
-    const { filePath, canceled } = await dialog.showSaveDialog(win, {
-      buttonLabel: 'Move to',
-      nameFieldLabel: 'Filename:',
-      defaultPath: pathname
-    })
-
-    if (filePath && !canceled) {
-      fsRename(pathname, filePath, (err: NodeJS.ErrnoException | null) => {
-        if (err) {
-          log.error(`mt::rename: Cannot rename "${pathname}" to "${filePath}".\n${err.stack}`)
-          return
-        }
-
-        ipcMain.emit('window-change-file-path', win.id, filePath, pathname)
-        moveTextPackSession(pathname, filePath)
-        ipcMain.emit('menu-add-recently-used', filePath)
-        e.sender.send('mt::set-pathname', {
-          id,
-          pathname: filePath,
-          filename: path.basename(filePath)
-        })
-      })
-    }
-  }
-)
+ipcMain.on('mt::response-file-move-to', async(e, { id }: { id: string; pathname: string }) => {
+  const operations = managedFileActions(e.sender)
+  if (operations) await operations.move(id)
+})
 
 ipcMain.on('mt::ask-for-open-project-in-sidebar', event => {
   addFolder(BrowserWindow.fromWebContents(event.sender))
@@ -736,7 +427,6 @@ ipcMain.on('mt::format-link-click', async(e, { data, dirname, readOnly }: Format
   }
 })
 
-
 ipcMain.on('mt::cmd-open-file', (e) => {
   const win = BrowserWindow.fromWebContents(e.sender)
   openFile(win)
@@ -764,7 +454,6 @@ ipcMain.on('mt::cmd-import-file', (e) => {
     importFile(win)
   }
 })
-
 
 export const exportFile = (win: Win, type: string): void => {
   if (win && win.webContents) {
@@ -884,7 +573,6 @@ export const openFileOrFolder = (
 export const newBlankTab = (win: Win): void => {
   if (win && win.webContents) {
     win.webContents.send('mt::new-untitled-tab')
-    showTabBar(win)
   }
 }
 
@@ -943,8 +631,11 @@ export const clearRecentlyUsed = (): void => {
   ipcMain.emit('menu-clear-recently-used')
 }
 
-
-export const loadFileCommands = (commandManager: CommandManager): void => {
+export const loadFileCommands = (
+  commandManager: CommandManager,
+  getManagedActions: ManagedFileActionsProvider = () => undefined
+): void => {
+  managedFileActions = getManagedActions
   commandManager.add(COMMANDS.FILE_CHECK_UPDATE, checkUpdates)
   commandManager.add(COMMANDS.FILE_CLOSE_TAB, closeTab)
   commandManager.add(COMMANDS.FILE_CLOSE_WINDOW, closeWindow)
@@ -981,12 +672,6 @@ ipcMain.handle('mt::set-document-read-only', async(event, tabId: string, readOnl
   registerDocumentOwner(event.sender)
   await documentWrites.setReadOnly(owner, tabId, readOnly)
 })
-
-async function unlockDocumentsForSave(event: IpcMainEvent, files: UnsavedFile[]): Promise<void> {
-  const ids = files.filter((file) => file.readOnly).map((file) => file.id)
-  for (const id of ids) await documentWrites.setReadOnly(event.sender.id, id, false)
-  if (ids.length) event.sender.send('mt::unlock-documents-for-save', ids)
-}
 
 async function assertExportDestination(
   source: string | undefined,

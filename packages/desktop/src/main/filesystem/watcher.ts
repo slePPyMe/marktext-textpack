@@ -11,6 +11,11 @@ import type { BrowserWindow } from 'electron'
 import type { LineEnding } from '@shared/types/files'
 import type Preference from '../preferences'
 import type { ProjectRootWatch } from '@shared/types/project'
+export interface FileWatchChange {
+  type: string
+  change: { pathname: string; data?: Awaited<ReturnType<typeof inspectDocumentFile>> }
+}
+
 type WatchEmit = (channel: string, payload: unknown) => void
 
 // TODO(refactor): Please see GH#1035.
@@ -41,6 +46,7 @@ interface WatcherEntry {
   pathname: string
   type: WatchType
   close: () => void
+  reportMissing: () => void
 }
 
 const readSequences = new WeakMap<BrowserWindow, Map<string, number>>()
@@ -224,12 +230,50 @@ const unlinkDir = (win: BrowserWindow, pathname: string, type: WatchType, emit: 
 class Watcher {
   private _preferences: Preference
   private _ignoreChangeEvents: IgnoreEntry[]
+  private readonly _fileDeletionBarriers = new Set<{ windowId: number; pathnames: readonly string[] }>()
   watchers: Record<string, WatcherEntry>
 
-  constructor(preferences: Preference) {
+  constructor(
+    preferences: Preference,
+    private readonly _onFileChange?: (win: BrowserWindow, change: FileWatchChange) => void
+  ) {
     this._preferences = preferences
     this._ignoreChangeEvents = []
     this.watchers = {}
+  }
+
+  /** Suppresses rename unlinks until watches rebind; failed moves recheck disk before reporting missing files. */
+  async withIgnoredFileDeletions(
+    win: BrowserWindow,
+    pathnames: readonly string[],
+    operation: () => Promise<void>
+  ): Promise<void> {
+    const barrier = { windowId: win.id, pathnames }
+    let failed = false
+    this._fileDeletionBarriers.add(barrier)
+    try {
+      await operation()
+    } catch (error) {
+      failed = true
+      throw error
+    } finally {
+      this._fileDeletionBarriers.delete(barrier)
+      if (failed) await this._reportMissingFiles(win, pathnames)
+    }
+  }
+
+  private async _reportMissingFiles(win: BrowserWindow, pathnames: readonly string[]): Promise<void> {
+    const files = Object.values(this.watchers).filter(entry => entry.win.id === win.id && entry.type === 'file' &&
+      pathnames.some(pathname => path.relative(pathname, entry.pathname) === ''))
+    for (const file of files) {
+      try {
+        await fsPromises.stat(file.pathname)
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code
+        if (code === 'ENOENT' || code === 'ENOTDIR') file.reportMissing()
+        else log.warn('Could not reconcile file after a failed move:', error)
+      }
+    }
   }
 
   watch(win: BrowserWindow, watchPath: string, type: WatchType = 'dir', context?: ProjectRootWatch): () => void {
@@ -292,6 +336,16 @@ class Watcher {
     let initialScan = true
     const emit: WatchEmit = (channel, payload) => {
       if (disposed || win.isDestroyed?.()) return
+      if (channel === 'mt::update-file') {
+        const event = payload as FileWatchChange
+        const movingDeletion = event.type === 'unlink' && [...this._fileDeletionBarriers].some(
+          barrier => barrier.windowId === win.id && barrier.pathnames.some(
+            pathname => path.relative(pathname, event.change.pathname) === ''
+          )
+        )
+        if (movingDeletion) return
+        this._onFileChange?.(win, event)
+      }
       win.webContents.send(channel, channel === 'mt::update-object-tree' && context
         ? { ...(payload as object), rootKey: context.rootKey, watchToken: context.watchToken }
         : payload)
@@ -393,7 +447,8 @@ class Watcher {
       watcher,
       pathname: watchPath,
       type,
-      close: closeFn
+      close: closeFn,
+      reportMissing: () => unlink(win, watchPath, type, emit)
     }
 
     return closeFn

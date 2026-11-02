@@ -8,8 +8,10 @@ import { isDirectory2 } from 'common/filesystem'
 import { hasMarkdownExtension, isMarkdownFile } from 'common/filesystem/paths'
 import { normalizeAndResolvePath, writeFile } from '../filesystem'
 import { guessEncoding } from './encoding'
-import type { Encoding } from 'common/encoding'
+import { getEncodingName, type Encoding } from 'common/encoding'
 import type { LineEnding } from '@shared/types/files'
+import type { DiskBaseline } from '@shared/types/files'
+import { contentSha256 } from 'common/filesystem'
 
 interface MarkdownDocumentOptions {
   adjustLineEndingOnSave: boolean
@@ -18,6 +20,7 @@ interface MarkdownDocumentOptions {
 }
 
 interface MarkdownDocumentRaw {
+  rawBaseline: DiskBaseline
   isPendingCreation?: boolean
   markdown: string
   filename: string
@@ -43,6 +46,23 @@ const getLineEnding = (lineEnding: LineEnding): string => {
 
 const convertLineEndings = (text: string, lineEnding: LineEnding): string => {
   return text.replace(LINE_ENDING_REG, getLineEnding(lineEnding))
+}
+
+// These examples only explain a failed full-document check. Limiting them
+// must never determine whether a save is safe.
+const getUnrepresentableCharacterSample = (content: string, encoding: string): string[] => {
+  const checked = new Set<string>()
+  const sample: string[] = []
+  for (const character of content) {
+    if (checked.has(character)) continue
+    checked.add(character)
+    const encoded = iconv.encode(character, encoding)
+    if (iconv.decode(encoded, encoding, { stripBOM: false }) !== character) {
+      sample.push(character)
+      if (sample.length === 8) break
+    }
+  }
+  return sample
 }
 
 /**
@@ -99,6 +119,7 @@ export const loadCliMarkdownFile = async(
       pathname,
       filename: path.basename(pathname),
       markdown: '',
+      rawBaseline: { exists: false },
       isPendingCreation: true,
       encoding: { encoding: defaultEncoding, isBom: false },
       lineEnding: args[0],
@@ -109,6 +130,7 @@ export const loadCliMarkdownFile = async(
   }
 }
 
+/** Writes the confirmed pathname verbatim; extension defaults belong in the save dialog. */
 export const writeMarkdownFile = (
   pathname: string,
   content: string,
@@ -116,15 +138,27 @@ export const writeMarkdownFile = (
 ): Promise<void> => {
   const { adjustLineEndingOnSave, lineEnding } = options
   const { encoding, isBom } = options.encoding
-  const extension = path.extname(pathname) || '.md'
 
   if (adjustLineEndingOnSave) {
     content = convertLineEndings(content, lineEnding)
   }
 
   const buffer = iconv.encode(content, encoding, { addBOM: isBom })
+  // iconv substitutes unrepresentable characters silently (#5614). Only strip
+  // a BOM we requested so a leading U+FEFF in the document remains significant.
+  if (iconv.decode(buffer, encoding, { stripBOM: !!isBom }) !== content) {
+    const sample = getUnrepresentableCharacterSample(content, encoding)
+    const examples = sample.length
+      ? ` (${sample.map(character => JSON.stringify(character)).join(', ')})`
+      : ''
+    const error = new Error(
+      `Cannot save using "${getEncodingName(options.encoding)}" because some characters${examples} cannot be represented. Open the Command Palette, run "Change Encoding", select UTF-8, and save again.`
+    )
+    error.name = 'EncodingLossError'
+    return Promise.reject(error)
+  }
 
-  return writeFile(pathname, buffer, extension, undefined)
+  return writeFile(pathname, buffer)
 }
 
 export const loadMarkdownFile = async(
@@ -138,6 +172,7 @@ export const loadMarkdownFile = async(
   //       encoding on the first 256/512 bytes.
 
   const buffer = await fsPromises.readFile(path.resolve(pathname))
+  const diskStat = await fsPromises.stat(path.resolve(pathname))
 
   const encoding = guessEncoding(buffer, autoGuessEncoding)
   const supported = iconv.encodingExists(encoding.encoding)
@@ -186,6 +221,7 @@ export const loadMarkdownFile = async(
 
   return {
     markdown,
+    rawBaseline: { exists: true, sizeBytes: buffer.byteLength, mtimeMs: diskStat.mtimeMs, rawSha256: contentSha256(buffer) },
     filename,
     pathname,
     encoding,

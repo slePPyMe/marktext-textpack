@@ -110,7 +110,9 @@ test.describe('TOC sidebar click scrolls the live editor', () => {
   let page: Page
 
   test.beforeAll(async() => {
-    const launched = await launchWithMarkdown(buildLongDoc())
+    const launched = await launchWithMarkdown(buildLongDoc(), { windowLayout: { showTabBar: true },
+      preferences: {}
+    })
     app = launched.app
     page = launched.page
     await makeRoomForOutline(app, page)

@@ -245,7 +245,7 @@
       "cancel": "Cancelar",
       "openFolder": "Add Folder…",
       "showMoreMatches": "Mostrar mais correspondências",
-      "searchInFolders": "Search in added folders",
+      "searchInFolders": "Localizar na Pasta",
       "partialSearch": "Some folders could not be searched.",
       "noSearchableFolders": "No available folders to search."
     },
@@ -271,6 +271,7 @@
       "expand": "Expandir sumário",
       "collapse": "Recolher sumário",
       "empty": "Sem títulos",
+      "resize": "Redimensionar índice",
       "title": "Índice",
       "expandAll": "Expandir tudo",
       "collapseAll": "Recolher tudo"
@@ -279,6 +280,21 @@
       "files": "Arquivos",
       "search": "Pesquisar",
       "settings": "Configurações"
+    },
+    "move": {
+      "title": "Move file or folder",
+      "confirm": "Move",
+      "question": "Move \"{name}\"?",
+      "detail": "From: {source}\nTo: {destination}\n\nThis changes the actual file location. Relative links and image paths may be affected.",
+      "directoryContents": "The folder and all its contents will be moved.",
+      "completed": "Moved successfully.",
+      "invalidTarget": "Choose another folder within the same open root. Linked paths and moving a folder into itself are not supported.",
+      "crossDevice": "Moving between volumes is not supported here. Use your system file manager.",
+      "conflict": "The destination already contains an item with this name. Rename it before trying again.",
+      "missing": "The source or destination no longer exists. Refresh the folder and try again.",
+      "permission": "The item could not be moved. Check folder permissions and whether another application is using it.",
+      "openElsewhere": "Close this file and any documents inside this folder in other MarkText windows before moving it.",
+      "destinationOpen": "A document is already open at the destination path. Close it before trying again."
     }
   },
   "titleBar": {
@@ -400,103 +416,16 @@
     "title": "Preferências",
     "learnMore": "Saiba mais sobre {name}",
     "search": {
-      "placeholder": "Pesquisar preferências...",
-      "categories": {
-        "general": "Geral",
-        "editor": "Editor",
-        "markdown": "Markdown",
-        "theme": "Tema",
-        "image": "Imagem",
-        "view": "Visualização",
-        "searcher": "Pesquisador",
-        "watcher": "Observador",
-        "spelling": "Ortografia",
-        "custom css": "CSS personalizado"
-      },
-      "items": {
-        "autoSave": "Salvar automaticamente o conteúdo sendo editado",
-        "autoSaveDelay": "O tempo em ms após uma mudança que o arquivo é salvo",
-        "autoNormalizeLineEndings": "Normalizar automaticamente as quebras de linha ao abrir arquivos. Quando desativado, os arquivos são abertos como estão.",
-        "titleBarStyle": "O estilo da barra de título (apenas sistemas Windows e Linux)",
-        "openFilesInNewWindow": "Abrir arquivos em uma nova janela",
-        "openFilesInPreviewMode": "Abrir arquivos da barra lateral em abas de visualização",
-        "openFolderInNewWindow": "Abrir pasta via menu em uma nova janela",
-        "zoom": "O nível de zoom. Entre 0.5 e 2.0 inclusive",
-        "hideScrollbar": "Se ocultar as barras de rolagem",
-        "wordWrapInToc": "Se habilitar a quebra de linha na tabela de conteúdos",
-        "fileSortBy": "Ordenar arquivos na pasta aberta por tempo de criação, tempo de modificação e título",
-        "startUpAction": "A ação após a inicialização do MarkText, abrir o último conteúdo editado, abrir a pasta especificada ou página em branco",
-        "restoreLayoutState": "Restaurar o estado anterior do editor na inicialização",
-        "defaultDirectoryToOpen": "O diretório padrão que deve ser aberto na inicialização quando startUp=folder",
-        "language": "O idioma que o MarkText usa",
-        "editorFontFamily": "Família de fonte do editor",
-        "fontSize": "Tamanho da fonte em pixels",
-        "lineHeight": "Altura da linha",
-        "wrapCodeBlocks": "Quebrar texto dentro de blocos de código",
-        "editorLineWidth": "Define a largura máxima da área do editor. Uma string vazia ou sufixos de ch (caracteres), px (pixels) ou % (porcentagem) são permitidos",
-        "codeFontSize": "Tamanho da fonte no bloco de código, o intervalo é 12 ~ 18",
-        "codeFontFamily": "Fonte do código. Aplica-se ao código em linha e aos blocos de código.",
-        "codeBlockLineNumbers": "Se mostrar os números de linha",
-        "sourceCodeLineNumbers": "Mostrar números de linha no modo código fonte",
-        "trimUnnecessaryCodeBlockEmptyLines": "Aparar as linhas vazias do início e fim no bloco de código",
-        "autoPairBracket": "Parênteses automáticos ao editar",
-        "autoPairMarkdownSyntax": "Autocompletar sintaxe markdown",
-        "autoPairQuote": "Finalização automática de aspas",
-        "endOfLine": "O caractere de nova linha usado no final de cada linha. O valor padrão é default, que seleciona o caractere de nova linha padrão do seu sistema operacional",
-        "defaultEncoding": "A codificação de arquivo padrão",
-        "autoGuessEncoding": "Tentar adivinhar automaticamente a codificação do arquivo ao abrir arquivos",
-        "trimTrailingNewline": "A opção de aparar nova linha final",
-        "textDirection": "A direção de escrita do texto",
-        "hideQuickInsertHint": "Ocultar dica para criar parágrafos rapidamente",
-        "hideLinkPopup": "Ocultar popup de link quando o cursor está sobre o link",
-        "autoCheck": "Se verificar automaticamente a tarefa relacionada",
-        "preferLooseListItem": "O tipo de lista preferido",
-        "bulletListMarker": "O marcador usado na lista de marcadores",
-        "orderListDelimiter": "O delimitador usado na lista ordenada",
-        "preferHeadingStyle": "O estilo de cabeçalho preferido no MarkText",
-        "tabSize": "Substituir a tabulação com x espaços",
-        "listIndentation": "Selecionar a indentação da lista",
-        "frontmatterType": "O tipo de frontmatter",
-        "superSubScript": "Habilitar extensão markdown do pandoc para sobrescrito e subscrito",
-        "footnote": "Habilitar extensão markdown do pandoc para nota de rodapé",
-        "texMathDollars": "Ativar a extensão markdown do pandoc tex_math_dollars",
-        "texMathGfm": "Ativar a extensão markdown do pandoc tex_math_gfm",
-        "texMathSingleBackslash": "Ativar a extensão markdown do pandoc tex_math_single_backslash",
-        "texMathDoubleBackslash": "Ativar a extensão markdown do pandoc tex_math_double_backslash",
-        "highlightSyntax": "Ativar a sintaxe de realce não padrão ==texto==",
-        "inlineDiff": "Ativar a sintaxe de diff embutido não padrão {+ … +} / [- … -]",
-        "multilineBlockquote": "Ativar a sintaxe de citação multilinha não padrão >>> … >>>",
-        "githubAlerts": "Alertas do GitHub",
-        "isHtmlEnabled": "Habilitar renderização HTML",
-        "softNewlineAsSpace": "Tratar quebras de linha suaves como espaços",
-        "sequenceTheme": "Tema do diagrama de sequência",
-        "mermaidLightTheme": "Tema do Mermaid para temas claros do MarkText",
-        "mermaidDarkTheme": "Tema do Mermaid para temas escuros do MarkText",
-        "plantumlServer": "URL do servidor PlantUML",
-        "theme": "Selecionar o tema usado no MarkText",
-        "followSystemTheme": "Seguir tema do sistema",
-        "lightModeTheme": "Tema a ser usado quando o sistema está no modo claro",
-        "darkModeTheme": "Tema a ser usado quando o sistema está no modo escuro",
-        "spellcheckerEnabled": "Se a verificação ortográfica está habilitada",
-        "spellcheckerNoUnderline": "Não sublinhar erros ortográficos",
-        "spellcheckerLanguage": "O idioma do verificador ortográfico",
-        "imageInsertAction": "O comportamento padrão após inserir imagem da pasta local",
-        "imagePreferRelativeDirectory": "Se preferir o diretório de imagem relativo",
-        "imageRelativeDirectoryBase": "Onde as imagens relativas são copiadas",
-        "imageRelativeDirectoryName": "O nome da pasta de imagem relativa",
-        "fileSortOrder": "Ordem de classificação dos arquivos nas pastas abertas: ascendente ou descendente.",
-        "openedFilesInSidebar": "Se os arquivos abertos são mostrados na barra lateral.",
-        "showPandocConvert": "Mostrar o menu de conversão do Pandoc. Requer o Pandoc instalado."
-      }
+      "placeholder": "Pesquisar preferências..."
     },
     "categories": {
       "general": "Geral",
-      "editor": "Editor",
+      "appearance": "Aparência",
+      "editor": "Edição",
+      "files": "Arquivos e salvamento",
       "markdown": "Markdown",
-      "spelling": "Ortografia",
-      "theme": "Tema",
-      "image": "Imagem",
-      "keybindings": "Atalhos de Teclado"
+      "images": "Imagens e exportação",
+      "keybindings": "Atalhos de teclado"
     },
     "general": {
       "title": "Geral",
@@ -516,36 +445,50 @@
         "hideScrollbars": "Ocultar barras de rolagem",
         "openFilesInNewWindow": "Abrir arquivos em nova janela",
         "openFoldersInNewWindow": "Abrir pastas em nova janela",
-        "zoom": "Zoom"
+        "zoom": "Zoom",
+        "openFilesInNewWindowNote": "Quando ativado, os ficheiros abrem numa nova janela. Quando desativado, abrem em separadores na janela atual.",
+        "openFoldersInNewWindowNote": "Quando ativado, as pastas abrem numa nova janela. Quando desativado, substituem a pasta na janela atual."
       },
       "startup": {
-        "title": "Inicialização",
-        "layoutOptions": "Opções de layout",
-        "startupFilesFolders": "Arquivos/pastas de inicialização",
-        "restorePreviousState": "Restaurar estado anterior do editor",
-        "openBlankState": "Abrir estado em branco",
-        "openDefaultDirectory": "Abrir diretório padrão",
-        "openLastFolder": "Restaurar pasta aberta",
-        "restoreAll": "Restaurar todos os arquivos e pastas abertos",
+        "title": "Arranque e recuperação",
+        "openDefaultDirectory": "Abrir a pasta selecionada",
+        "openLastFolder": "Abrir o último espaço de trabalho",
+        "restoreAll": "Restaurar todas as janelas",
         "selectFolder": "Selecionar Pasta",
-        "openBlankPage": "Abrir página em branco"
+        "openBlankPage": "Novo documento em branco",
+        "action": "Ao iniciar",
+        "restoreLastWindow": "Restaurar a última janela ativa",
+        "restoreLayoutState": "Restaurar a disposição das janelas",
+        "restoreLayoutStateNote": "Restaurar o tamanho, a posição e a disposição de elementos como a barra lateral ao reiniciar.",
+        "restoreEditors": "Restaurar os arquivos abertos",
+        "restoreEditorsNote": "Reabrir as abas de arquivos anteriores ao reiniciar.",
+        "restoreViewState": "Restaurar as posições de leitura e seleções",
+        "restoreViewStateNote": "Restaurar a última posição de leitura e seleção ao restaurar um arquivo.",
+        "failure": "Não foi possível salvar as configurações. As configurações anteriores continuam em uso."
       },
       "pandoc": {
         "title": "Conversão com Pandoc",
-        "description": "Mostrar o menu de conversão do Pandoc",
-        "detailedDescription": "Requer o Pandoc instalado",
+        "description": "Ativar conversão com Pandoc",
+        "detailedDescription": "Mostra comandos de conversão no menu. É necessário instalar o Pandoc.",
         "found": "Encontrado: {path}",
-        "notFound": "Não encontrado",
-        "recheck": "Verificar novamente"
+        "notFound": "Não encontrado"
       },
       "sidebar": {
-        "title": "Barra Lateral",
+        "title": "Barra lateral e índice",
         "wrapTextInToc": "Quebrar texto no índice",
+        "tocPosition": "Posição do índice",
+        "tocLeft": "Esquerda",
+        "tocRight": "Direita",
         "showOpenedFiles": "Mostrar arquivos abertos",
         "autoReveal": "Mostrar o arquivo ativo na barra lateral",
         "openFilesInPreviewMode": "Abrir arquivos da barra lateral em abas de visualização. Editar ou clicar duas vezes mantém a aba.",
-        "excludePatterns": "Padrões de exclusão",
-        "excludePatternsNotes": "Padrões de exclusão (Notas)",
+        "excludePatterns": "Regras de exclusão da árvore de arquivos",
+        "excludePatternsNotes": "Os caminhos que correspondem a qualquer regra glob são excluídos da árvore de arquivos. Pressione Enter para adicionar uma regra e clique em × para removê-la; as vírgulas dentro de uma regra são preservadas. Abra a pasta novamente para aplicar todas as alterações.",
+        "removePattern": "Remover",
+        "newPattern": "Nova regra de exclusão",
+        "patternExample": "Por exemplo: **/drafts/** ou *.tmp",
+        "patternSaveError": "Não foi possível salvar as regras de exclusão. As regras salvas foram mantidas. Tente novamente.",
+        "patternHelp": "Sintaxe dos padrões glob",
         "fileSortBy": {
           "title": "Ordenar Arquivos Por",
           "creationTime": "Hora de Criação",
@@ -560,25 +503,24 @@
           "newestFirst": "Mais recente primeiro"
         }
       },
-      "misc": {
-        "title": "Diversos",
-        "language": {
-          "title": "Idioma",
-          "english": "English",
-          "chinese": "简体中文",
-          "traditionalChinese": "繁體中文",
-          "spanish": "Español",
-          "french": "Français",
-          "german": "Deutsch",
-          "japanese": "日本語",
-          "korean": "한국어",
-          "dutch": "Nederlands",
-          "portuguese": "Português",
-          "turkish": "Türkçe",
-          "russian": "Русский",
-          "italian": "Italiano"
-        }
-      }
+      "language": {
+        "title": "Idioma",
+        "english": "English",
+        "chinese": "简体中文",
+        "traditionalChinese": "繁體中文",
+        "spanish": "Español",
+        "french": "Français",
+        "german": "Deutsch",
+        "japanese": "日本語",
+        "korean": "한국어",
+        "dutch": "Nederlands",
+        "portuguese": "Português",
+        "turkish": "Türkçe",
+        "russian": "Русский",
+        "italian": "Italiano",
+        "label": "Idioma da interface"
+      },
+      "openingMode": "Modo de abertura"
     },
     "editor": {
       "title": "Editor",
@@ -587,7 +529,7 @@
         "fontSize": "Tamanho da fonte",
         "lineHeight": "Altura da linha",
         "fontFamily": "Família da fonte",
-        "maxWidth": "Largura máxima",
+        "maxWidth": "Largura máxima do conteúdo do editor",
         "maxWidthNotes": "Largura máxima do conteúdo do editor. Digite um número seguido de px, ch (caracteres) ou %, por exemplo 800px, 80ch ou 60%. Deixe vazio para usar a largura padrão.",
         "maxWidthInvalid": "Digite um número seguido de px, ch ou %, por exemplo 800px.",
         "codeFontFamily": "Fonte do código",
@@ -595,20 +537,21 @@
       },
       "codeBlock": {
         "title": "Bloco de Código",
-        "fontSize": "Tamanho da fonte",
+        "fontSize": "Tamanho da fonte dos blocos de código",
         "showLineNumbers": "Mostrar números de linha",
         "removeEmptyLines": "Remover linhas vazias"
       },
       "writingBehavior": {
-        "title": "Comportamento de Escrita",
+        "title": "Preferências de escrita",
         "autoCloseBrackets": "Fechar colchetes automaticamente",
-        "autoCompleteMarkdown": "Completar markdown automaticamente",
+        "autoCompleteMarkdown": "Completar pares de marcadores Markdown",
         "autoCloseQuotes": "Fechar aspas automaticamente"
       },
       "fileRepresentation": {
         "title": "Representação de Arquivo",
-        "tabWidth": "Largura da tabulação",
-        "lineSeparator": "Separador de linha",
+        "tabWidth": "Entrada da tecla Tab",
+        "tabInputNotes": "Choose spaces or a real tab character. Existing tabs use four-column tab stops. In lists and tables, Tab adjusts nesting or moves between cells.",
+        "lineSeparator": "Fim de linha padrão dos arquivos",
         "defaultEncoding": "Codificação padrão",
         "autoDetectEncoding": "Detectar codificação automaticamente",
         "trailingNewlines": {
@@ -633,7 +576,7 @@
         },
         "hideQuickInsertHint": "Ocultar dica de inserção rápida",
         "hideLinkPopup": "Ocultar popup de link",
-        "autoCheck": "Verificação automática",
+        "autoCheck": "Vincular tarefas principais e subtarefas",
         "autoNormalizeLineEndings": "Normalizar automaticamente finais de linha para LF ao abrir",
         "wrapCodeBlocks": "Quebrar blocos de código",
         "sourceCodeLineNumbers": "Mostrar números de linha no modo código fonte"
@@ -649,7 +592,7 @@
       "folderSetting": {
         "title": "Configuração de Pasta",
         "globalFolder": "Pasta global de imagens",
-        "open": "Abrir",
+        "open": "Escolher pasta…",
         "showInFolder": "Mostrar na Pasta",
         "preferRelative": "Preferir diretório relativo",
         "relativeCopyLocation": "Copiar imagem relativa a",
@@ -660,21 +603,19 @@
       },
       "uploader": {
         "title": "Carregador de Imagens",
-        "currentUploader": "Uploader atual: {name}",
-        "picgoNotInstalled": "PicGo não está instalado",
-        "picgoInstalled": "PicGo está instalado",
-        "picgoDetectionFailed": "Detecção do PicGo falhou",
+        "picgoNotInstalled": "PicGo-Core não está instalado",
+        "picgoInstalled": "PicGo-Core está instalado",
+        "picgoDetectionFailed": "Detecção do PicGo-Core falhou",
         "debugInfo": "Informações de Debug",
         "npmInstallCommand": "npm install picgo -g",
         "yarnInstallCommand": "yarn global add picgo",
         "pnpmInstallCommand": "pnpm add -g picgo",
         "chooseInstallMethod": "Escolha o méde instalação:",
-        "retestPicgo": "Testar novamente",
         "lastDetectionTime": "Última detecção",
         "usageGuide": {
-          "title": "Guia básico de uso do PicGo",
+          "title": "Guia básico de uso do PicGo-Core",
           "step1": "Configurar carregador",
-          "step1Description": "Use o seguinte comando para configurar o carregador PicGo:",
+          "step1Description": "Use o seguinte comando para configurar o carregador PicGo-Core:",
           "step2": "Carregar imagens",
           "step2Description": "Use o seguinte comando para carregar imagens:",
           "step3": "Ver configuração",
@@ -683,19 +624,14 @@
         },
         "scriptDescription": "Descrição do Script",
         "scriptLocation": "Localização do Script",
-        "save": "Salvar",
-        "saveConfig": "Salvar Configuração",
-        "scriptConfigSaved": "Configuração de script salva",
         "services": {
-          "picgo": "PicGo",
+          "picgo": "PicGo-Core",
           "cliScript": "Script CLI"
         },
         "pleaseInstall": "Por favor instale",
         "scriptPath": "Caminho do script",
-        "picgoDetection": "Detecção do PicGo",
         "lastSuccessTime": "Última vez bem-sucedida",
-        "neverDetected": "Nunca detectado",
-        "neverSuccessful": "Nunca bem-sucedido"
+        "invalidScript": "Introduza o caminho de um script existente e executável."
       },
       "defaultBehavior": "O comportamento padrão após colar ou arrastar a imagem para o MarkText"
     },
@@ -705,11 +641,11 @@
         "title": "Extensões",
         "superSubScript": "Super/Sub script",
         "footnote": "Nota de rodapé",
-        "footnoteNotes": "Notas de rodapé",
         "texMathDollars": "Matemática TeX com $ e $$",
         "texMathGfm": "Matemática TeX do GitHub ($`…`$ e ```math)",
         "texMathSingleBackslash": "Matemática TeX com barra invertida simples",
         "texMathDoubleBackslash": "Matemática TeX com barra invertida dupla",
+        "fancyLists": "Listas com letras e numerais romanos",
         "highlightSyntax": "Realce (==texto==)",
         "inlineDiff": "Diff embutido ({+ … +})",
         "multilineBlockquote": "Citação multilinha (>>>)",
@@ -768,42 +704,47 @@
     },
     "theme": {
       "title": "Tema",
-      "followSystemTheme": "Seguir tema do sistema",
-      "followSystemNote": "Seguir o tema do sistema bloqueia a lista de temas abaixo. Desative esta opção para trocar de tema livremente.",
+      "followSystemTheme": "Seguir a aparência do sistema",
+      "followSystemNote": "Pode escolher abaixo temas diferentes para os modos escuro e claro.",
       "modeThemes": "Seleção de Tema",
       "lightModeTheme": "Tema do modo claro",
       "darkModeTheme": "Tema do modo escuro",
       "customCss": "CSS Personalizado",
-      "importCustomThemes": "Importar temas personalizados",
-      "importTheme": "Importar Tema",
-      "openFolder": "Abrir Pasta",
-      "openThemesFolder": "Abrir pasta de temas"
+      "chooseTheme": "Escolher tema",
+      "chooseFor": "Escolher {name}",
+      "searchThemes": "Buscar temas",
+      "filterLabel": "Tipo de tema",
+      "filter": {
+        "all": "Todos",
+        "light": "Claro",
+        "dark": "Escuro"
+      },
+      "noResults": "Nenhum tema corresponde à busca."
     },
     "keybindings": {
       "title": "Atalhos de Teclado",
-      "description": "Personalizar atalhos de teclado",
-      "save": "Salvar",
+      "description": "Para alterar um atalho, selecione a combinação de teclas e prima a nova combinação",
       "restoreDefaults": "Restaurar padrões",
       "debugOptions": "Opções de Debug",
       "dumpKeyboardInfo": "Despejar Informações do Teclado",
       "failedToSave": "Falha ao salvar atalhos de teclado",
-      "keyInputDialog": {
-        "instructions": "Pressione a combinação de teclas que deseja atribuir",
-        "invalidKeybinding": "Combinação de teclas inválida",
-        "placeholder": "Pressione teclas..."
-      },
-      "online": "Online",
+      "online": "Documentação dos atalhos de teclado",
       "saveError": "Erro ao salvar atalhos de teclado",
       "shortcutInUse": "Atalho em uso",
-      "shortcutInUseMessage": "Este atalho já está atribuído a {accelerator}",
-      "table": {
-        "description": "Descrição",
-        "edit": "Editar",
-        "keyCombination": "Combinação de Teclas",
-        "options": "Opções",
-        "reset": "Resetar",
-        "unbind": "Desvincular"
+      "shortcutInUseMessage": "{accelerator} já está atribuído a {commands}.",
+      "windowAndNavigation": "Janelas e navegação",
+      "loadError": "Não foi possível carregar os atalhos de teclado.",
+      "reload": "Recarregar",
+      "viewConflict": "Ver {name}",
+      "editShortcut": "Editar atalho de {name}",
+      "unbound": "Não atribuído",
+      "recorder": {
+        "placeholder": "Prima a combinação de teclas",
+        "invalidKeybinding": "Combinação de teclas inválida"
       }
+    },
+    "fontStack": {
+      "noMatches": "Nenhuma fonte correspondente"
     },
     "selectFont": "Selecionar Fonte",
     "spellchecker": {
@@ -821,6 +762,16 @@
       "enableSpellChecking": "Habilitar verificação ortográfica",
       "hideMarksForErrors": "Ocultar marcas para erros ortográficos",
       "title": "Corretor Ortográfico"
+    },
+    "explanations": {
+      "taskCascade": "Marcar uma tarefa principal atualiza suas subtarefas; alterar as subtarefas atualiza a tarefa principal.",
+      "markdownPairs": "Completa pares de marcadores Markdown, como asteriscos, sublinhados e crases, durante a digitação.",
+      "lineEndings": "Usado em novos arquivos e com finais de linha mistos ou não detectados. Arquivos LF ou CRLF mantêm o formato detectado."
+    },
+    "commandDetection": {
+      "checking": "A verificar…",
+      "recheck": "Verificar novamente",
+      "failed": "A deteção falhou. Verifique novamente."
     }
   },
   "about": {
@@ -1038,6 +989,11 @@
     "unexpectedError": "Erro inesperado do corretor ortográfico"
   },
   "editor": {
+    "imageDrop": {
+      "saveTitle": "Salve o documento para usar uma pasta relativa de imagens",
+      "saveMessage": "Ao salvar o documento, a imagem será armazenada na pasta relativa configurada. Se você cancelar, a imagem será armazenada na pasta global de imagens.",
+      "failed": "Não foi possível inserir a imagem"
+    },
     "export": {
       "error": "Erro de exportação",
       "errorExporting": "Erro ao exportar arquivo {type}",

@@ -12,7 +12,7 @@ MarkText is a realtime preview editor for markdown with various markdown extensi
 
 Toggle the sidebar with <kbd>CmdOrCtrl</kbd>+<kbd>J</kbd>. It contains the filesystem explorer and find-in-files search. The file tree also has a collapsible _Opened Files_ section, controlled by the `openedFilesInSidebar` preference.
 
-The document outline is independent of the sidebar. Use `View → Show Table of Contents` or <kbd>CmdOrCtrl</kbd>+<kbd>K</kbd> to expand or collapse it. On narrow windows it appears as a floating panel; a document needs headings for the outline to appear.
+The document outline is independent of the sidebar. Use `View → Show Table of Contents` or <kbd>CmdOrCtrl</kbd>+<kbd>K</kbd> to expand or collapse it. When expanded, it occupies a separate column even in narrow windows. Choose its left or right position in Preferences → General → Sidebar, and drag the divider beside the editor to resize it. If the columns cannot fit, scroll the workspace horizontally to keep the document readable. When collapsed, hover or focus its icon to preview the outline in a floating panel. Documents without headings show an empty state in the outline.
 
 #### Toggle tabs
 
@@ -53,6 +53,12 @@ After some modifications you can save your file via <kbd>CmdOrCtrl</kbd>+<kbd>S<
 MarkText also has support to open a directory via <kbd>CmdOrCtrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> through the File menu. After opening a directory, the sidebar tree shows supported files and directories, subject to watcher exclusions. The tree view allows you to open further files, browse and modify files or directories inside the opened root directory. Opened files appear in a separate section above the folder tree. You can also use quick open (<kbd>CmdOrCtrl</kbd>+<kbd>P</kbd>) to quickly open a file from the opened root directory or editor and navigate via arrow keys or select a file via mouse. Quick open lists recently opened files first, followed by matching files from the opened folder. The File → Open Recent → Search Recent… menu opens a dedicated picker for recently opened files and folders (macOS: <kbd>Control</kbd>+<kbd>R</kbd>). Use the sidebar search control to find text in files.
 
 ![](../assets/marktext-interface-2.png)
+
+### Move files and folders
+
+In the 0.24.0 development version, drag a file or subfolder onto another folder in the same sidebar root, then confirm the move. Drop onto the root's heading to move an item back to the root. Hover over a collapsed folder to expand it, or hold near the tree's upper or lower edge to scroll. Dropping onto a file moves the dragged item into that file's parent folder; the receiving folder is highlighted during the drag. Moving a folder includes all its contents, including resources hidden from the sidebar.
+
+This changes the actual location on disk. Open documents keep their edits and save to the new path. Relative links and image paths are not rewritten and may need updating. Existing destination names are never intentionally replaced or merged. Close affected documents in other MarkText windows before moving them. Multiple selections, cross-root or cross-volume moves, linked paths, drag-to-copy and custom ordering are not supported by this interaction.
 
 ### Preview tabs
 

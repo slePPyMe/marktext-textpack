@@ -3,7 +3,6 @@
 declare module 'dom-autoscroller'
 declare module 'flowchart.js'
 declare module 'snapsvg-cjs'
-declare module '@hfelix/electron-localshortcut'
 declare module 'iso-639-1'
 declare module 'fuzzaldrin'
 declare module 'underscore' {
@@ -25,8 +24,6 @@ declare module 'codemirror/keymap/*'
 declare module 'codemirror/lib/*'
 declare module 'codemirror/mode/*'
 declare module 'codemirror/addon/*'
-declare module 'electron-window-state'
-declare module 'plist'
 declare module 'webfontloader'
 
 declare module '@marktext/file-icons' {
