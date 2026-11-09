@@ -183,6 +183,7 @@ const {
   tabSize,
   listIndentation,
   frontmatterType,
+  cjkEmphasis,
   superSubScript,
   footnote,
   texMathDollars,
@@ -508,6 +509,10 @@ const applyOutlineAffectingOption = (options: Partial<IMuyaOptions>): void => {
   muya.setOptions(options, true)
   editorStore.REFRESH_TOC(muya.getTOC())
 }
+
+watch(cjkEmphasis, (value, oldValue) => {
+  if (value !== oldValue) applyOutlineAffectingOption({ cjkEmphasis: value })
+})
 
 watch(superSubScript, (value, oldValue) => {
   if (value !== oldValue) applyOutlineAffectingOption({ superSubScript: value })
@@ -1047,23 +1052,55 @@ const toSearchMatches = (result: unknown) => {
   }
 }
 
+let updatingSearchSelection = false
+
+const updateSearchSelection = (operation: () => unknown): void => {
+  updatingSearchSelection = true
+  try {
+    editorStore.SEARCH(toSearchMatches(operation()))
+  } finally {
+    updatingSearchSelection = false
+  }
+}
+
 const handleSearch = (payload: unknown) => {
   if (!editor.value) return
+  const muya = editor.value
   const { value, opt } = payload as { value: string; opt?: ISearchOption }
-  editorStore.SEARCH(toSearchMatches(editor.value.search(value, opt)))
-  scrollToHighlight()
+  updateSearchSelection(() => muya.search(value, opt))
+  if (opt?.selectHighlight) scrollToSearchResult()
+}
+
+const handleSearchVisibility = (visible: unknown) => {
+  if (!editor.value) return
+  const muya = editor.value
+  updateSearchSelection(() => muya.setSearchVisible(visible === true))
+  if (visible === false && document.activeElement?.closest('.search-bar')) {
+    editor.value.domNode.focus({ preventScroll: true })
+  }
+}
+
+const focusSearchEditor = () => {
+  const muya = editor.value
+  if (!muya) return
+  const selection = muya.getSelectionState()
+  muya.domNode.focus({ preventScroll: true })
+  if (selection) muya.setSelection(selection)
 }
 
 const handReplace = (payload: unknown) => {
   if (!editor.value) return
+  const muya = editor.value
   const { value, opt } = payload as { value: string; opt?: IReplaceOption }
-  editorStore.SEARCH(toSearchMatches(editor.value.replace(value, opt)))
+  updateSearchSelection(() => muya.replace(value, { ...opt, fromSelection: true }))
+  nextTick(scrollToSearchResult)
 }
 
 const handleFindAction = (action: unknown) => {
   if (!editor.value) return
-  editorStore.SEARCH(toSearchMatches(editor.value.find(action as 'previous' | 'next')))
-  scrollToHighlight()
+  const muya = editor.value
+  updateSearchSelection(() => muya.find(action as 'previous' | 'next'))
+  if (muya.editor.searchModule.matches.length) nextTick(scrollToSearchResult)
 }
 
 const handleUploadedImage = (url: unknown, deletionUrl?: unknown) => {
@@ -1137,8 +1174,11 @@ const updateActiveHeading = (viewportY: number): void => {
   if (positions.length) editorStore.SET_ACTIVE_HEADING(findActiveHeadingSlug(positions, viewportY))
 }
 
+let revealingAnchor = false
+
 const scrollToCursor = (duration = 300) => {
   nextTick(() => {
+    if (revealingAnchor) return
     const container = getScrollContainer()
     if (!container) return
     const y = getCursorY()
@@ -1164,21 +1204,36 @@ const scrollToCords = (y: number) => {
     if (!container) return
     container.style.visibility = 'visible'
     container.style.pointerEvents = 'auto'
-    container.scrollTop = y
+    if (!revealingAnchor) container.scrollTop = y
   })
 }
 
-// Smoothly scroll the editor so `anchor` sits at the standard caret offset.
-// Shared by search highlights and non-heading in-document anchors.
-const scrollElementIntoView = (anchor: Element | null | undefined, duration = 300) => {
-  const container = getScrollContainer()
-  if (!container || !anchor) return
-  const { y } = anchor.getBoundingClientRect()
-  animatedScrollTo(container, container.scrollTop + y - STANDAR_Y, duration)
+const revealAnchor = (container: HTMLElement, top: number) => {
+  // A tab's deferred caret/viewport restoration must not cancel its link destination.
+  revealingAnchor = true
+  animatedScrollTo(container, top, 300, () => { revealingAnchor = false })
 }
 
-const scrollToHighlight = () => {
-  return scrollToElement('.mu-highlight')
+const scrollToSearchResult = () => {
+  const container = getScrollContainer()
+  if (!container) return
+  revealingAnchor = false
+  // A rapid find command supersedes any pending caret or navigation animation.
+  animatedScrollTo(container, container.scrollTop, 0)
+  const highlight = container.querySelector('.mu-highlight')
+  if (!highlight) {
+    scrollToCursor(0)
+    return
+  }
+  const bounds = container.getBoundingClientRect()
+  const match = highlight.getBoundingClientRect()
+  const bar = document.querySelector('.search-bar')?.getBoundingClientRect()
+  const top = Math.max(bounds.top + 20, (bar?.bottom ?? bounds.top) + 16)
+  const bottom = bounds.bottom - 20
+  if (match.top < top || match.bottom > bottom) {
+    const targetY = Math.min(STANDAR_Y, (top + bottom) / 2)
+    animatedScrollTo(container, container.scrollTop + match.top - targetY, 0)
+  }
 }
 
 /** Resolve TOC slugs against top-level headings in document order. */
@@ -1188,19 +1243,16 @@ const scrollToHeader = (slug: unknown) => {
   const heading = resolveTocHeadingElement(container, editorStore.listToc, slug)
   if (!heading) return
   editor.value?.revealElement(heading)
-  animatedScrollTo(container, getTocHeadingScrollTop(container, heading), 300)
+  revealAnchor(container, getTocHeadingScrollTop(container, heading))
 }
 
 // Custom anchors are resolved separately from heading slugs.
 const scrollToAnchorElement = (element: unknown) => {
   if (element instanceof Element) {
     editor.value?.revealElement(element)
-    scrollElementIntoView(element)
+    const container = getScrollContainer()
+    if (container) revealAnchor(container, container.scrollTop + element.getBoundingClientRect().y - STANDAR_Y)
   }
-}
-
-const scrollToElement = (selector: string) => {
-  scrollElementIntoView(document.querySelector(selector))
 }
 
 interface ExportOptions {
@@ -1455,6 +1507,7 @@ interface FileChangePayload {
 }
 
 const handleFileChange = (payload: unknown) => {
+  revealingAnchor = false
   const {
     id,
     markdown: newMarkdown,
@@ -1707,6 +1760,7 @@ onMounted(() => {
     codeBlockLineNumbers: codeBlockLineNumbers.value,
     listIndentation: listIndentation.value,
     frontmatterType: frontmatterType.value,
+    cjkEmphasis: cjkEmphasis.value,
     superSubScript: superSubScript.value,
     footnote: footnote.value,
     texMathDollars: texMathDollars.value,
@@ -1841,6 +1895,8 @@ onMounted(() => {
   bus.on('paragraph', handleEditParagraph)
   bus.on('format', handleInlineFormat)
   bus.on('searchValue', handleSearch)
+  bus.on('search-visibility', handleSearchVisibility)
+  bus.on('search-focus-editor', focusSearchEditor)
   bus.on('replaceValue', handReplace)
   bus.on('find-action', handleFindAction)
   bus.on('insert-image', insertImage)
@@ -1933,7 +1989,6 @@ onMounted(() => {
   // count/index come from a snapshot the search handlers own.
   editor.value.on('search-refreshed', (result: unknown) => {
     editorStore.SEARCH(toSearchMatches(result))
-    scrollToHighlight()
   })
 
   editor.value.on('preview-diagram', (payload: IPreviewDiagramPayload) => {
@@ -1959,7 +2014,8 @@ onMounted(() => {
       // `scrollTop` at once, moving the headings out from under `y`.
       updateActiveHeading(y)
 
-      if (typewriter.value) {
+      const followCaret = !updatingSearchSelection && !revealingAnchor
+      if (typewriter.value && followCaret) {
         const startPosition = container.scrollTop
         const toPosition = startPosition + y - STANDAR_Y
 
@@ -1970,10 +2026,11 @@ onMounted(() => {
       }
 
       // Used to fix #628: auto scroll cursor to visible if the cursor is too low.
-      if (container.clientHeight - y < 100) {
+      // Find reveals its active match after restoring focus to the search input.
+      if (followCaret && container.clientHeight - y < 100) {
         const editableHeight = container.clientHeight - 100
         animatedScrollTo(container, container.scrollTop + (y - editableHeight), 0)
-      } else if (y < 100) {
+      } else if (followCaret && y < 100) {
         // Symmetric to #628: scroll up when the cursor rises above the top edge
         // (e.g. Arrow-Up), otherwise the caret leaves the viewport (#3329).
         animatedScrollTo(container, container.scrollTop + (y - 100), 0)
@@ -2011,6 +2068,8 @@ onBeforeUnmount(() => {
   bus.off('paragraph', handleEditParagraph)
   bus.off('format', handleInlineFormat)
   bus.off('searchValue', handleSearch)
+  bus.off('search-visibility', handleSearchVisibility)
+  bus.off('search-focus-editor', focusSearchEditor)
   bus.off('replaceValue', handReplace)
   bus.off('find-action', handleFindAction)
   bus.off('insert-image', insertImage)
