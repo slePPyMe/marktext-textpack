@@ -174,9 +174,11 @@
     {
       "id": "interactive-windows-clipboard-overwrite",
       "verifiedOn": "2026-11-10",
-      "productCandidate": "fc67463994d8907dda48d4c34d94df5b3688b339",
-      "pureUpstream": "a520befde7ec8ea911e738d53cb26bba64b28694",
+      "productCandidate": "32a11f95674215ea6cb3b7164d579894c4dc9762",
+      "pureUpstream": "ce4fc73568fa3da7bdaab6cb6f1aca06a28af7f6",
       "localEvidence": {
+        "candidateCommit": "9ea591f6a3a969a330ede94cf1b9267b0544b09a",
+        "pureUpstreamCommit": "a520befde7ec8ea911e738d53cb26bba64b28694",
         "candidate": "Repeated real copy/paste diagnostics: 49 passed, 6 failed on the interactive Windows session.",
         "pureUpstream": "Freshly installed/built, product source unchanged: 49 passed, 6 failed; every failure snapshot reported rdpclip as clipboard owner.",
         "independentControl": "A minimal Electron 45 program with no MarkText/TextPack code wrote text/HTML/PNG directly. 4 of 60 later samples no longer matched its write; snapshots included rdpclip ownership and foreign SnowShotScreenshot formats.",
@@ -189,8 +191,8 @@
         }
       },
       "cleanRunnerValidation": {
-        "candidateCommit": "fc67463994d8907dda48d4c34d94df5b3688b339",
-        "pureUpstreamCommit": "a520befde7ec8ea911e738d53cb26bba64b28694",
+        "candidateCommit": "32a11f95674215ea6cb3b7164d579894c4dc9762",
+        "pureUpstreamCommit": "ce4fc73568fa3da7bdaab6cb6f1aca06a28af7f6",
         "pnpm": "10.33.4",
         "node": "22.21.1",
         "electron": "45.0.0",
@@ -200,23 +202,9 @@
           {
             "platform": "ubuntu-24.04",
             "source": "upstream",
-            "runId": 42779371284,
-            "jobId": 129705428003,
-            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42779371284/job/129705428003",
-            "conclusion": "success",
-            "counts": {
-              "expected": 150,
-              "unexpected": 0,
-              "skipped": 0,
-              "flaky": 0
-            }
-          },
-          {
-            "platform": "ubuntu-24.04",
-            "source": "candidate",
-            "runId": 42779371284,
-            "jobId": 129705428332,
-            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42779371284/job/129705428332",
+            "runId": 42783235781,
+            "jobId": 129718067659,
+            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42783235781/job/129718067659",
             "conclusion": "success",
             "counts": {
               "expected": 150,
@@ -228,9 +216,9 @@
           {
             "platform": "windows-2025",
             "source": "upstream",
-            "runId": 42779386098,
-            "jobId": 129705473595,
-            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42779386098/job/129705473595",
+            "runId": 42783251094,
+            "jobId": 129718117533,
+            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42783251094/job/129718117533",
             "conclusion": "success",
             "counts": {
               "expected": 150,
@@ -240,17 +228,68 @@
             }
           },
           {
-            "platform": "windows-2025",
+            "platform": "ubuntu-24.04",
             "source": "candidate",
-            "runId": 42779386098,
-            "jobId": 129705473673,
-            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42779386098/job/129705473673",
+            "runId": 42783235781,
+            "jobId": 129718068083,
+            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42783235781/job/129718068083",
             "conclusion": "success",
             "counts": {
               "expected": 150,
               "unexpected": 0,
               "skipped": 0,
               "flaky": 0
+            },
+            "additionalChecks": {
+              "desktopUnit": {
+                "passed": 1805,
+                "skipped": 2,
+                "total": 1807,
+                "failed": 0,
+                "rawLogVerified": true,
+                "skipReason": "Existing platform conditions; two Pandoc-reader tests require an installed Pandoc."
+              },
+              "releaseSelection": {
+                "passed": 5,
+                "failed": 0
+              },
+              "selectedIntegration": {
+                "startTime": "2026-11-10T08:36:38.543Z",
+                "duration": 258688.42,
+                "expected": 123,
+                "skipped": 0,
+                "unexpected": 0,
+                "flaky": 0
+              }
+            }
+          },
+          {
+            "platform": "windows-2025",
+            "source": "candidate",
+            "runId": 42783251094,
+            "jobId": 129718117291,
+            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42783251094/job/129718117291",
+            "conclusion": "success",
+            "counts": {
+              "expected": 150,
+              "unexpected": 0,
+              "skipped": 0,
+              "flaky": 0
+            },
+            "additionalChecks": {
+              "desktopUnit": {
+                "passed": 1768,
+                "skipped": 39,
+                "total": 1807,
+                "failed": 0,
+                "rawLogVerified": true,
+                "skipReason": "Existing platform conditions; two Pandoc-reader tests require an installed Pandoc."
+              },
+              "releaseSelection": {
+                "passed": 5,
+                "failed": 0
+              },
+              "windowsPackage": "success"
             }
           }
         ]
