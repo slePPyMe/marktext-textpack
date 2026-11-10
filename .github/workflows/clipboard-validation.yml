@@ -1,15 +1,15 @@
-name: Isolated clipboard validation
+name: Windows clipboard validation
 
 on:
   push:
-    branches: [codex/clipboard-validation-20261110]
+    branches: [codex/clipboard-validation-windows-20261110]
 
 permissions:
   contents: read
 
 jobs:
   clipboard:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2025
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -36,17 +36,13 @@ jobs:
           persist-credentials: false
 
       - name: Use identical portable tests for both product revisions
+        shell: bash
         run: |
           cp .clipboard-validation-input/packages/desktop/test/e2e/image-clipboard-3090.spec.ts packages/desktop/test/e2e/
           cp .clipboard-validation-input/packages/desktop/test/e2e/image-relative-path.spec.ts packages/desktop/test/e2e/
           test -z "$(git diff --name-only -- packages/desktop/src packages/muya/src package.json pnpm-lock.yaml)"
           git rev-parse HEAD
           sha256sum packages/desktop/test/e2e/image-clipboard-3090.spec.ts packages/desktop/test/e2e/image-relative-path.spec.ts
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libx11-dev libxkbfile-dev libsecret-1-dev libfontconfig-dev xvfb libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libgtk-3-0 libgbm1 libasound2t64
 
       - uses: ./.github/actions/setup
 
@@ -61,11 +57,12 @@ jobs:
         run: pnpm build
 
       - name: Repeat real clipboard and file URL regressions
-        run: xvfb-run --auto-servernum pnpm -C packages/desktop exec playwright test test/e2e/image-clipboard-3090.spec.ts test/e2e/image-relative-path.spec.ts --workers=1 --repeat-each=10 --retries=0 --reporter=list,json
+        run: pnpm -C packages/desktop exec playwright test test/e2e/image-clipboard-3090.spec.ts test/e2e/image-relative-path.spec.ts --workers=1 --repeat-each=10 --retries=0 --reporter=list,json
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/clipboard-results.json
 
       - name: Record test counts
+        shell: bash
         if: always()
         run: |
           node -e "const fs=require('fs');if(fs.existsSync('clipboard-results.json'))console.log(JSON.stringify(JSON.parse(fs.readFileSync('clipboard-results.json','utf8')).stats));else console.log('Tests did not complete; inspect preceding failed step')"
