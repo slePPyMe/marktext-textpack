@@ -11,7 +11,8 @@
 编辑。支持粘贴、拖入图片，以及 Markdown 与 TextPack 之间的另存为转换。
 HTTP/HTTPS 图片保留远程引用，当前不支持 `.textbundle` 目录。
 
-**[下载 TextPack 版（Windows x64）](https://github.com/slePPyMe/marktext-textpack/releases/latest)**
+**[下载 TextPack 版（Windows · macOS · Linux）](https://github.com/slePPyMe/marktext-textpack/releases/latest)**
+· [项目介绍](https://sleppyme.github.io/marktext-textpack/)
 · [格式与限制](../textpack.md) · [英文说明](../../README.md)
 
 <div align="center">
@@ -48,7 +49,7 @@ HTTP/HTTPS 图片保留远程引用，当前不支持 `.textbundle` 目录。
 
 <div align="center">
   <h3>
-    <a href="https://marktext.me">
+    <a href="https://sleppyme.github.io/marktext-textpack/">
       Website
     </a>
     <span> | </span>

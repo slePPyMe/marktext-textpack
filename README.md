@@ -17,7 +17,8 @@ then reopen it and continue editing with MarkText's WYSIWYG editor.
 增加原生 `.textpack` 支持，适合图文笔记的移动、分享和同步：不用同时管理独立的
 图片文件夹，也不用把图片转成冗长的 Base64 文本。保留所见即所得与源码编辑体验。
 
-**[Download TextPack builds / 下载 TextPack 版（Windows x64）](https://github.com/slePPyMe/marktext-textpack/releases/latest)**
+**[Download TextPack builds / 下载 TextPack 版（Windows · macOS · Linux）](https://github.com/slePPyMe/marktext-textpack/releases/latest)**
+· [Project website / 项目介绍](https://sleppyme.github.io/marktext-textpack/)
 · [简体中文说明](docs/i18n/README-zh_cn.md)
 
 Local images are bundled; HTTP/HTTPS images stay remote. This is an independent,
@@ -104,7 +105,7 @@ The implementation was developed with AI assistance and manually reviewed and te
 
 <div align="center">
   <h3>
-    <a href="https://marktext.me">
+    <a href="https://sleppyme.github.io/marktext-textpack/">
       Website
     </a>
     <span> | </span>
