@@ -114,12 +114,16 @@ async function launch (name) {
   await fs.copyFile(input, editedFile)
   const initial = await launch('profile-edit')
   try {
+    await initial.page.screenshot({ path: path.join(output, 'editor-opened.png') })
     const before = (await fs.stat(editedFile)).mtimeMs
-    await initial.page.locator('.editor-component[contenteditable="true"]').click()
+    await initial.page.bringToFront()
+    await initial.page.locator('.editor-component span.mu-paragraph-content').last().click()
     await initial.page.keyboard.press('Control+End')
     await initial.page.keyboard.press('End')
     await initial.page.keyboard.press('Enter')
     await initial.page.keyboard.insertText(savedText)
+    await initial.page.waitForFunction((text) => document.body.innerText.includes(text), savedText)
+    await initial.page.screenshot({ path: path.join(output, 'editor-edited.png') })
     await initial.page.keyboard.press('Control+s')
     const deadline = Date.now() + 20000
     while ((await fs.stat(editedFile)).mtimeMs === before && Date.now() < deadline) await pause(100)
@@ -128,6 +132,25 @@ async function launch (name) {
       before,
       'Editing must update the TextPack on disk'
     )
+  } catch (error) {
+    await fs.writeFile(
+      path.join(output, 'failed-renderer.json'),
+      JSON.stringify(
+        {
+          error: String(error),
+          title: await initial.page.title(),
+          body: await initial.page.locator('body').innerText(),
+          focus: await initial.page.evaluate(() => ({
+            tag: document.activeElement?.tagName,
+            classes: document.activeElement?.className
+          }))
+        },
+        null,
+        2
+      )
+    )
+    await initial.page.screenshot({ path: path.join(output, 'failure.png') })
+    throw error
   } finally {
     await initial.close()
   }

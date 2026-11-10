@@ -54,6 +54,8 @@ jobs:
           name: textpack-product-demo
           path: |
             .demo-output/editor.png
+            .demo-output/editor-opened.png
+            .demo-output/editor-edited.png
             .demo-output/field-notes.textpack
             .demo-output/verification.json
             .demo-output/failed-renderer.json
