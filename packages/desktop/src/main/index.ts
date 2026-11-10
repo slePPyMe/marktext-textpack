@@ -14,6 +14,7 @@ import App from './app'
 import { t } from './i18n'
 import { registerSandboxIpcHandlers } from './ipc'
 import { setPlantumlServerSource } from './ipc/diagram'
+import { cleanupStaleTextPackSessions } from './filesystem/textpack'
 
 process.env.MARKTEXT_VERSION = MARKTEXT_VERSION
 process.env.MARKTEXT_VERSION_STRING = MARKTEXT_VERSION_STRING
@@ -108,6 +109,9 @@ setPlantumlServerSource(() => accessor.preferences.getItem<string>('plantumlServ
 
 const appController = new App(accessor, args as unknown as { _: string[] })
 appController.init()
+cleanupStaleTextPackSessions().catch((error) =>
+  log.warn('Unable to clean TextPack sessions:', error)
+)
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

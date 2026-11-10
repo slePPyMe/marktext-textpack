@@ -5,6 +5,7 @@
 // imperfect surface than a placeholder that's wrong.
 
 export type LineEnding = 'lf' | 'crlf'
+export type DocumentKind = 'markdown' | 'textpack'
 
 export interface SerializedStat {
   size: number
@@ -21,11 +22,15 @@ export interface MarkdownDocument {
   markdown: string
   filename: string
   pathname: string | null
-  encoding?: string
+  encoding?: FileEncoding | string
   lineEnding?: LineEnding
   adjustLineEndingOnSave?: boolean
   trimTrailingNewline?: number
   isMixedLineEndings?: boolean
+  documentKind?: DocumentKind
+  resourcePath?: string
+  /** Opaque main-process token for a staged external TextPack reload. */
+  reloadToken?: string
 }
 
 export interface FileHistory {
@@ -75,6 +80,8 @@ export interface IFileState {
   // Empty for untitled buffers; always a string at runtime.
   pathname: string
   markdown: string
+  documentKind: DocumentKind
+  resourcePath: string
   isSaved: boolean
   encoding: FileEncoding
   lineEnding: LineEnding | string
@@ -116,6 +123,9 @@ export interface TabOptions {
   anchor?: string
   [key: string]: unknown
 }
+
+/** Set by the main-process save command, not inferred from the chosen path. */
+export type SaveIntent = 'save' | 'saveAs'
 
 export interface SidebarOpenOptions extends TabOptions {
   preview?: boolean

@@ -47,6 +47,35 @@ describe('sidebar preview tabs', () => {
     usePreferencesStore().openFilesInPreviewMode = true
   })
 
+  it('uses TextPack resources while previewing and releases the session when replaced', () => {
+    const store = useEditorStore()
+    const pathname = '/notes/archive.textpack'
+    const requestId = beginOpen(store, pathname)
+    store.NEW_TAB_WITH_CONTENT({
+      markdownDocument: {
+        pathname,
+        filename: 'archive.textpack',
+        markdown: '![image](assets/image.png)',
+        documentKind: 'textpack',
+        resourcePath: '/private/textpack-session'
+      },
+      options: { preview: true, requestId }
+    })
+
+    expect(currentFile(store)).toMatchObject({ documentKind: 'textpack', isPreview: true })
+    expect(window.DIRNAME).toBe('/private/textpack-session')
+
+    const nextRequest = beginOpen(store, '/notes/next.md')
+    store.NEW_TAB_WITH_CONTENT({
+      markdownDocument: documentFor('next'),
+      options: { preview: true, requestId: nextRequest }
+    })
+
+    expect(store.tabs).toHaveLength(1)
+    expect(window.DIRNAME).toBe('/notes')
+    expect(window.electron.ipcRenderer.send).toHaveBeenCalledWith('mt::window-tab-closed', pathname)
+  })
+
   it('replaces the existing preview tab in place', () => {
     const store = useEditorStore()
     const firstRequest = beginOpen(store, '/notes/a.md')

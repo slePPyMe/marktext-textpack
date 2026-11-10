@@ -14,9 +14,10 @@ import {
 import log from 'electron-log'
 import { isDirectory, isFile, exists } from 'common/filesystem'
 import {
+  DOCUMENT_EXTENSIONS,
   MARKDOWN_EXTENSIONS,
   isDangerousExecutableFile,
-  isMarkdownFile
+  isDocumentFile
 } from 'common/filesystem/paths'
 import { checkUpdates, userSetting } from './marktext'
 import { showTabBar } from './view'
@@ -24,7 +25,8 @@ import { COMMANDS } from '../../commands'
 import type { CommandManager } from '../../commands'
 import { EXTENSION_HASN, PANDOC_EXTENSIONS, URL_REG } from '../../config'
 import { normalizeAndResolvePath, resolveLocalLinkTarget, writeFile } from '../../filesystem'
-import { writeMarkdownFile } from '../../filesystem/markdown'
+import { writeDocumentFile } from '../../filesystem/document'
+import { moveTextPackSession } from '../../filesystem/textpack'
 import { documentWrites } from '../../filesystem/documentWrites'
 import { getPath, getRecommendTitleFromMarkdownString } from '../../utils'
 import pandoc, {
@@ -207,6 +209,7 @@ const handlePandocExport = async(e: IpcMainEvent, payload: PandocExportPayload):
   try {
     const { filePath: chosen, canceled } = await dialog.showSaveDialog(win, {
       defaultPath: path.join(sourceDir ?? getPath('documents'), `${stem}${format.extension}`),
+      properties: ['showOverwriteConfirmation'],
       filters: [{ name: format.label, extensions: [format.extension.slice(1)] }]
     })
     if (canceled || !chosen || win.isDestroyed()) return
@@ -321,7 +324,12 @@ const handleResponseForSave = async(
       defaultPath:
         saveAs && pathname
           ? pathname
-          : path.join(defaultPath || getPath('documents'), `${recommendFilename}.md`)
+          : path.join(defaultPath || getPath('documents'), `${recommendFilename}.md`),
+      properties: ['showOverwriteConfirmation'],
+      filters: [
+        { name: 'Markdown document', extensions: [...MARKDOWN_EXTENSIONS] },
+        { name: 'TextPack document', extensions: ['textpack'] }
+      ]
     })
     if (canceled || !dialogPath) return
     filePath = dialogPath
@@ -331,33 +339,31 @@ const handleResponseForSave = async(
   // SaveOptions is partial on the IPC surface; renderer save requests supply all document options.
   return documentWrites
     .write(e.sender.id, id, writeEpoch, () =>
-      writeMarkdownFile(
-        destination,
-        markdown,
-        options as Parameters<typeof writeMarkdownFile>[2]
-      ).then(() => true)
+      writeDocumentFile(destination, markdown, options, pathname, saveAs ? 'saveAs' : 'save')
     )
-    .then((written) => {
-      if (!written) return
-      if (!alreadyExistOnDisk || pathname !== destination) {
+    .then((descriptor) => {
+      if (!descriptor) return
+      if (!alreadyExistOnDisk || pathname !== destination || descriptor.documentKind === 'textpack') {
         if (pathname && pathname !== destination) {
           ipcMain.emit('window-change-file-path', win.id, destination, pathname)
-        } else {
+        } else if (!alreadyExistOnDisk) {
           ipcMain.emit('window-add-file-path', win.id, destination)
         }
         if (!alreadyExistOnDisk) ipcMain.emit('menu-add-recently-used', destination)
+        else if (pathname === destination) ipcMain.emit('window-file-saved', win.id, destination)
 
         const newFilename = path.basename(destination)
         win.webContents.send('mt::set-pathname', {
           id,
           pathname: destination,
           filename: newFilename,
-          savedMarkdown: markdown
+          savedMarkdown: markdown,
+          ...descriptor
         })
       } else {
         ipcMain.emit('window-file-saved', win.id, destination)
-        win.webContents.send('mt::tab-saved', id, markdown)
       }
+      win.webContents.send('mt::tab-saved', id, descriptor.markdown ?? markdown)
       return id
     })
     .catch((err: unknown) => {
@@ -557,7 +563,7 @@ ipcMain.on('mt::window::drop', async(e, fileList: string[]) => {
     return
   }
   for (const file of fileList) {
-    if (isMarkdownFile(file)) {
+    if (isDocumentFile(file)) {
       openFileOrFolder(win, file)
       continue
     }
@@ -595,6 +601,7 @@ ipcMain.on('mt::rename', async(e, { id, pathname, newPathname }: RenamePayload) 
       }
 
       ipcMain.emit('window-change-file-path', win.id, newPathname, pathname)
+      moveTextPackSession(pathname, newPathname)
       e.sender.send('mt::set-pathname', {
         id,
         pathname: newPathname,
@@ -642,6 +649,7 @@ ipcMain.on(
         }
 
         ipcMain.emit('window-change-file-path', win.id, filePath, pathname)
+        moveTextPackSession(pathname, filePath)
         e.sender.send('mt::set-pathname', {
           id,
           pathname: filePath,
@@ -705,7 +713,7 @@ ipcMain.on('mt::format-link-click', async(e, { data, dirname, readOnly }: Format
 
   const { pathname, anchor } = resolveLocalLinkTarget(urlCandidate, dirname ?? '')
   if (pathname) {
-    if (isMarkdownFile(pathname)) {
+    if (isDocumentFile(pathname)) {
       const innerWin = BrowserWindow.fromWebContents(e.sender)
       if (innerWin) {
         openFileOrFolder(innerWin, pathname, { anchor, readOnly })
@@ -816,8 +824,8 @@ export const openFile = async(win: BrowserWindow | null): Promise<void> => {
     properties: ['openFile', 'multiSelections'],
     filters: [
       {
-        name: 'Markdown document',
-        extensions: [...MARKDOWN_EXTENSIONS]
+        name: 'Markdown or TextPack document',
+        extensions: [...DOCUMENT_EXTENSIONS]
       }
     ]
   })

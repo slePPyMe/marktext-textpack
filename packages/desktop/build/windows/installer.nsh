@@ -37,6 +37,7 @@
   !insertmacro mtAssociateExtension ".mdtxt"
   !insertmacro mtAssociateExtension ".mdtext"
   !insertmacro mtAssociateExtension ".mdx"
+  !insertmacro mtAssociateExtension ".textpack"
 
   WriteRegStr SHELL_CONTEXT "Software\Classes\${MT_PROGID}" \
     "" "MarkText Markdown Document"
@@ -50,6 +51,9 @@
   ; path unquoted, which runs `C:\Program` when the directory the user picked
   ; during setup contains a space.
   WriteRegStr SHELL_CONTEXT "Software\Classes\Markdown\shell\open\command" \
+    "" '"$INSTDIR\marktext.exe" "%1"'
+
+  WriteRegStr SHELL_CONTEXT "Software\Classes\TextPack\shell\open\command" \
     "" '"$INSTDIR\marktext.exe" "%1"'
 
   ; Explorer serves file types from a cache that a fresh install otherwise
@@ -68,6 +72,7 @@
     !insertmacro mtUnassociateExtension ".mdtxt"
     !insertmacro mtUnassociateExtension ".mdtext"
     !insertmacro mtUnassociateExtension ".mdx"
+    !insertmacro mtUnassociateExtension ".textpack"
     DeleteRegKey SHELL_CONTEXT "Software\Classes\${MT_PROGID}"
   ${endIf}
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 vi.hoisted(() => {
@@ -6,13 +6,13 @@ vi.hoisted(() => {
     window?: {
       path?: { sep: string; dirname: (p: string) => string }
       fileUtils?: { isSamePathSync: (a: string, b: string) => boolean }
-      electron?: { ipcRenderer: { send: (...a: unknown[]) => void; on: Mock } }
+      electron?: { ipcRenderer: { send: (...a: unknown[]) => void; on: Mock; invoke: Mock } }
     }
   }
   w.window ??= {}
   w.window.path ??= { sep: '/', dirname: (p: string) => p }
   w.window.fileUtils ??= { isSamePathSync: (a, b) => a === b }
-  w.window.electron ??= { ipcRenderer: { send: () => {}, on: vi.fn() } }
+  w.window.electron ??= { ipcRenderer: { send: () => {}, on: vi.fn(), invoke: vi.fn() } }
 })
 
 vi.mock('@/services/notification', () => ({
@@ -29,6 +29,8 @@ describe('useEditorStore LISTEN_FOR_FILE_CHANGE — a file changed on disk', () 
     vi.clearAllMocks()
     ;(window.electron.ipcRenderer.on as Mock).mockReset()
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   const makeTab = (store: ReturnType<typeof useEditorStore>, isSaved = true) => {
     const tab = {
@@ -123,5 +125,83 @@ describe('useEditorStore LISTEN_FOR_FILE_CHANGE — a file changed on disk', () 
 
     expect(tab.markdown).toBe('hello')
     expect(notifySpy).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([false, true])(
+    'switches TextPack resources even when the text is unchanged (autoSave=%s)',
+    async(autoSave) => {
+      const store = useEditorStore()
+      usePreferencesStore().autoSave = autoSave
+      const tab = makeTab(store)
+      Object.assign(tab, { documentKind: 'textpack', resourcePath: '/old/assets' })
+      const invoke = vi.spyOn(window.electron.ipcRenderer, 'invoke').mockResolvedValue({
+        accepted: true,
+        resourcePath: '/new/assets'
+      })
+      const notify = vi.spyOn(store, 'pushTabNotification').mockImplementation(() => {})
+      store.LISTEN_FOR_FILE_CHANGE()
+
+      captureHandler()(null, {
+        type: 'change',
+        change: {
+          pathname: tab.pathname,
+          data: {
+            markdown: 'hello',
+            filename: tab.filename,
+            encoding: 'utf8',
+            lineEnding: 'lf',
+            documentKind: 'textpack',
+            reloadToken: 'external-edit'
+          }
+        }
+      })
+      await vi.waitFor(() => expect(store.tabs[0].resourcePath).toBe('/new/assets'))
+
+      expect(invoke).toHaveBeenCalledWith(
+        'mt::resolve-textpack-reload',
+        tab.pathname,
+        'external-edit',
+        true
+      )
+      expect(store.tabs[0].markdown).toBe('hello')
+      expect(store.tabs[0].isSaved).toBe(true)
+      expect(notify).not.toHaveBeenCalled()
+    }
+  )
+
+  it('keeps dirty TextPack content and resources when the external reload is declined', async() => {
+    const store = useEditorStore()
+    const tab = makeTab(store, false)
+    Object.assign(tab, { documentKind: 'textpack', resourcePath: '/old/assets' })
+    const invoke = vi
+      .spyOn(window.electron.ipcRenderer, 'invoke')
+      .mockResolvedValue({ accepted: false })
+    const notify = vi.spyOn(store, 'pushTabNotification').mockImplementation(() => {})
+    store.LISTEN_FOR_FILE_CHANGE()
+
+    captureHandler()(null, {
+      type: 'change',
+      change: {
+        pathname: tab.pathname,
+        data: {
+          markdown: 'external',
+          documentKind: 'textpack',
+          reloadToken: 'external-edit'
+        }
+      }
+    })
+    expect(invoke).not.toHaveBeenCalled()
+    notify.mock.calls[0][0].action?.(false)
+    await vi.waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        'mt::resolve-textpack-reload',
+        tab.pathname,
+        'external-edit',
+        false
+      )
+    )
+    expect(store.tabs[0].markdown).toBe('hello')
+    expect(store.tabs[0].resourcePath).toBe('/old/assets')
+    expect(store.tabs[0].isSaved).toBe(false)
   })
 })

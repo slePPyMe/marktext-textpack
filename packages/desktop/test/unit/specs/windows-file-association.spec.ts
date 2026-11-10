@@ -17,7 +17,7 @@ const script = readFileSync(
   'utf8'
 )
 
-const EXTENSIONS = ['.md', '.markdown', '.mmd', '.mdown', '.mdtxt', '.mdtext', '.mdx']
+const EXTENSIONS = ['.md', '.markdown', '.mmd', '.mdown', '.mdtxt', '.mdtext', '.mdx', '.textpack']
 
 const macroBody = (name: string): string => {
   const start = script.indexOf(`!macro ${name}`)
