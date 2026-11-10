@@ -1,6 +1,18 @@
 <p align="center"><img src="../assets/logo-small.png" alt="MarkText" width="100" height="100"></p>
 
-<h1 align="center">MarkText</h1>
+<h1 align="center">MarkText TextPack</h1>
+
+> [!IMPORTANT]
+> 这是独立维护的非官方 MarkText 分支，增加原生 `.textpack` 图文文档支持。
+> 官方 MarkText 的安装包不包含此分支的功能。
+
+**把 Markdown 正文和本地图片保存成一个可继续编辑的文件。** 移动、分享或同步
+图文笔记时，不必同时携带图片文件夹；重新打开 `.textpack` 后仍可继续所见即所得
+编辑。支持粘贴、拖入图片，以及 Markdown 与 TextPack 之间的另存为转换。
+HTTP/HTTPS 图片保留远程引用，当前不支持 `.textbundle` 目录。
+
+**[下载 TextPack 版（Windows x64）](https://github.com/slePPyMe/marktext-textpack/releases/latest)**
+· [格式与限制](../textpack.md) · [英文说明](../../README.md)
 
 <div align="center">
   <a href="https://twitter.com/intent/tweet?via=marktextme&url=https://github.com/marktext/marktext/&text=What%20do%20you%20want%20to%20say%20to%20app?&hashtags=happyMarkText">
@@ -21,12 +33,12 @@
     <img src="https://img.shields.io/github/license/marktext/marktext.svg" alt="LICENSE">
   </a>
   <!-- Downloads total -->
-  <a href="https://github.com/marktext/marktext/releases">
-    <img src="https://img.shields.io/github/downloads/marktext/marktext/total.svg" alt="total download">
+  <a href="https://github.com/slePPyMe/marktext-textpack/releases">
+    <img src="https://img.shields.io/github/downloads/slePPyMe/marktext-textpack/total.svg" alt="total download">
   </a>
   <!-- Downloads latest release -->
-  <a href="https://github.com/marktext/marktext/releases/latest">
-    <img src="https://img.shields.io/github/downloads/marktext/marktext/latest/total.svg" alt="latest download">
+  <a href="https://github.com/slePPyMe/marktext-textpack/releases">
+    <img src="https://img.shields.io/github/downloads/slePPyMe/marktext-textpack/latest/total.svg" alt="latest download">
   </a>
   <!-- sponsors -->
   <a href="https://opencollective.com/marktext">
@@ -40,19 +52,19 @@
       Website
     </a>
     <span> | </span>
-    <a href="https://github.com/marktext/marktext#features">
+    <a href="#功能">
       功能
     </a>
     <span> | </span>
-    <a href="https://github.com/marktext/marktext#download-and-installation">
+    <a href="#下载与安装">
       下载与安装
     </a>
     <span> | </span>
-    <a href="https://github.com/marktext/marktext#development">
+    <a href="#开发">
       开发
     </a>
     <span> | </span>
-    <a href="https://github.com/marktext/marktext#contribution">
+    <a href="#贡献">
       贡献
     </a>
   </h3>
@@ -136,45 +148,22 @@ MarkText 是一款由社区支持驱动的开源 Markdown 编辑器。如果 Mar
 
 ## 下载与安装
 
-![平台](https://img.shields.io/static/v1.svg?label=Platform&message=Linux%20x64%2Farm64%20|%20macOS%20x64%2Farm64%20|%20Windows%20x64%2Farm64&style=for-the-badge)
+请从 **[本分支 Releases](https://github.com/slePPyMe/marktext-textpack/releases/latest)** 下载，
+版本号跟随上游正式 Release，当前提供 Windows x64 构建：
 
-|               ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/mac-pass-sm.png)               |               ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/windows-pass-sm.png)               |              ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/linux-pass-sm.png)              |
-| :-----------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------: |
-| [![Download for macOS](https://img.shields.io/badge/macOS-Download-blue)](https://github.com/marktext/marktext/releases/latest) | [![Download for Windows](https://img.shields.io/badge/Windows-Download-blue)](https://github.com/marktext/marktext/releases/latest) | [![Download for Linux](https://img.shields.io/badge/Linux-Download-blue)](https://github.com/marktext/marktext/releases/latest) |
+| 文件                                         | 用途                      |
+| -------------------------------------------- | ------------------------- |
+| `marktext-textpack-win-x64-<版本>-setup.exe` | Windows 安装包            |
+| `marktext-textpack-win-x64-<版本>.zip`       | 解压后运行 `marktext.exe` |
+| `SHA256SUMS.txt`                             | 下载文件的 SHA-256 校验和 |
 
-想了解最新版本的新功能？请参阅 [CHANGELOG](https://marktext.me/docs/changelog)。
+构建未签名，沿用 MarkText 的应用标识与设置目录。官方 MarkText 发布页以及
+Homebrew、Winget、Chocolatey 的官方包不包含此分支功能；当前 TextPack 工作流
+尚未发布 Linux、macOS 或 ARM64 安装包。
 
-#### macOS
-
-你可以从[发布页](https://github.com/marktext/marktext/releases/latest)下载最新的 `marktext-mac-(arm64|x64)-%version%.dmg`，或通过 [**homebrew cask**](https://github.com/caskroom/homebrew-cask) 安装 MarkText。使用 Homebrew-Cask 只需先安装 [Homebrew](https://brew.sh/)。
-
-```bash
-brew install --cask mark-text
-```
-
-#### Windows
-
-只需下载并通过安装向导（`marktext-win-(x64|arm64)-%version%-setup.exe`）安装 MarkText，并选择用户级或系统级安装。或者，使用包管理器 [Chocolatey](https://chocolatey.org/) 或 [Winget](https://docs.microsoft.com/en-us/windows/package-manager/winget/) 安装 MarkText。
-
-使用 Chocolatey，需先安装 [Chocolatey](https://chocolatey.org/install)：
-
-```bash
-choco install marktext
-```
-
-使用 Winget，需先安装 [Winget](https://docs.microsoft.com/en-us/windows/package-manager/winget/#install-winget)：
-
-```bash
-winget install marktext
-```
-
-#### Linux
-
-请参阅 [Linux 安装说明](https://marktext.me/docs/installation)。
-
-#### 其他
-
-所有 Linux、macOS 和 Windows 的二进制文件均可从[发布页](https://github.com/marktext/marktext/releases/latest)下载。如果你的系统没有对应版本，请提交 [issue](https://github.com/marktext/marktext/issues)。
+打开 Markdown 文档后，选择「文件 → 另存为」，使用 `.textpack` 扩展名，即可将
+正文和引用的本地图片打包。具体兼容范围见[格式说明](../textpack.md)，
+自动跟随上游发版的规则与维护步骤见[发布流程](../textpack-release.md)。
 
 ## 开发
 

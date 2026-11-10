@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/assets/logo-small.png" alt="MarkText" width="100" height="100"></p>
 
-<h1 align="center">MarkText</h1>
+<h1 align="center">MarkText TextPack</h1>
 
 > [!IMPORTANT]
 > This is an unofficial fork of [MarkText](https://github.com/marktext/marktext).
@@ -8,9 +8,20 @@
 
 ## MarkText TextPack
 
-This fork adds native `.textpack` document support to MarkText while keeping
-the existing editing experience and limiting most integration changes to the
-document and filesystem layers.
+**Keep Markdown and local images together in one editable file.** MarkText
+TextPack is an open-source Markdown editor with native `.textpack` support.
+Move, share or synchronize a document without losing its bundled local images,
+then reopen it and continue editing with MarkText's WYSIWYG editor.
+
+**把 Markdown 正文和本地图片保存成一个可继续编辑的文件。** 本分支为 MarkText
+增加原生 `.textpack` 支持，适合图文笔记的移动、分享和同步：不用同时管理独立的
+图片文件夹，也不用把图片转成冗长的 Base64 文本。保留所见即所得与源码编辑体验。
+
+**[Download TextPack builds / 下载 TextPack 版（Windows x64）](https://github.com/slePPyMe/marktext-textpack/releases/latest)**
+· [简体中文说明](docs/i18n/README-zh_cn.md)
+
+Local images are bundled; HTTP/HTTPS images stay remote. This is an independent,
+unofficial fork, and the official MarkText downloads do not include these changes.
 
 ### Features
 
@@ -26,17 +37,24 @@ document and filesystem layers.
 - `.textbundle` directories are not supported.
 - No generic attachment insertion UI is added.
 - Remote HTTP/HTTPS resources remain remote.
-- This fork follows MarkText's upstream `develop` branch.
+- Development follows upstream `develop`; downloads follow upstream stable release tags.
 
 See [TextPack documentation](docs/textpack.md) for compatibility details and
 current limitations.
 
 ### Upstream synchronization
 
-The weekly `Sync upstream` workflow rebases this fork onto upstream `develop`,
-runs lint, type checks and unit tests, then updates `textpack` only if its remote
-head is still the commit checked out at the start. Conflicts stop the run for
-manual resolution.
+The `Release TextPack` workflow checks for a new upstream stable release every
+15 minutes, merges its exact tag into `textpack-stable`, and publishes matching
+version numbers after checks and packaging pass. Detection, runner queues and
+build time mean publication follows upstream rather than occurring simultaneously.
+Source conflicts stop publication. See [release maintenance](docs/textpack-release.md).
+
+The separate `Sync upstream` development workflow can rebase `textpack` onto
+upstream `develop`. Its weekly schedule runs only while that workflow is enabled
+in repository Actions; the release workflow does not enable it. It runs lint,
+type checks and unit tests before updating `textpack`, with a remote-head check.
+Conflicts stop for manual resolution.
 
 The push uses a dedicated SSH deploy key with write access to this repository,
 stored in the Actions secret `SYNC_UPSTREAM_SSH_KEY`. This also allows upstream
@@ -71,12 +89,12 @@ The implementation was developed with AI assistance and manually reviewed and te
     <img src="https://img.shields.io/github/license/marktext/marktext.svg" alt="LICENSE">
   </a>
   <!-- Downloads total -->
-  <a href="https://github.com/marktext/marktext/releases">
-    <img src="https://img.shields.io/github/downloads/marktext/marktext/total.svg" alt="total download">
+  <a href="https://github.com/slePPyMe/marktext-textpack/releases">
+    <img src="https://img.shields.io/github/downloads/slePPyMe/marktext-textpack/total.svg" alt="total download">
   </a>
   <!-- Downloads latest release -->
-  <a href="https://github.com/marktext/marktext/releases/latest">
-    <img src="https://img.shields.io/github/downloads/marktext/marktext/latest/total.svg" alt="latest download">
+  <a href="https://github.com/slePPyMe/marktext-textpack/releases">
+    <img src="https://img.shields.io/github/downloads/slePPyMe/marktext-textpack/latest/total.svg" alt="latest download">
   </a>
   <!-- sponsors -->
   <a href="https://opencollective.com/marktext">
@@ -90,19 +108,19 @@ The implementation was developed with AI assistance and manually reviewed and te
       Website
     </a>
     <span> | </span>
-    <a href="https://github.com/marktext/marktext#features">
+    <a href="#features">
       Features
     </a>
     <span> | </span>
-    <a href="https://github.com/marktext/marktext#download-and-installation">
+    <a href="#download-and-installation">
       Downloads
     </a>
     <span> | </span>
-    <a href="https://github.com/marktext/marktext#development">
+    <a href="#development">
       Development
     </a>
     <span> | </span>
-    <a href="https://github.com/marktext/marktext#contribution">
+    <a href="#contribution">
       Contribution
     </a>
   </h3>
@@ -189,49 +207,25 @@ MarkText is an open-source Markdown editor powered by the support of its communi
 
 ## Download and Installation
 
-![platform](https://img.shields.io/static/v1.svg?label=Platform&message=Linux%20x64%2Farm64%20|%20macOS%20x64%2Farm64%20|%20Windows%20x64%2Farm64&style=for-the-badge)
+Download from **[this fork's Releases](https://github.com/slePPyMe/marktext-textpack/releases/latest)**.
+Versions follow the upstream stable release. Choose a Windows x64 asset:
 
-|               ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/mac-pass-sm.png)               |               ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/windows-pass-sm.png)               |              ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/linux-pass-sm.png)              |
-| :-----------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------: |
-| [![Download for macOS](https://img.shields.io/badge/macOS-Download-blue)](https://github.com/marktext/marktext/releases/latest) | [![Download for Windows](https://img.shields.io/badge/Windows-Download-blue)](https://github.com/marktext/marktext/releases/latest) | [![Download for Linux](https://img.shields.io/badge/Linux-Download-blue)](https://github.com/marktext/marktext/releases/latest) |
+| File                                            | Use                                 |
+| ----------------------------------------------- | ----------------------------------- |
+| `marktext-textpack-win-x64-<version>-setup.exe` | Windows installer                   |
+| `marktext-textpack-win-x64-<version>.zip`       | Extract and run `marktext.exe`      |
+| `SHA256SUMS.txt`                                | SHA-256 checksums for the downloads |
 
-Want to see new features of the latest version? Please refer to [CHANGELOG](https://marktext.me/docs/changelog).
+Builds are unsigned and retain MarkText's application identity and settings path.
+The official MarkText releases and package-manager commands install the upstream
+application rather than this TextPack fork. Linux, macOS and ARM64 builds are
+not currently published by the TextPack workflow.
 
-#### macOS
-
-Requires macOS 13 (Ventura) or later. Universal builds aren't published — pick the matching `arm64` or `x64` installer.
-
-You can either download the latest `marktext-mac-(arm64|x64)-%version%.dmg` from the [release page](https://github.com/marktext/marktext/releases/latest) or install MarkText using [**homebrew cask**](https://github.com/caskroom/homebrew-cask). To use Homebrew-Cask you just need to have [Homebrew](https://brew.sh/) installed.
-
-```bash
-brew install --cask mark-text
-```
-
-#### Windows
-
-Requires Windows 10 or 11. Both x64 and arm64 installers are published — pick the architecture that matches your machine.
-
-Simply download and install MarkText via the setup wizard (`marktext-win-(x64|arm64)-%version%-setup.exe`) and choose whether to install per-user or machine wide. Alternatively, install MarkText using a package manager such as [Chocolatey](https://chocolatey.org/) or [Winget](https://docs.microsoft.com/en-us/windows/package-manager/winget/).
-
-To use Chocolatey, you need to have [Chocolatey](https://chocolatey.org/install) installed:
-
-```bash
-choco install marktext
-```
-
-To use Winget, you need to have [Winget](https://docs.microsoft.com/en-us/windows/package-manager/winget/#install-winget) installed:
-
-```bash
-winget install marktext
-```
-
-#### Linux
-
-Please follow the [Linux installation instructions](https://marktext.me/docs/installation).
-
-#### Other
-
-All binaries for Linux, macOS and Windows can be downloaded from the [release page](https://github.com/marktext/marktext/releases/latest). If a version is unavailable for your system, then please open an [issue](https://github.com/marktext/marktext/issues).
+To create a TextPack, open a Markdown document, choose **File → Save As**, and
+save with the `.textpack` extension. Referenced local images are collected into
+the file. See [TextPack documentation](docs/textpack.md) for format limitations
+and [publishing instructions](docs/textpack-release.md) for the upstream-following release
+workflow.
 
 ## Development
 
