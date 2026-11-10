@@ -47,6 +47,7 @@ async function launch (name) {
     diagnostics = (diagnostics + chunk).slice(-10000)
   })
   let browser
+  let page
   try {
     const deadline = Date.now() + 45000
     let endpoint
@@ -61,13 +62,12 @@ async function launch (name) {
     }
     if (!endpoint) throw new Error(`Application debugging endpoint unavailable: ${diagnostics}`)
     browser = await chromium.connectOverCDP(endpoint)
-    const page =
-      browser.contexts()[0].pages()[0] || (await browser.contexts()[0].waitForEvent('page'))
+    page = browser.contexts()[0].pages()[0] || (await browser.contexts()[0].waitForEvent('page'))
     await page.setViewportSize({ width: 1280, height: 880 })
-    await page.locator('.muya').waitFor({ timeout: 30000 })
+    await page.locator('.editor-component[contenteditable="true"]').waitFor({ timeout: 30000 })
     await page.waitForFunction(() => document.body.innerText.includes('A note that travels'))
     await page.waitForFunction(() =>
-      [...document.querySelectorAll('.muya img')].some(
+      [...document.querySelectorAll('.editor-component img')].some(
         (image) => image.complete && image.naturalWidth > 0
       )
     )
@@ -77,12 +77,34 @@ async function launch (name) {
         await page.close().catch(() => {})
         await browser.close().catch(() => {})
         await pause(500)
-        if (child.exitCode === null) { spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }) }
+        if (child.exitCode === null) {
+          spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true })
+        }
       }
     }
   } catch (error) {
+    if (page) {
+      await fs
+        .writeFile(
+          path.join(output, 'failed-renderer.json'),
+          JSON.stringify(
+            {
+              url: page.url(),
+              title: await page.title(),
+              body: await page.locator('body').innerText(),
+              diagnostics
+            },
+            null,
+            2
+          )
+        )
+        .catch(() => {})
+      await page.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {})
+    }
     if (browser) await browser.close().catch(() => {})
-    if (child.exitCode === null) { spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }) }
+    if (child.exitCode === null) {
+      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true })
+    }
     throw error
   }
 }
@@ -93,7 +115,7 @@ async function launch (name) {
   const initial = await launch('profile-edit')
   try {
     const before = (await fs.stat(editedFile)).mtimeMs
-    await initial.page.locator('.muya').click()
+    await initial.page.locator('.editor-component[contenteditable="true"]').click()
     await initial.page.keyboard.press('Control+End')
     await initial.page.keyboard.press('End')
     await initial.page.keyboard.press('Enter')

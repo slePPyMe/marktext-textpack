@@ -49,11 +49,14 @@ jobs:
               assert len(archive.read('assets/field-notes.svg')) > 100
           print('Text and local image verified inside the saved archive')
       - uses: actions/upload-artifact@v7.0.2
+        if: always()
         with:
           name: textpack-product-demo
           path: |
             .demo-output/editor.png
             .demo-output/field-notes.textpack
             .demo-output/verification.json
+            .demo-output/failed-renderer.json
+            .demo-output/failure.png
           if-no-files-found: error
           retention-days: 14
