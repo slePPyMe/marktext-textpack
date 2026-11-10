@@ -169,5 +169,108 @@
     "Use the exact packageManager version. The verified machine pnpm.cmd entry is C:/Users/pengj/Tools/MarkTextDevelopment/pnpm.cmd.",
     "Git-shell commit hooks need a pnpm launcher and Git >=2.32. The machine default Git 2.16 cannot run lint-staged 17; use an already-installed supported Git in the task process instead of disabling hooks.",
     "Pandoc oracle tests were verified with Pandoc 3.13. Anaconda Pandoc 2.11 parses the nested-list fixture differently; use the verified version and rerun rather than changing the assertion or skipping the test."
+  ],
+  "alternativeValidation": [
+    {
+      "id": "interactive-windows-clipboard-overwrite",
+      "verifiedOn": "2026-11-10",
+      "productCandidate": "fc67463994d8907dda48d4c34d94df5b3688b339",
+      "pureUpstream": "a520befde7ec8ea911e738d53cb26bba64b28694",
+      "localEvidence": {
+        "candidate": "Repeated real copy/paste diagnostics: 49 passed, 6 failed on the interactive Windows session.",
+        "pureUpstream": "Freshly installed/built, product source unchanged: 49 passed, 6 failed; every failure snapshot reported rdpclip as clipboard owner.",
+        "independentControl": "A minimal Electron 45 program with no MarkText/TextPack code wrote text/HTML/PNG directly. 4 of 60 later samples no longer matched its write; snapshots included rdpclip ownership and foreign SnowShotScreenshot formats.",
+        "interpretation": "The observed local clipboard replacement is independent of TextPack. Clipboard ownership by rdpclip alone is not sufficient to classify a failure; examine data replacement and runtime comparisons.",
+        "directory": ".sync-evidence",
+        "sha256": {
+          "clipboard-independent-control.json": "4510121a29010da93fac712ab6db2c9aa1dcf8c674bb0be72fd15eb178f9ec2d",
+          "clipboard-diagnostic.json": "1b282d311488b6410a57bbb6192c06ccb13f17c07c371be8d73a5b7eb907a460",
+          "clipboard-pure-upstream/e2e.json": "bd5cda966f8a4f9d71183359bb7e9e4bebe80c31975022a2166f0bce4248fe3b"
+        }
+      },
+      "cleanRunnerValidation": {
+        "candidateCommit": "fc67463994d8907dda48d4c34d94df5b3688b339",
+        "pureUpstreamCommit": "a520befde7ec8ea911e738d53cb26bba64b28694",
+        "pnpm": "10.33.4",
+        "node": "22.21.1",
+        "electron": "45.0.0",
+        "command": "pnpm -C packages/desktop exec playwright test test/e2e/image-clipboard-3090.spec.ts test/e2e/image-relative-path.spec.ts --workers=1 --repeat-each=10 --retries=0 --reporter=list,json",
+        "linuxDisplay": "xvfb-run --auto-servernum",
+        "jobs": [
+          {
+            "platform": "ubuntu-24.04",
+            "source": "upstream",
+            "runId": 42779371284,
+            "jobId": 129705428003,
+            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42779371284/job/129705428003",
+            "conclusion": "success",
+            "counts": {
+              "expected": 150,
+              "unexpected": 0,
+              "skipped": 0,
+              "flaky": 0
+            }
+          },
+          {
+            "platform": "ubuntu-24.04",
+            "source": "candidate",
+            "runId": 42779371284,
+            "jobId": 129705428332,
+            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42779371284/job/129705428332",
+            "conclusion": "success",
+            "counts": {
+              "expected": 150,
+              "unexpected": 0,
+              "skipped": 0,
+              "flaky": 0
+            }
+          },
+          {
+            "platform": "windows-2025",
+            "source": "upstream",
+            "runId": 42779386098,
+            "jobId": 129705473595,
+            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42779386098/job/129705473595",
+            "conclusion": "success",
+            "counts": {
+              "expected": 150,
+              "unexpected": 0,
+              "skipped": 0,
+              "flaky": 0
+            }
+          },
+          {
+            "platform": "windows-2025",
+            "source": "candidate",
+            "runId": 42779386098,
+            "jobId": 129705473673,
+            "url": "https://github.com/slePPyMe/marktext-textpack/actions/runs/42779386098/job/129705473673",
+            "conclusion": "success",
+            "counts": {
+              "expected": 150,
+              "unexpected": 0,
+              "skipped": 0,
+              "flaky": 0
+            }
+          }
+        ]
+      },
+      "testEquivalence": "Both product revisions ran the same candidate image-clipboard-3090.spec.ts and image-relative-path.spec.ts, ten repetitions, workers=1, retries=0. Pure-upstream production source was not changed. The tests exercise native keyboard copy/paste, the real OS clipboard, text/HTML/PNG, saved assets, attributes, rendered images, and file URLs.",
+      "futureHandling": {
+        "doNotTreatInteractiveFailuresAsPassingTests": true,
+        "doNotSkipOrWeakenClipboardAssertions": true,
+        "requireCleanRealClipboardValidationWhenInterferenceIsObserved": true,
+        "rerunForEachChangedProductCandidate": true,
+        "doNotRepeatConfirmationWhenEquivalentValidationPasses": true,
+        "requireEvidenceOfExternalReplacement": true,
+        "reopenFor": [
+          "failure on an uncontaminated runner",
+          "changed failure signature",
+          "failure without observed external data replacement",
+          "TextPack-only failure"
+        ],
+        "doNotChangeRdpOrSecuritySettings": true
+      }
+    }
   ]
 }
