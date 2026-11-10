@@ -8,6 +8,12 @@ win:
   artifactName: 'marktext-textpack-win-${arch}-${version}.${ext}'
 nsis:
   artifactName: 'marktext-textpack-win-${arch}-${version}-setup.${ext}'
+mac:
+  artifactName: 'marktext-textpack-mac-${arch}-${version}.${ext}'
+dmg:
+  artifactName: 'marktext-textpack-mac-${arch}-${version}.${ext}'
+linux:
+  artifactName: 'marktext-textpack-linux-${version}.${ext}'
 publish:
   provider: generic
   url: https://github.com/slePPyMe/marktext-textpack/releases/latest/download/

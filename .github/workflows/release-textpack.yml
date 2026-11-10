@@ -13,6 +13,10 @@ on:
         description: 'Publish after checks (otherwise leave a draft)'
         default: true
         type: boolean
+      complete_existing:
+        description: 'Add missing platforms to an existing mutable release; retain published binaries'
+        default: false
+        type: boolean
 
 concurrency:
   group: release-textpack
@@ -20,6 +24,10 @@ concurrency:
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   poll:
@@ -30,20 +38,19 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       tag: ${{ steps.release.outputs.tag }}
       upstream_tag: ${{ steps.release.outputs.upstream_tag }}
-      upstream_published_at: ${{ steps.release.outputs.upstream_published_at }}
-      upstream_url: ${{ steps.release.outputs.upstream_url }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Verify release selection
         run: node --test scripts/tests/textpack-release.test.mjs
-      - name: Detect a new upstream stable release
+      - name: Detect upstream stable release
         id: release
         run: node scripts/textpack-release.mjs poll
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REQUESTED_TAG: ${{ inputs.upstream_tag }}
+          COMPLETE_EXISTING: ${{ inputs.complete_existing }}
 
   prepare:
     needs: poll
@@ -60,7 +67,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Merge the upstream release into the stable TextPack source
+      - name: Prepare exact upstream stable source
         id: source
         run: node scripts/textpack-release.mjs prepare
         env:
@@ -74,89 +81,146 @@ jobs:
           if-no-files-found: error
 
   build:
-    name: Check and build Windows x64
+    name: Check and build (${{ matrix.name }})
     needs: [poll, prepare]
-    runs-on: windows-latest
-    timeout-minutes: 60
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-22.04
+            platform: linux
+            arch: x64
+          - name: linux-arm64
+            os: ubuntu-22.04-arm
+            platform: linux
+            arch: arm64
+          - name: windows-x64
+            os: windows-latest
+            platform: windows
+            arch: x64
+          - name: windows-arm64
+            os: windows-11-arm
+            platform: windows
+            arch: arm64
+          - name: macos-x64
+            os: macos-15-intel
+            platform: macos
+            arch: x64
+          - name: macos-arm64
+            os: macos-15
+            platform: macos
+            arch: arm64
     env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_VERSION: ${{ needs.poll.outputs.version }}
+      RELEASE_TAG: ${{ needs.poll.outputs.tag }}
       BUILD_COMMIT: ${{ needs.prepare.outputs.build_commit }}
+      WORKFLOW_COMMIT: ${{ needs.prepare.outputs.workflow_commit }}
+      CXXFLAGS: ${{ matrix.platform == 'macos' && '-std=gnu++20 -stdlib=libc++' || '' }}
     steps:
-      - name: Enable Git long paths
+      - name: Enable Git long paths on Windows
+        if: matrix.platform == 'windows'
         run: git config --global core.longpaths true
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v8.0.2
-        with:
-          name: textpack-release-source
-      - name: Check out the prepared release source
-        run: |
-          git fetch ./release-source.bundle HEAD
-          if ($LASTEXITCODE -ne 0) { throw 'Unable to load release source' }
-          git checkout --detach $env:BUILD_COMMIT
-          if ($LASTEXITCODE -ne 0) { throw 'Unable to select release commit' }
+      - name: Retain packaging tools from the triggering workflow
+        run: cp scripts/textpack-artifacts.py "$RUNNER_TEMP/textpack-artifacts.py"
       - uses: actions/setup-python@v7.0.0
         with:
           python-version: '3.12'
+      - name: Install metadata parser
+        run: python -m pip install PyYAML==6.0.3
+      - name: Reuse verified existing binaries
+        id: existing
+        run: >-
+          python "$RUNNER_TEMP/textpack-artifacts.py" reuse
+          --version "$RELEASE_VERSION" --tag "$RELEASE_TAG"
+          --platform '${{ matrix.platform }}' --arch '${{ matrix.arch }}'
+      - uses: actions/download-artifact@v8.0.2
+        if: steps.existing.outputs.reused != 'true'
+        with:
+          name: textpack-release-source
+      - name: Check out application source and select packaging configuration
+        if: steps.existing.outputs.reused != 'true'
+        run: |
+          git fetch ./release-source.bundle HEAD
+          git checkout --detach "$BUILD_COMMIT"
+          git show "$WORKFLOW_COMMIT:packages/desktop/electron-builder.textpack.yml" > packages/desktop/electron-builder.textpack.yml
+      - name: Install Linux native build dependencies
+        if: steps.existing.outputs.reused != 'true' && matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y icnsutils graphicsmagick xz-utils libx11-dev libxkbfile-dev gnome-keyring libsecret-1-dev libfontconfig-dev rpm
       - uses: ./.github/actions/setup
+        if: steps.existing.outputs.reused != 'true'
         with:
           node-version: '24.14.1'
       - name: Select Python for native modules
+        if: steps.existing.outputs.reused != 'true'
         run: |
-          $python = Join-Path $env:pythonLocation 'python.exe'
-          "npm_config_python=$python" >> $env:GITHUB_ENV
-          "PYTHON=$python" >> $env:GITHUB_ENV
+          python -c 'import sys; print("npm_config_python=" + sys.executable); print("PYTHON=" + sys.executable)' >> "$GITHUB_ENV"
       - name: Prepare native modules and locales
+        if: steps.existing.outputs.reused != 'true'
         run: pnpm tsx scripts/postinstall.ts
         env:
-          npm_config_user_agent: 'pnpm'
+          npm_config_user_agent: pnpm
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run ESLint
-        run: pnpm lint
-      - name: Run TypeScript typecheck
-        run: pnpm typecheck
-      - name: Run unit tests
-        run: pnpm test
-      - name: Build TextPack installer and ZIP
-        run: pnpm run build:win:x64 --config electron-builder.textpack.yml
+          USE_ELECTRON_CLANG: ${{ matrix.platform == 'linux' && '0' || '' }}
+      - name: Run lint, typecheck and unit tests
+        if: steps.existing.outputs.reused != 'true'
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+      - name: Build Windows packages
+        if: steps.existing.outputs.reused != 'true' && matrix.platform == 'windows'
+        run: pnpm run build:win:${{ matrix.arch }} --config electron-builder.textpack.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - name: Verify downloads and update feed
-        run: |
-          $prefix = "marktext-textpack-win-x64-$env:RELEASE_VERSION"
-          foreach ($name in @("$prefix-setup.exe", "$prefix.zip", 'latest.yml')) {
-            if (!(Test-Path -LiteralPath (Join-Path dist $name))) { throw "Missing release artifact: $name" }
-          }
-          $feed = Get-Content -Raw dist/win-unpacked/resources/app-update.yml
-          $url = 'https://github.com/slePPyMe/marktext-textpack/releases/latest/download/'
-          if ($feed -notmatch 'provider:\s*generic' -or $feed -notmatch [regex]::Escape($url)) {
-            throw 'The packaged updater must use this fork release downloads'
-          }
-          $metadata = Get-Content -Raw dist/latest.yml
-          if ($metadata -notmatch [regex]::Escape($env:RELEASE_VERSION)) { throw 'Update metadata version mismatch' }
-          $files = Get-ChildItem dist -File | Where-Object { $_.Name -like "$prefix*" -or $_.Name -eq 'latest.yml' } | Sort-Object Name
-          $sums = foreach ($file in $files) {
-            $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  $($file.Name)"
-          }
-          $sums | Set-Content dist/SHA256SUMS.txt -Encoding utf8NoBOM
+      - name: Build macOS packages
+        if: steps.existing.outputs.reused != 'true' && matrix.platform == 'macos'
+        run: pnpm run build:mac:${{ matrix.arch }} --config electron-builder.textpack.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Build Linux x64 packages
+        if: steps.existing.outputs.reused != 'true' && matrix.platform == 'linux' && matrix.arch == 'x64'
+        run: pnpm run build:linux:x64 --config electron-builder.textpack.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Linux ARM64 packages
+        if: steps.existing.outputs.reused != 'true' && matrix.platform == 'linux' && matrix.arch == 'arm64'
+        run: pnpm run build:linux:arm64 --config electron-builder.textpack.yml '-c.linux.artifactName=marktext-textpack-linux-arm64-${version}.${ext}'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify package types, checksums and fork updater
+        if: steps.existing.outputs.reused != 'true'
+        run: >-
+          python "$RUNNER_TEMP/textpack-artifacts.py" verify-platform
+          --version "$RELEASE_VERSION" --platform '${{ matrix.platform }}' --arch '${{ matrix.arch }}'
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: textpack-windows-x64
+          name: textpack-platform-${{ matrix.name }}
           retention-days: 14
           if-no-files-found: error
           path: |
-            dist/marktext-textpack-*.exe
-            dist/marktext-textpack-*.zip
-            dist/marktext-textpack-*.blockmap
-            dist/latest.yml
-            dist/SHA256SUMS.txt
+            dist/*.exe
+            dist/*.zip
+            dist/*.dmg
+            dist/*.blockmap
+            dist/*.yml
+            dist/*.AppImage
+            dist/*.snap
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
 
   release:
-    name: Publish TextPack release
+    name: Publish complete TextPack release
     needs: [poll, prepare, build]
     runs-on: ubuntu-latest
     permissions:
@@ -168,8 +232,7 @@ jobs:
       RELEASE_TAG: ${{ needs.poll.outputs.tag }}
       BUILD_COMMIT: ${{ needs.prepare.outputs.build_commit }}
       UPSTREAM_COMMIT: ${{ needs.prepare.outputs.upstream_commit }}
-      UPSTREAM_URL: ${{ needs.poll.outputs.upstream_url }}
-      UPSTREAM_PUBLISHED_AT: ${{ needs.poll.outputs.upstream_published_at }}
+      WORKFLOW_COMMIT: ${{ needs.prepare.outputs.workflow_commit }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -180,9 +243,18 @@ jobs:
           name: textpack-release-source
       - uses: actions/download-artifact@v8.0.2
         with:
-          name: textpack-windows-x64
-          path: dist
-      - name: Push the checked source and release tag
+          pattern: textpack-platform-*
+          path: artifacts
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Verify and merge platform metadata
+        run: |
+          python -m pip install PyYAML==6.0.3
+          python -m unittest discover -s scripts/tests -p 'test_textpack_artifacts.py'
+          python scripts/merge-release-artifacts.py artifacts dist "$RELEASE_VERSION"
+          python scripts/textpack-artifacts.py verify-release --version "$RELEASE_VERSION"
+      - name: Push checked source and new release tag
         if: needs.prepare.outputs.tag_exists != 'true'
         env:
           SYNC_SSH_KEY: ${{ secrets.SYNC_UPSTREAM_SSH_KEY }}
@@ -205,43 +277,14 @@ jobs:
           fi
           git push --atomic --no-follow-tags "git@github.com:$GITHUB_REPOSITORY.git" \
             "$BUILD_COMMIT:refs/heads/textpack-stable" "$BUILD_COMMIT:refs/tags/$RELEASE_TAG"
-      - name: Write release notes
+      - name: Write complete release notes
+        run: python scripts/textpack-artifacts.py notes --version "$RELEASE_VERSION"
+      - name: Upload assets and publish
         run: |
-          cat > release-notes.md <<EOF
-          Unofficial MarkText TextPack for Windows x64, based on upstream **${RELEASE_VERSION}**.
-          基于上游 **${RELEASE_VERSION}** 的非官方 TextPack 版，可将 Markdown 正文和本地图片保存在一个可继续编辑的文件中。
-
-          - Installer / 安装版: \`marktext-textpack-win-x64-${RELEASE_VERSION}-setup.exe\`
-          - ZIP / 解压运行版: \`marktext-textpack-win-x64-${RELEASE_VERSION}.zip\`
-          - SHA-256 checksums / 校验和: \`SHA256SUMS.txt\`
-
-          Open Markdown and use **File → Save As** with the \`.textpack\` extension. Local images are bundled; HTTP/HTTPS images remain remote.
-          打开 Markdown 后，通过「文件 → 另存为」保存为 \`.textpack\`；本地图片会打包，HTTP/HTTPS 图片保留远程引用。
-
-          Builds are unsigned and retain MarkText's application identity and settings path.
-          构建未签名，沿用 MarkText 的应用标识与设置目录。
-
-          Upstream release / 上游发布: [${RELEASE_VERSION}](${UPSTREAM_URL}), ${UPSTREAM_PUBLISHED_AT}
-          Upstream commit: \`${UPSTREAM_COMMIT}\`
-          TextPack source: [${BUILD_COMMIT}](https://github.com/${GITHUB_REPOSITORY}/commit/${BUILD_COMMIT})
-          EOF
-      - name: Upload assets to a draft
-        id: draft
-        run: |
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft > release-state.json 2>/dev/null; then
-            if [[ "$(jq -r .isDraft release-state.json)" != 'true' ]]; then
-              echo 'draft=false' >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            gh release upload "$RELEASE_TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
-          else
-            gh release create "$RELEASE_TAG" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
-              --title "MarkText TextPack v${RELEASE_VERSION}" --notes-file release-notes.md --draft
-          fi
-          echo 'draft=true' >> "$GITHUB_OUTPUT"
-      - name: Publish the completed release
-        if: steps.draft.outputs.draft == 'true' && (github.event_name == 'schedule' || inputs.publish)
-        run: gh release edit "$RELEASE_TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+          options=()
+          if [[ '${{ inputs.complete_existing }}' == 'true' ]]; then options+=(--complete-existing); fi
+          if [[ '${{ github.event_name }}' == 'schedule' || '${{ inputs.publish }}' == 'true' ]]; then options+=(--publish); fi
+          python scripts/textpack-artifacts.py publish --version "$RELEASE_VERSION" --tag "$RELEASE_TAG" "${options[@]}"
       - name: Link release
         run: |
           echo "TextPack release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}" >> "$GITHUB_STEP_SUMMARY"

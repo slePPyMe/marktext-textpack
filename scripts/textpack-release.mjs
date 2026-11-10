@@ -21,7 +21,11 @@ const requestGitHub = async (route, allowMissing = false) => {
   return response.json()
 }
 
-export const findRelease = async (request = requestGitHub, requestedTag = '') => {
+export const findRelease = async (
+  request = requestGitHub,
+  requestedTag = '',
+  completeExisting = false
+) => {
   const route = requestedTag ? `tags/${encodeURIComponent(requestedTag)}` : 'latest'
   const upstream = await request(`${upstreamRepository}/releases/${route}`)
   if (
@@ -34,8 +38,11 @@ export const findRelease = async (request = requestGitHub, requestedTag = '') =>
   const version = upstream.tag_name.slice(1)
   const tag = `textpack-v${version}`
   const existing = await request(`${forkRepository}/releases/tags/${tag}`, true)
+  if (existing?.immutable && completeExisting) {
+    throw new Error('The existing release is immutable; its assets cannot be completed')
+  }
   return {
-    needed: !existing,
+    needed: !existing || completeExisting,
     version,
     tag,
     upstream_tag: upstream.tag_name,
@@ -112,7 +119,9 @@ export const prepareRelease = () => {
     'docs/textpack-release.md',
     'packages/desktop/electron-builder.textpack.yml',
     'scripts/textpack-release.mjs',
-    'scripts/tests/textpack-release.test.mjs'
+    'scripts/tests/textpack-release.test.mjs',
+    'scripts/textpack-artifacts.py',
+    'scripts/tests/test_textpack_artifacts.py'
   )
   const unresolved = git('diff', '--name-only', '--diff-filter=U')
   if (unresolved) throw new Error(`Unresolved release merge: ${unresolved}`)
@@ -149,7 +158,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   const operation = process.argv[2]
   if (operation === 'poll') {
-    const release = await findRelease(requestGitHub, process.env.REQUESTED_TAG || '')
+    const release = await findRelease(
+      requestGitHub,
+      process.env.REQUESTED_TAG || '',
+      process.env.COMPLETE_EXISTING === 'true'
+    )
     writeOutputs(release)
     console.log(
       release.needed

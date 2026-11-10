@@ -37,6 +37,35 @@ test('published releases and drafts are not rebuilt or overwritten', async () =>
   }
 })
 
+test('completing an existing release requires explicit selection and preserves its version', async () => {
+  let count = 0
+  const result = await findRelease(
+    async () => {
+      count += 1
+      return count === 1 ? upstream : { draft: false, immutable: false }
+    },
+    'v0.23.0',
+    true
+  )
+  assert.equal(result.needed, true)
+  assert.equal(result.tag, 'textpack-v0.23.0')
+})
+
+test('immutable release assets cannot be replaced during completion', async () => {
+  let count = 0
+  await assert.rejects(
+    findRelease(
+      async () => {
+        count += 1
+        return count === 1 ? upstream : { immutable: true }
+      },
+      '',
+      true
+    ),
+    /immutable/
+  )
+})
+
 test('upstream drafts, prereleases and malformed tags cannot trigger publication', async () => {
   for (const change of [
     { draft: true },

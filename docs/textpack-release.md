@@ -8,7 +8,9 @@ Release titles and asset names identify the unofficial TextPack build.
 
 `Release TextPack` checks the upstream latest stable release every 15 minutes.
 When a new release appears, it merges the exact upstream tag into the separate
-`textpack-stable` branch, runs checks, and packages Windows x64 downloads.
+`textpack-stable` branch, runs checks, and builds the same six platform and
+architecture combinations as upstream: Windows, macOS and Linux, each for x64
+and ARM64.
 It publishes only after all checks, packaging and asset verification succeed.
 
 Publication follows upstream; it is not simultaneous. GitHub schedule and runner
@@ -31,6 +33,11 @@ and choose **Run workflow** on `textpack`:
 - Leave **upstream_tag** empty for the latest stable release, or enter an actual
   published stable tag such as `v0.23.0`.
 - **publish** is enabled by default. Disable it to upload a draft for review.
+- Enable **complete_existing** only to add missing platforms to an existing
+  mutable release. Published binaries are downloaded and checksum-verified for
+  reuse; they are never replaced. Update metadata and checksums are regenerated
+  after all six platform artifacts pass verification. Immutable releases cannot
+  be completed in place.
 - After a merge conflict, resolve it on `textpack-stable`, run the checks, and
   retry. After an upload failure, rerun the failed release job; draft assets can
   be completed without changing an already-published release.
@@ -53,19 +60,30 @@ behavior. Downloads have a `marktext-textpack-` prefix. The bundled updater uses
 this fork's `/releases/latest/download/` feed and `latest.yml`, independently of
 the fork tag prefix and the official MarkText update feed.
 
-Downloads include an NSIS installer, ZIP, update metadata and `SHA256SUMS.txt`.
+Downloads match upstream package types: Windows NSIS installer and ZIP; macOS
+DMG and ZIP; Linux AppImage, DEB, RPM and tar.gz, plus Snap on x64. Architecture
+metadata is merged before upload and its file sizes and SHA-512 checksums are
+verified. The final asset list is compared with the exact upstream release,
+with a `marktext-textpack-` prefix for application packages.
+
 Builds are unsigned and retain MarkText's application identity, executable name
 and settings path. Automatic installation of an update still needs validation
 between two published TextPack versions.
 
-Only Windows x64 packages are produced. Linux, macOS and ARM64 packages can be
-added after their TextPack builds have been validated.
+Existing release tags keep their application source commit when completing
+platform coverage. The triggering workflow provides the packaging configuration;
+release notes record both commits. Future releases include the packaging files in
+their prepared source commit. No application code is relabeled or tag replaced.
 
 ## 中文说明
 
 版本号与上游正式版一致；发布名称和安装包文件名带有 TextPack 标识。
 工作流每 15 分钟检查一次上游新版本，以相应正式标签为基础合并 TextPack 改动，
 通过检查和打包后自动发布。发布时间会受检测间隔、队列和构建耗时影响，晚于上游。
+
+平台和包类型与上游一致：Windows、macOS、Linux 均提供 x64/ARM64；Linux Snap
+与上游一样仅提供 x64。手动补齐已有版本时启用 `complete_existing`，保留并校验
+已发布的程序文件，新增缺失平台，最后重新合并自动更新元数据与校验和。
 
 开发分支为 `textpack`，稳定发布源码位于 `textpack-stable`，Git 标签为
 `textpack-vX.Y.Z`，应用版本仍为 `X.Y.Z`。合并冲突时停止，已有 Release 或草稿
