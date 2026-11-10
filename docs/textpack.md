@@ -21,6 +21,10 @@ Archives containing traversal/absolute paths, backslashes, platform device names
 
 ## Current preview limitations
 
+- The ZIP must place `info.json` and `text.*` directly at its root. Archives
+  containing an enclosing `.textbundle` folder are currently rejected, including
+  the wrapped-layout example distributed by TextBundle.org. Directory-form
+  `.textbundle` documents are also unsupported.
 - Relative resources in an untitled document have no known source directory. Save the Markdown beside its resources first; TextPack conversion deliberately does not guess a directory. Base64, absolute paths, and file URLs do not need a source directory.
 - HTTP/HTTPS and protocol-relative images remain remote links. The conversion implementation has an internal `remoteImages: 'preserve' | 'embed'` option, defaulting to `preserve`. `embed` is reserved and explicitly fails as unimplemented. No MarkText preference, settings UI, or package metadata field is added.
 - The source-position scanner is not a full CommonMark parser. Complex nested block syntax and HTML `srcset`/CSS images are not currently supported. Embedded image data must use a supported Base64 image MIME type; invalid or unsupported image data fails conversion explicitly.

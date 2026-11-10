@@ -1,0 +1,59 @@
+name: Verify and capture TextPack demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    if: github.repository == 'slePPyMe/marktext-textpack'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24.14.1'
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install browser protocol client without downloading browsers
+        run: npm install --prefix .demo-tools --no-save --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.64.0
+      - name: Download and verify the published application
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $release = Invoke-RestMethod -Headers @{ Authorization = "Bearer $env:GH_TOKEN" } -Uri 'https://api.github.com/repos/slePPyMe/marktext-textpack/releases/tags/textpack-v0.23.0'
+          $asset = $release.assets | Where-Object name -eq 'marktext-textpack-win-x64-0.23.0.zip'
+          if (!$asset -or !$asset.digest) { throw 'Published ZIP and checksum are required' }
+          New-Item -ItemType Directory -Path .demo-app | Out-Null
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile .demo-app/published.zip
+          $actual = 'sha256:' + (Get-FileHash .demo-app/published.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $asset.digest) { throw 'Published ZIP checksum mismatch' }
+          Expand-Archive .demo-app/published.zip -DestinationPath .demo-app
+      - name: Verify editing and capture the actual release
+        env:
+          NODE_PATH: ${{ github.workspace }}/.demo-tools/node_modules
+        run: node scripts/capture-textpack-demo.cjs .demo-app/marktext.exe docs/textpack-site/assets/field-notes.textpack .demo-output
+      - name: Verify saved TextPack contents
+        shell: python
+        run: |
+          import json, zipfile
+          with zipfile.ZipFile('.demo-output/field-notes.textpack') as archive:
+              assert json.loads(archive.read('info.json'))['version'] == 2
+              assert b'A saved edit, with its local image still inside.' in archive.read('text.md')
+              assert len(archive.read('assets/field-notes.svg')) > 100
+          print('Text and local image verified inside the saved archive')
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: textpack-product-demo
+          path: |
+            .demo-output/editor.png
+            .demo-output/field-notes.textpack
+            .demo-output/verification.json
+          if-no-files-found: error
+          retention-days: 14
