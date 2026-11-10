@@ -3,7 +3,7 @@ import type { ElectronApplication, Page } from 'playwright'
 import type { Muya } from '@muyajs/core'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { createServer, type Server } from 'node:http'
 import {
   clickMenuById,
@@ -39,7 +39,7 @@ test.describe('image clipboard interoperability (#3090)', () => {
     await app.evaluate(({ ipcMain, BrowserWindow }, pathname) => {
       ipcMain.emit('app-open-file-by-id', BrowserWindow.getAllWindows()[0].id, pathname)
     }, pathname)
-    await expect.poll(() => page.title()).toContain(pathname.split('/').pop() ?? '')
+    await expect.poll(() => page.title()).toContain(basename(pathname))
   }
 
   const copySelected = async() => {
@@ -129,7 +129,7 @@ test.describe('image clipboard interoperability (#3090)', () => {
     await openFile(targetFile)
     await page.locator('.mu-paragraph-content').filter({ hasText: 'destination' }).click()
     await page.keyboard.press(`${modifier}+v`)
-    await expect.poll(() => markdown(page)).toMatch(/src="assets\/[0-9a-f]{40}\.png"/)
+    await expect.poll(() => markdown(page)).toMatch(/src="assets[/\\][0-9a-f]{40}\.png"/)
     const pasted = await markdown(page)
     for (const attr of ['alt="sample"', 'title="caption"', 'width="48"', 'height="48"', 'data-align="right"']) expect(pasted).toContain(attr)
     const src = pasted.match(/src="([^"]+)"/)?.[1]
@@ -213,8 +213,9 @@ test.describe('image clipboard interoperability (#3090)', () => {
     }, join(fixture, 'source/assets/source.png'))
     await page.locator('.mu-paragraph-content').filter({ hasText: 'target' }).click()
     await page.keyboard.press(`${modifier}+v`)
-    await expect.poll(() => markdown(page)).toMatch(/!\[\]\(assets\/[0-9a-f]{40}\.png\)/)
+    await expect.poll(() => markdown(page)).toMatch(/!\[\]\(assets(?:\/|\\\\)[0-9a-f]{40}\.png\)/)
     expect(await markdown(page)).not.toContain('external label')
+    await expect(page.locator('.editor-component .mu-image-success img')).toHaveCount(2)
   })
 
 })

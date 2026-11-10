@@ -335,3 +335,10 @@ See `packages/website/content/docs/dev/IPC.md` for conventions and examples.
 - Visual Studio 2022 已安装 x86/x64 Spectre 缓解版 MSVC 库。正常的 `electron-rebuild` 应能成功；除非先诊断并说明新的构建故障，否则不要用旧的原生二进制代替重新构建。
 - 完整的 Windows x64 打包检查是使用项目声明的 pnpm 和上述 Anaconda Python 执行 `pnpm run build:win:x64`。成功产物写入 `dist/`。
 - 报告结果时，应区分 `pnpm build`（Electron/Vite 应用构建）和 `pnpm run build:win:x64`（原生模块重编译及 Windows 打包）。
+
+## 同步验证中的已接受基线
+
+- 每次同步先读取 `docs/textpack-sync-baselines.json`，其中保存用户已接受的既有问题、实际纯上游对照证据和工具链注意事项。
+- 继续执行检查并保留原始失败结果；匹配已接受范围与失败特征的结果归类为既有基线，不宣称通过，也不重复请求确认或作为新的发布阻碍。不要为了匹配基线跳过测试、放宽断言或关闭检查。
+- 新增失败、失败特征变化、影响扩大或 TextPack 独有回归仍须处理；归因必须实际运行同环境下独立构建的纯上游，不能只比较测试文件。
+- Windows 网站 standalone 的已知符号链接权限问题单独记录，不因该环境问题单独阻止桌面同步；不修改系统权限或部署设置。

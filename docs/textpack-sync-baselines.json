@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "acceptedOn": "2026-11-10",
+  "decision": "用户要求此分支专注 TextPack；经纯上游实际对照确认的既有问题本次不修，不重复请求放行。只有新变化引入的问题需要重新处理。",
+  "policy": {
+    "continueRunningChecks": true,
+    "doNotChangeAssertionsOrSkipTestsForAcceptedFailures": true,
+    "reportMatchingFailuresAs": "accepted baseline, not a passing test or a new release blocker",
+    "doNotRepeatConfirmationForMatchingBaseline": true,
+    "reopenFor": [
+      "new failing tests",
+      "changed failure signature or expanded impact",
+      "TextPack-only regression",
+      "evidence of new behavior hidden behind a previous signature"
+    ],
+    "attributionRequires": "Run the disputed behavior against a freshly built pure-upstream checkout under the same environment; identical test source alone is not evidence."
+  },
+  "environment": {
+    "os": "Windows 10 10.0.19045 x64",
+    "node": "24.21.0",
+    "electron": "45.0.0",
+    "pnpm": "10.33.4",
+    "playwright": "1.64.1",
+    "stylelint": "17.16.0"
+  },
+  "applicationCandidateBase": "c6e1b577b8a0e150051b6117cddca6e9c9bde082",
+  "runtimeComparisons": [
+    {
+      "upstreamCommit": "178b7d4bc05cc1bdfe28fcb645487a08ce771e74",
+      "sourceChanges": "none; detached pure upstream checkout",
+      "install": {
+        "command": "pnpm install --frozen-lockfile",
+        "exitCode": 0
+      },
+      "build": {
+        "command": "pnpm run build:unpack",
+        "exitCode": 0
+      },
+      "desktopE2E": {
+        "exitCode": 1,
+        "failed": 2
+      },
+      "css": {
+        "exitCode": 2,
+        "errors": 7,
+        "warnings": 6
+      },
+      "evidenceDirectory": ".sync-evidence/upstream-baselines-20261110/previous",
+      "sha256": {
+        "build.log": "eca6769e351852749f0204b6b14ba462151a5a1439f1fb74ce08e1361b03abce",
+        "e2e.log": "23c318d90166aef529183151743e48c6b2ccdaf26d85768043c1181bcb392642",
+        "e2e.json": "93e1dbde61e25958874e5eafe6ec350c7c3e106669b95f87b035197f2349ab5c",
+        "css.log": "514447241b215073a77e9b67cd093a2f5d4bc8ee1d37f462c713d6c5f6ad0038",
+        "results.jsonl": "3eee5ce20bb3a42b2e6b82ddefe5a218473f4d380f17958fcde554a154ab2c75"
+      }
+    },
+    {
+      "upstreamCommit": "a520befde7ec8ea911e738d53cb26bba64b28694",
+      "sourceChanges": "none; detached pure upstream checkout",
+      "install": {
+        "command": "pnpm install --frozen-lockfile",
+        "exitCode": 0
+      },
+      "build": {
+        "command": "pnpm run build:unpack",
+        "exitCode": 0
+      },
+      "desktopE2E": {
+        "exitCode": 1,
+        "failed": 2
+      },
+      "css": {
+        "exitCode": 2,
+        "errors": 7,
+        "warnings": 6
+      },
+      "evidenceDirectory": ".sync-evidence/upstream-baselines-20261110/current",
+      "sha256": {
+        "build.log": "62449133d4cd55fa842ef07d8e0e9a89685b827c81a56a1973a4455afa965927",
+        "e2e.log": "aa1380b1a1fd56d515fe85500cc4485e30f7b735c3efd3bff41c4a6d0d7fd922",
+        "e2e.json": "564e5ca1c9840cf5b25d0ba817996a3414849333d632f281af452b7e21c0abcf",
+        "css.log": "6d69566c8aad1e10aed8ff08225a143536775eb37204398e87e41d1676b37595",
+        "results.jsonl": "3e410a037d028537244dbfda2a0fa86d1c8dc5f025ab07725de8111b473082d5"
+      }
+    }
+  ],
+  "reproduceDesktopE2E": "pnpm -C packages/desktop exec playwright test test/e2e/search-prefill-from-selection.spec.ts test/e2e/issue-5344-image-content-hash.spec.ts --workers=1 --reporter=list,json --trace=retain-on-failure",
+  "reproduceCSS": "pnpm -C packages/muya lint:css",
+  "acceptedFailures": [
+    {
+      "id": "windows-search-selection-trailing-space",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/search-prefill-from-selection.spec.ts",
+      "test": "double-click word prefills the find input and counts matches",
+      "signature": {
+        "expectedSelection": "fox",
+        "actualSelection": "fox ",
+        "timeoutMs": 5000
+      },
+      "attribution": "Reproduced by the real Electron application on both pure upstream commits, before the search input assertion."
+    },
+    {
+      "id": "windows-image-hash-link-assertion",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-5344-image-content-hash.spec.ts",
+      "test": "keeps the earlier asset when the same source path is re-inserted with new content",
+      "signature": {
+        "forwardSlashImageLinkRegexMatch": "",
+        "expected": "nonempty assets/<40 hex digits>.png match",
+        "timeoutMs": 10000
+      },
+      "attribution": "Reproduced by inserting a real image through the built Electron application on both pure upstream commits.",
+      "limit": "This establishes an inherited Windows test failure, not a claim that image hashing or copied bytes are incorrect."
+    },
+    {
+      "id": "muya-css-selector-order",
+      "scope": "stylelint 17.16.0 with the repository configuration",
+      "errorCount": 7,
+      "signatures": [
+        {
+          "file": "packages/muya/src/assets/styles/blockSyntax.css",
+          "rule": "no-descending-specificity",
+          "message": "Expected selector \".mu-content\" to come before selector \".mu-code-block .mu-content\", at line 305 (no-descending-specificity)"
+        },
+        {
+          "file": "packages/muya/src/assets/styles/inlineSyntax.css",
+          "rule": "no-descending-specificity",
+          "message": "Expected selector \".mu-soft-line-break > .mu-highlight\" to come before selector \".mu-hide.mu-remove .mu-highlight\", at line 21 (no-descending-specificity)"
+        },
+        {
+          "file": "packages/muya/src/assets/styles/inlineSyntax.css",
+          "rule": "no-descending-specificity",
+          "message": "Expected selector \".mu-soft-line-break > .mu-selection\" to come before selector \".mu-hide.mu-remove .mu-selection\", at line 21 (no-descending-specificity)"
+        },
+        {
+          "file": "packages/muya/src/assets/styles/inlineSyntax.css",
+          "rule": "no-descending-specificity",
+          "message": "Expected selector \".mu-hard-line-break > .mu-highlight\" to come before selector \".mu-hide.mu-remove .mu-highlight\", at line 21 (no-descending-specificity)"
+        },
+        {
+          "file": "packages/muya/src/assets/styles/inlineSyntax.css",
+          "rule": "no-descending-specificity",
+          "message": "Expected selector \".mu-hard-line-break > .mu-selection\" to come before selector \".mu-hide.mu-remove .mu-selection\", at line 21 (no-descending-specificity)"
+        },
+        {
+          "file": "packages/muya/src/assets/styles/inlineSyntax.css",
+          "rule": "no-descending-specificity",
+          "message": "Expected selector \".mu-line-end > .mu-highlight\" to come before selector \".mu-hide.mu-remove .mu-highlight\", at line 21 (no-descending-specificity)"
+        },
+        {
+          "file": "packages/muya/src/assets/styles/inlineSyntax.css",
+          "rule": "no-descending-specificity",
+          "message": "Expected selector \".mu-line-end > .mu-selection\" to come before selector \".mu-hide.mu-remove .mu-selection\", at line 21 (no-descending-specificity)"
+        }
+      ],
+      "attribution": "The complete CSS lint command fails with the same 7 errors and 6 warnings on both pure upstream revisions; also reproduced on the previous TextPack head 8b648d57."
+    }
+  ],
+  "acceptedEnvironmentLimitations": [
+    {
+      "id": "windows-next-standalone-symlinks",
+      "scope": "Windows build without symbolic-link creation permission",
+      "command": "pnpm --filter marktext-website build",
+      "signature": "Compilation and all 44 static pages succeed, then .next/standalone symlink creation fails with EPERM.",
+      "decision": "Not a desktop sync blocker by itself. Report separately from Cloudflare credentials; do not change system privileges or deployment settings."
+    }
+  ],
+  "toolchainNotes": [
+    "Use the exact packageManager version. The verified machine pnpm.cmd entry is C:/Users/pengj/Tools/MarkTextDevelopment/pnpm.cmd.",
+    "Git-shell commit hooks need a pnpm launcher and Git >=2.32. The machine default Git 2.16 cannot run lint-staged 17; use an already-installed supported Git in the task process instead of disabling hooks.",
+    "Pandoc oracle tests were verified with Pandoc 3.13. Anaconda Pandoc 2.11 parses the nested-list fixture differently; use the verified version and rerun rather than changing the assertion or skipping the test."
+  ]
+}
