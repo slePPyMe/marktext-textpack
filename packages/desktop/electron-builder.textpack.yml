@@ -1,0 +1,14 @@
+extends: ./electron-builder.yml
+extraMetadata:
+  homepage: https://github.com/slePPyMe/marktext-textpack
+  repository:
+    type: git
+    url: git+https://github.com/slePPyMe/marktext-textpack.git
+win:
+  artifactName: 'marktext-textpack-win-${arch}-${version}.${ext}'
+nsis:
+  artifactName: 'marktext-textpack-win-${arch}-${version}-setup.${ext}'
+publish:
+  provider: generic
+  url: https://github.com/slePPyMe/marktext-textpack/releases/latest/download/
+  channel: latest
