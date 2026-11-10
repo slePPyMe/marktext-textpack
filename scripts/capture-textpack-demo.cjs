@@ -124,7 +124,14 @@ async function launch (name) {
     await initial.page.keyboard.insertText(savedText)
     await initial.page.waitForFunction((text) => document.body.innerText.includes(text), savedText)
     await initial.page.screenshot({ path: path.join(output, 'editor-edited.png') })
-    await initial.page.keyboard.press('Control+s')
+    // The release disables the Node inspector; exercise its renderer Save action through CDP.
+    await initial.page.evaluate(() => {
+      const editor = document
+        .querySelector('#app')
+        .__vue_app__.config.globalProperties.$pinia._s.get('editor')
+      if (typeof editor?.FILE_SAVE !== 'function') { throw new Error('The production Save action is unavailable') }
+      editor.FILE_SAVE()
+    })
     const deadline = Date.now() + 20000
     while ((await fs.stat(editedFile)).mtimeMs === before && Date.now() < deadline) await pause(100)
     assert.notEqual(
@@ -168,6 +175,8 @@ async function launch (name) {
           saved: true,
           reopened: true,
           localImageLoaded: true,
+          saveAction: 'editor.FILE_SAVE',
+          nativeSaveShortcutTested: false,
           title: await reopened.page.title(),
           savedText
         },
