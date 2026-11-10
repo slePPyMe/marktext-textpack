@@ -17,7 +17,7 @@ jobs:
         include:
           - source: candidate
             repository: slePPyMe/marktext-textpack
-            ref: 9ea591f6a3a969a330ede94cf1b9267b0544b09a
+            ref: fc67463994d8907dda48d4c34d94df5b3688b339
           - source: upstream
             repository: marktext/marktext
             ref: a520befde7ec8ea911e738d53cb26bba64b28694
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: slePPyMe/marktext-textpack
-          ref: 9ea591f6a3a969a330ede94cf1b9267b0544b09a
+          ref: fc67463994d8907dda48d4c34d94df5b3688b339
           path: .clipboard-validation-input
           persist-credentials: false
 

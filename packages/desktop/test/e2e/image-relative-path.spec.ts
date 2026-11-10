@@ -104,7 +104,8 @@ test.describe('Relative-path image resolves to a DIRNAME-anchored file:// URL', 
     const withoutQuery = value.split('?')[0]
     expect(withoutQuery.endsWith('assets/cat.png')).toBe(true)
     const expectedSrc = pathToFileURL(path.join(docDir, 'assets', 'cat.png')).href
-    expect(withoutQuery).toBe(expectedSrc)
+    // Node and Chromium can escape unreserved characters such as '~' differently.
+    expect(pathToFileURL(fileURLToPath(withoutQuery)).href).toBe(expectedSrc)
   })
 
   test('the anchored file:// URL points at a file that exists on disk', async() => {
