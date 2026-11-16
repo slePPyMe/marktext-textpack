@@ -25,10 +25,14 @@ on:
         description: 'Fork version between the upstream base and its next stable patch'
         required: false
         type: string
-      fork_macos_26_arm64:
-        description: 'Use macOS 26 for the Apple Silicon build of a fork release'
-        default: false
-        type: boolean
+      fork_macos_arm64_runner:
+        description: 'Runner for the Apple Silicon build of a fork release'
+        default: macos-15
+        type: choice
+        options:
+          - macos-15
+          - macos-26
+          - macos-15-intel
 
 concurrency:
   group: release-textpack
@@ -127,7 +131,7 @@ jobs:
             platform: macos
             arch: x64
           - name: macos-arm64
-            os: ${{ inputs.fork_source && inputs.fork_macos_26_arm64 && 'macos-26' || 'macos-15' }}
+            os: ${{ inputs.fork_source && (inputs.fork_macos_arm64_runner == 'macos-26' || inputs.fork_macos_arm64_runner == 'macos-15-intel') && inputs.fork_macos_arm64_runner || 'macos-15' }}
             platform: macos
             arch: arm64
     env:
@@ -202,7 +206,30 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Build macOS packages
         if: steps.existing.outputs.reused != 'true' && matrix.platform == 'macos'
-        run: pnpm run build:mac:${{ matrix.arch }} --config electron-builder.textpack.yml
+        run: |
+          if [[ '${{ matrix.arch }}' == 'arm64' && "$RUNNER_ARCH" == 'X64' ]]; then
+            pnpm run build:unpack
+            pnpm -C packages/desktop exec electron-rebuild --force --build-from-source --arch arm64
+            pnpm -C packages/desktop exec electron-builder --mac --arm64 --publish never --config electron-builder.textpack.yml
+
+            app='dist/mac-arm64/MarkText.app'
+            binary="$app/Contents/MacOS/MarkText"
+            framework="$app/Contents/Frameworks/Electron Framework.framework/Electron Framework"
+            lipo -verify_arch arm64 "$binary"
+            lipo -verify_arch arm64 "$framework"
+            codesign --verify --all-architectures "$binary"
+            codesign --verify --all-architectures "$framework"
+
+            addon_count=0
+            while IFS= read -r -d '' addon; do
+              lipo -verify_arch arm64 "$addon"
+              addon_count=$((addon_count + 1))
+            done < <(find "$app" -type f -name '*.node' -print0)
+            test "$addon_count" -gt 0
+            echo "Verified the arm64 app, Electron framework and $addon_count native addon(s)"
+          else
+            pnpm run build:mac:${{ matrix.arch }} --config electron-builder.textpack.yml
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
