@@ -17,6 +17,14 @@ on:
         description: 'Add missing platforms to an existing mutable release; retain published binaries'
         default: false
         type: boolean
+      fork_source:
+        description: 'Full SHA of a stable-line backport with a fork version commit'
+        required: false
+        type: string
+      fork_version:
+        description: 'Fork version between the upstream base and its next stable patch'
+        required: false
+        type: string
 
 concurrency:
   group: release-textpack
@@ -51,6 +59,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REQUESTED_TAG: ${{ inputs.upstream_tag }}
           COMPLETE_EXISTING: ${{ inputs.complete_existing }}
+          FORK_SOURCE: ${{ inputs.fork_source }}
+          FORK_VERSION: ${{ inputs.fork_version }}
+          PUBLISH: ${{ inputs.publish }}
 
   prepare:
     needs: poll
@@ -59,6 +70,7 @@ jobs:
     outputs:
       build_commit: ${{ steps.source.outputs.build_commit }}
       stable_head: ${{ steps.source.outputs.stable_head }}
+      stable_source: ${{ steps.source.outputs.stable_source }}
       upstream_commit: ${{ steps.source.outputs.upstream_commit }}
       workflow_commit: ${{ steps.source.outputs.workflow_commit }}
       tag_exists: ${{ steps.source.outputs.tag_exists }}
@@ -73,6 +85,7 @@ jobs:
         env:
           UPSTREAM_TAG: ${{ needs.poll.outputs.upstream_tag }}
           RELEASE_VERSION: ${{ needs.poll.outputs.version }}
+          FORK_SOURCE: ${{ inputs.fork_source }}
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: textpack-release-source
@@ -119,6 +132,7 @@ jobs:
       RELEASE_TAG: ${{ needs.poll.outputs.tag }}
       BUILD_COMMIT: ${{ needs.prepare.outputs.build_commit }}
       WORKFLOW_COMMIT: ${{ needs.prepare.outputs.workflow_commit }}
+      FORK_BASE: ${{ inputs.fork_source && needs.poll.outputs.upstream_tag || '' }}
       CXXFLAGS: ${{ matrix.platform == 'macos' && '-std=gnu++20 -stdlib=libc++' || '' }}
     steps:
       - name: Enable Git long paths on Windows
@@ -136,6 +150,7 @@ jobs:
       - name: Install metadata parser
         run: python -m pip install PyYAML==6.0.3
       - name: Reuse verified existing binaries
+        if: inputs.fork_source == ''
         id: existing
         run: >-
           python "$RUNNER_TEMP/textpack-artifacts.py" reuse
@@ -202,6 +217,10 @@ jobs:
         run: >-
           python "$RUNNER_TEMP/textpack-artifacts.py" verify-platform
           --version "$RELEASE_VERSION" --platform '${{ matrix.platform }}' --arch '${{ matrix.arch }}'
+          --upstream-tag "$FORK_BASE"
+      - name: Exercise TextBundle in Electron
+        if: inputs.fork_source != '' && matrix.name == 'linux-x64'
+        run: xvfb-run --auto-servernum pnpm -C packages/desktop exec playwright test test/e2e/textbundle.spec.ts
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: textpack-platform-${{ matrix.name }}
@@ -233,6 +252,8 @@ jobs:
       BUILD_COMMIT: ${{ needs.prepare.outputs.build_commit }}
       UPSTREAM_COMMIT: ${{ needs.prepare.outputs.upstream_commit }}
       WORKFLOW_COMMIT: ${{ needs.prepare.outputs.workflow_commit }}
+      FORK_BASE: ${{ inputs.fork_source && needs.poll.outputs.upstream_tag || '' }}
+      FORK_STABLE_SOURCE: ${{ needs.prepare.outputs.stable_source }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -253,9 +274,9 @@ jobs:
           python -m pip install PyYAML==6.0.3
           python -m unittest discover -s scripts/tests -p 'test_textpack_artifacts.py'
           python scripts/merge-release-artifacts.py artifacts dist "$RELEASE_VERSION"
-          python scripts/textpack-artifacts.py verify-release --version "$RELEASE_VERSION"
+          python scripts/textpack-artifacts.py verify-release --version "$RELEASE_VERSION" --upstream-tag "$FORK_BASE"
       - name: Push checked source and new release tag
-        if: needs.prepare.outputs.tag_exists != 'true'
+        if: inputs.fork_source == '' && needs.prepare.outputs.tag_exists != 'true'
         env:
           SYNC_SSH_KEY: ${{ secrets.SYNC_UPSTREAM_SSH_KEY }}
           STABLE_HEAD: ${{ needs.prepare.outputs.stable_head }}
@@ -278,13 +299,19 @@ jobs:
           git push --atomic --no-follow-tags "git@github.com:$GITHUB_REPOSITORY.git" \
             "$BUILD_COMMIT:refs/heads/textpack-stable" "$BUILD_COMMIT:refs/tags/$RELEASE_TAG"
       - name: Write complete release notes
-        run: python scripts/textpack-artifacts.py notes --version "$RELEASE_VERSION"
+        run: python scripts/textpack-artifacts.py notes --version "$RELEASE_VERSION" --upstream-tag "$FORK_BASE"
       - name: Upload assets and publish
+        if: inputs.fork_source == ''
         run: |
           options=()
           if [[ '${{ inputs.complete_existing }}' == 'true' ]]; then options+=(--complete-existing); fi
           if [[ '${{ github.event_name }}' == 'schedule' || '${{ inputs.publish }}' == 'true' ]]; then options+=(--publish); fi
           python scripts/textpack-artifacts.py publish --version "$RELEASE_VERSION" --tag "$RELEASE_TAG" "${options[@]}"
+      - name: Upload and verify fork release draft
+        if: inputs.fork_source != ''
+        run: >-
+          python scripts/textpack-artifacts.py draft-fork
+          --version "$RELEASE_VERSION" --tag "$RELEASE_TAG" --upstream-tag "$FORK_BASE"
       - name: Link release
         run: |
           echo "TextPack release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}" >> "$GITHUB_STEP_SUMMARY"

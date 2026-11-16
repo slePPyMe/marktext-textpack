@@ -1,7 +1,7 @@
 # TextPack releases following upstream
 
 Download from [this fork's latest release](https://github.com/slePPyMe/marktext-textpack/releases/latest).
-Application versions match upstream stable releases, such as `0.23.0`.
+Scheduled release versions match upstream stable releases, such as `0.23.0`.
 Release titles and asset names identify the unofficial TextPack build.
 
 ## Automatic publication
@@ -53,6 +53,27 @@ is no new credential or repository setting to configure when the existing key
 is valid. Development synchronization remains a separate workflow and is not
 enabled by the release process.
 
+## Fork release from a stable base
+
+Commit the backport on top of the published fork tag. Add a separate commit that
+changes the versions in `package.json` and `packages/desktop/package.json` to
+the next patch with a `-textpack.N` suffix. For example, `0.23.1-textpack.1`
+compares greater than `0.23.0` and less than `0.23.1` on the existing `latest`
+update channel.
+
+Push the candidate branch and run **Release TextPack** on `textpack` with the
+exact `upstream_tag`, `fork_source` commit SHA, `fork_version`, and **publish**
+disabled. This run checks the backport ancestry, builds the six platforms and
+architectures, and compares the draft's uploaded sizes and SHA-256 digests
+against the verified build output. The same draft can resume missing uploads
+when existing assets match.
+
+After the successful run, verify the base is still latest and atomically push
+the backport commit to `textpack-stable` and the version commit to the new
+`textpack-v…` tag. Keeping the version commit off `textpack-stable` lets the
+next upstream release supply both version fields. Then publish the verified
+draft as latest. The older Git tag and release retain their existing assets.
+
 ## Packages and updates
 
 `packages/desktop/electron-builder.textpack.yml` inherits upstream packaging
@@ -77,7 +98,7 @@ their prepared source commit. No application code is relabeled or tag replaced.
 
 ## 中文说明
 
-版本号与上游正式版一致；发布名称和安装包文件名带有 TextPack 标识。
+自动发布使用上游正式版版本号，发布名称和安装包文件名带有 TextPack 标识。
 工作流每 15 分钟检查一次上游新版本，以相应正式标签为基础合并 TextPack 改动，
 通过检查和打包后自动发布。发布时间会受检测间隔、队列和构建耗时影响，晚于上游。
 
@@ -88,3 +109,5 @@ their prepared source commit. No application code is relabeled or tag replaced.
 开发分支为 `textpack`，稳定发布源码位于 `textpack-stable`，Git 标签为
 `textpack-vX.Y.Z`，应用版本仍为 `X.Y.Z`。合并冲突时停止，已有 Release 或草稿
 不会被自动覆盖。需要手动运行时，在 Actions 中选择 **Release TextPack**。
+基于当前稳定版发布叉仓功能时，用独立版本号（例如 `0.23.1-textpack.1`），六个
+平台和架构构建成功、草稿附件校验通过后再公开。

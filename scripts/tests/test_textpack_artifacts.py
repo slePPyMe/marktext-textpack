@@ -2,6 +2,7 @@ import argparse
 import base64
 import hashlib
 import importlib.util
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -83,6 +84,50 @@ class TextPackArtifactTests(unittest.TestCase):
         with patch.object(artifacts, 'github', return_value={'draft': False}):
             with self.assertRaisesRegex(ValueError, 'explicit'):
                 artifacts.publish(args)
+
+    def test_fork_draft_resumes_without_overwriting_an_existing_asset(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            package = directory / 'package.exe'
+            package.write_bytes(b'verified package')
+            manifest = directory / 'latest.yml'
+            manifest.write_bytes(b'verified manifest')
+            args = argparse.Namespace(
+                version='0.23.1-textpack.1', tag='textpack-v0.23.1-textpack.1',
+                upstream_tag='v0.23.0', directory=directory,
+            )
+            package_asset = {
+                'name': package.name, 'size': package.stat().st_size,
+                'digest': f'sha256:{artifacts.digest(package, "sha256").hex()}',
+            }
+            manifest_asset = {
+                'name': manifest.name, 'size': manifest.stat().st_size,
+                'digest': f'sha256:{artifacts.digest(manifest, "sha256").hex()}',
+            }
+            draft = {
+                'tag_name': args.tag, 'id': 123, 'target_commitish': 'source',
+                'draft': True, 'prerelease': False, 'assets': [package_asset],
+            }
+            uploaded = {**draft, 'assets': [package_asset, manifest_asset]}
+            with (
+                patch.dict(os.environ, {'BUILD_COMMIT': 'source'}),
+                patch.object(artifacts, 'github', side_effect=[[draft], uploaded]),
+                patch.object(artifacts.subprocess, 'run') as run,
+            ):
+                artifacts.draft_fork(args)
+                run.assert_called_once_with(
+                    ['gh', 'release', 'upload', args.tag, str(manifest), '--repo', artifacts.REPOSITORY],
+                    check=True,
+                )
+            package.write_bytes(b'different package')
+            with (
+                patch.dict(os.environ, {'BUILD_COMMIT': 'source'}),
+                patch.object(artifacts, 'github', return_value=[draft]),
+                patch.object(artifacts.subprocess, 'run') as run,
+            ):
+                with self.assertRaisesRegex(ValueError, 'Refusing to replace'):
+                    artifacts.draft_fork(args)
+                run.assert_not_called()
 
 
 if __name__ == '__main__':

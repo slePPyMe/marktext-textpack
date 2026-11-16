@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { findRelease } from '../textpack-release.mjs'
+import { findForkRelease, findRelease } from '../textpack-release.mjs'
 
 const upstream = {
   tag_name: 'v0.23.0',
@@ -95,5 +95,46 @@ test('API failures remain failures instead of being treated as a new release', a
       throw new Error('GitHub unavailable')
     }),
     /GitHub unavailable/
+  )
+})
+
+test('a stable-line fork build gets a distinct upgrade version and tag', async () => {
+  const responses = [upstream, { tag_name: 'textpack-v0.23.0' }, null]
+  const release = await findForkRelease(
+    async () => responses.shift(),
+    'v0.23.0',
+    '0.23.1-textpack.1'
+  )
+  assert.deepEqual(release, {
+    needed: true,
+    version: '0.23.1-textpack.1',
+    tag: 'textpack-v0.23.1-textpack.1',
+    upstream_tag: 'v0.23.0'
+  })
+})
+
+test('a fork build cannot take the base version or a future upstream version', async () => {
+  for (const version of ['0.23.0+textpack.1', '0.23.1', '0.24.0-textpack.1']) {
+    await assert.rejects(
+      findForkRelease(async () => upstream, 'v0.23.0', version),
+      /between/
+    )
+  }
+})
+
+test('a fork cannot supersede an unexpected latest release or overwrite a published tag', async () => {
+  const version = '0.23.1-textpack.1'
+  await assert.rejects(
+    findForkRelease(async () => ({ ...upstream, tag_name: 'v0.24.0' }), 'v0.23.0', version),
+    /latest upstream stable/
+  )
+  const responses = [
+    upstream,
+    { tag_name: 'textpack-v0.23.0' },
+    { tag_name: `textpack-v${version}` }
+  ]
+  await assert.rejects(
+    findForkRelease(async () => responses.shift(), 'v0.23.0', version),
+    /already exists/
   )
 })

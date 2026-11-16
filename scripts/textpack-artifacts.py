@@ -1,10 +1,12 @@
 import argparse
 import base64
 import hashlib
+import itertools
 import json
 import os
 import shutil
 import subprocess
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -15,11 +17,13 @@ UPSTREAM = 'marktext/marktext'
 UPDATE_URL = f'https://github.com/{REPOSITORY}/releases/latest/download/'
 
 
-def github(route):
+def github(route, payload=None):
     request = urllib.request.Request(
         f'https://api.github.com/repos/{route}',
+        data=json.dumps(payload).encode() if payload is not None else None,
         headers={
             'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
             'Authorization': f'Bearer {os.environ["GH_TOKEN"]}',
             'X-GitHub-Api-Version': '2022-11-28',
         },
@@ -137,11 +141,17 @@ def verify_platform(args):
         feed = yaml.safe_load(path.read_text(encoding='utf-8-sig'))
         if feed.get('provider') != 'generic' or feed.get('url') != UPDATE_URL:
             raise ValueError(f'{path}: updater must use the TextPack fork')
+        if args.upstream_tag and feed.get('channel') != 'latest':
+            raise ValueError(f'{path}: fork release must retain the latest update channel')
 
 
 def verify_release(args):
-    upstream = github(f'{UPSTREAM}/releases/tags/v{args.version}')
-    expected = {asset['name'].replace('marktext-', 'marktext-textpack-', 1) for asset in upstream['assets']}
+    upstream_tag = args.upstream_tag or f'v{args.version}'
+    upstream = github(f'{UPSTREAM}/releases/tags/{upstream_tag}')
+    expected = {
+        asset['name'].replace('marktext-', 'marktext-textpack-', 1).replace(upstream_tag[1:], args.version, 1)
+        for asset in upstream['assets']
+    }
     actual = {file.name for file in args.directory.iterdir() if file.is_file()}
     missing = expected - actual - {'SHA256SUMS.txt'}
     extra = actual - expected
@@ -156,11 +166,25 @@ def verify_release(args):
 
 
 def notes(args):
-    upstream = github(f'{UPSTREAM}/releases/tags/v{args.version}')
+    upstream_tag = args.upstream_tag or f'v{args.version}'
+    upstream = github(f'{UPSTREAM}/releases/tags/{upstream_tag}')
     source = os.environ['BUILD_COMMIT']
     packaging = os.environ['WORKFLOW_COMMIT']
-    text = f'''Unofficial MarkText TextPack **{args.version}**, based on the complete upstream stable release.
-基于上游完整正式版 **{args.version}** 的非官方 TextPack 版，把 Markdown 和本地图片保存在一个可继续编辑的文件中。
+    bundle_section = ''
+    if args.upstream_tag:
+        bundle_section = f'''## TextBundle
+
+Open `.textbundle` packages from the file browser or Quick Open. On Windows, use **Open with MarkText** in Explorer; double-click the directory to browse its contents.
+In General settings, choose TextBundle as the default format for the first save of new documents. **Save As** switches the working document to the chosen format; **Export as TextPack** writes a sharing copy.
+
+可以从 MarkText 的文件树和快速打开进入 `.textbundle` 正文。Windows 资源管理器右键「用 MarkText 打开」进入正文，双击进入目录查看内容。
+可在常规设置中把新文档的首次保存格式改为 TextBundle。「另存为」切换当前文档的工作格式，「导出为 TextPack」生成分享副本。
+
+The installed version is `{args.version}` on the fork's existing `latest` update channel. Source for future upstream merges retains upstream version `{upstream_tag[1:]}` at `{os.environ['FORK_STABLE_SOURCE']}`.
+
+'''
+    text = f'''Unofficial MarkText TextPack **{args.version}**, based on upstream stable **{upstream_tag}**.
+基于上游正式版 **{upstream_tag}** 的 MarkText 非官方分支 **{args.version}**。
 
 ## Downloads / 下载
 
@@ -176,10 +200,10 @@ Choose files beginning with `marktext-textpack-`. Update metadata, blockmaps and
 
 ## TextPack
 
-Open Markdown and use **File → Save As** with the `.textpack` extension. Local images are bundled; HTTP/HTTPS images remain remote. Reopen the file to continue editing. `.textbundle` directories are not supported.
-打开 Markdown，通过「文件 → 另存为」保存为 `.textpack`，即可打包本地图片并继续编辑。在线图片仍保留远程引用，暂不支持 `.textbundle` 目录。
+Open Markdown and use **File → Save As** with the `.textpack` extension. Local images are bundled; HTTP/HTTPS images remain remote. Reopen the file to continue editing.
+打开 Markdown，通过「文件 → 另存为」保存为 `.textpack`，即可打包本地图片并继续编辑。在线图片保留远程引用。
 
-Builds are unsigned and retain MarkText's application identity and settings path. On macOS, after dragging MarkText into Applications, follow the upstream unsigned-build instructions:
+{bundle_section}Builds are unsigned and retain MarkText's application identity and settings path. On macOS, after dragging MarkText into Applications, follow the upstream unsigned-build instructions:
 
 ```sh
 xattr -d com.apple.quarantine /Applications/MarkText.app
@@ -187,7 +211,7 @@ xattr -d com.apple.quarantine /Applications/MarkText.app
 
 ## Upstream changes / 上游更新
 
-This build includes upstream {args.version}. [Read the complete upstream release notes]({upstream['html_url']}).
+This build includes upstream {upstream_tag}. [Read the complete upstream release notes]({upstream['html_url']}).
 本版包含相应上游正式版的更新；完整功能与修复列表见上方上游发布说明。
 
 - [Project and usage / 项目与使用说明](https://sleppyme.github.io/marktext-textpack/)
@@ -200,6 +224,52 @@ Existing published binaries are retained when completing a release. Additional p
 补齐发布时保留已公开的程序文件；新增平台使用上述同一应用源码及所记录的打包流程。
 '''
     args.notes.write_text(text, encoding='utf-8')
+
+
+def draft_fork(args):
+    source = os.environ['BUILD_COMMIT']
+    if not args.upstream_tag or args.tag != f'textpack-v{args.version}':
+        raise ValueError('The draft tag must identify the verified fork release')
+    release = None
+    for page in itertools.count(1):
+        releases = github(f'{REPOSITORY}/releases?per_page=100&page={page}')
+        release = next((item for item in releases if item['tag_name'] == args.tag), None)
+        if release or len(releases) < 100:
+            break
+    if release is None:
+        release = github(f'{REPOSITORY}/releases', {
+            'tag_name': args.tag,
+            'name': f'MarkText TextPack {args.version}',
+            'target_commitish': source,
+            'body': args.notes.read_text(encoding='utf-8'),
+            'draft': True,
+            'prerelease': False,
+        })
+    if not release['draft'] or release['prerelease'] or release['target_commitish'] != source:
+        raise ValueError('Unexpected release state or application source for the fork draft')
+
+    files = {file.name: file for file in args.directory.iterdir() if file.is_file()}
+    expected = {
+        name: (file.stat().st_size, f'sha256:{digest(file, "sha256").hex()}')
+        for name, file in files.items()
+    }
+    assets = {asset['name']: (asset['size'], asset['digest']) for asset in release['assets']}
+    if any(expected.get(name) != identity for name, identity in assets.items()):
+        raise ValueError('Refusing to replace assets in the fork draft')
+    for name in sorted(files.keys() - assets.keys()):
+        subprocess.run(['gh', 'release', 'upload', args.tag, str(files[name]), '--repo', REPOSITORY], check=True)
+
+    uploaded = github(f'{REPOSITORY}/releases/{release["id"]}')
+    actual = {asset['name']: (asset['size'], asset['digest']) for asset in uploaded['assets']}
+    if (
+        uploaded['tag_name'] != args.tag
+        or uploaded['target_commitish'] != source
+        or not uploaded['draft']
+        or uploaded['prerelease']
+        or actual != expected
+    ):
+        raise ValueError('The linked fork draft does not match the verified build output')
+    print(f'Verified {len(actual)} uploaded assets in draft release {uploaded["id"]}')
 
 
 def publish(args):
@@ -241,8 +311,9 @@ def publish(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('operation', choices=['reuse', 'verify-platform', 'verify-release', 'notes', 'publish'])
+    parser.add_argument('operation', choices=['reuse', 'verify-platform', 'verify-release', 'notes', 'publish', 'draft-fork'])
     parser.add_argument('--version', required=True)
+    parser.add_argument('--upstream-tag', default='')
     parser.add_argument('--platform', choices=['windows', 'macos', 'linux'])
     parser.add_argument('--arch', choices=['x64', 'arm64'])
     parser.add_argument('--tag')
@@ -251,4 +322,11 @@ if __name__ == '__main__':
     parser.add_argument('--complete-existing', action='store_true')
     parser.add_argument('--publish', action='store_true')
     arguments = parser.parse_args()
-    {'reuse': reuse, 'verify-platform': verify_platform, 'verify-release': verify_release, 'notes': notes, 'publish': publish}[arguments.operation](arguments)
+    {
+        'reuse': reuse,
+        'verify-platform': verify_platform,
+        'verify-release': verify_release,
+        'notes': notes,
+        'publish': publish,
+        'draft-fork': draft_fork,
+    }[arguments.operation](arguments)
