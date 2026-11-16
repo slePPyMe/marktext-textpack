@@ -25,6 +25,10 @@ on:
         description: 'Fork version between the upstream base and its next stable patch'
         required: false
         type: string
+      fork_macos_26_arm64:
+        description: 'Use macOS 26 for the Apple Silicon build of a fork release'
+        default: false
+        type: boolean
 
 concurrency:
   group: release-textpack
@@ -123,7 +127,7 @@ jobs:
             platform: macos
             arch: x64
           - name: macos-arm64
-            os: macos-15
+            os: ${{ inputs.fork_source && inputs.fork_macos_26_arm64 && 'macos-26' || 'macos-15' }}
             platform: macos
             arch: arm64
     env:
