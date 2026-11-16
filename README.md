@@ -35,12 +35,14 @@ unofficial fork, and the official MarkText downloads do not include these change
 
 ### Current scope
 
-- `.textbundle` directories are not supported.
+- Development builds from `textpack` open and save `.textbundle` directories and
+  convert between TextBundle and TextPack. The published v0.23.0 installers
+  support TextPack only.
 - No generic attachment insertion UI is added.
 - Remote HTTP/HTTPS resources remain remote.
 - Development follows upstream `develop`; downloads follow upstream stable release tags.
 
-See [TextPack documentation](docs/textpack.md) for compatibility details and
+See the [TextBundle and TextPack documentation](docs/textpack.md) for compatibility details and
 current limitations.
 
 ### Upstream synchronization
@@ -211,18 +213,18 @@ Only active, public GitHub sponsors are listed here. Thank you to our private sp
 ## Download and Installation
 
 Download from **[this fork's Releases](https://github.com/slePPyMe/marktext-textpack/releases/latest)**.
-Versions follow the upstream stable release. Choose a Windows x64 asset:
+The v0.23.0 installers use the upstream v0.23.0 stable release. Choose the
+package for your platform and architecture.
 
-| File                                            | Use                                 |
-| ----------------------------------------------- | ----------------------------------- |
-| `marktext-textpack-win-x64-<version>-setup.exe` | Windows installer                   |
-| `marktext-textpack-win-x64-<version>.zip`       | Extract and run `marktext.exe`      |
-| `SHA256SUMS.txt`                                | SHA-256 checksums for the downloads |
+| Platform | Architecture            | Packages                     |
+| -------- | ----------------------- | ---------------------------- |
+| Windows  | x64 and ARM64           | Installer EXE or ZIP         |
+| macOS    | Intel and Apple Silicon | DMG or ZIP                   |
+| Linux    | x64 and ARM64           | AppImage, DEB, RPM or tar.gz |
+| Linux    | x64                     | Snap                         |
 
 Builds are unsigned and retain MarkText's application identity and settings path.
-The official MarkText releases and package-manager commands install the upstream
-application rather than this TextPack fork. Linux, macOS and ARM64 builds are
-not currently published by the TextPack workflow.
+Look for the `marktext-textpack-` prefix and verify downloads against `SHA256SUMS.txt`.
 
 To create a TextPack, open a Markdown document, choose **File → Save As**, and
 save with the `.textpack` extension. Referenced local images are collected into

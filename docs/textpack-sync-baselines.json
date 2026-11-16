@@ -88,6 +88,271 @@
   "reproduceCSS": "pnpm -C packages/muya lint:css",
   "acceptedFailures": [
     {
+      "id": "windows-block-copy-native-crlf",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/block-copy-as.spec.ts",
+      "test": "the block menu copies a whole block as Markdown, HTML or Rich Text (#5808)",
+      "stage": "Reading the real clipboard after Copy as Markdown, line 19, before the HTML and rich text assertions.",
+      "signature": {
+        "assertion": "toBe",
+        "expected": "```js\nconst a = 1;\n```\n",
+        "received": "```js\r\nconst a = 1;\r\n```\r\n",
+        "timeoutMs": 5000
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateBlockCopy",
+        "upstream": "upstreamClipboardAndDraft"
+      },
+      "firstRun": {
+        "evidence": "candidateFull",
+        "reportedError": "Test timeout of 30000ms exceeded.",
+        "detail": "The first-run trace also shows the CRLF comparison at line 19. Only the focused rerun's specific clipboard mismatch is within this baseline."
+      }
+    },
+    {
+      "id": "windows-image-drop-global-prompt-cancel",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-2561-image-drop-save.spec.ts",
+      "test": "relative-directory image drop: prompt-cancel",
+      "stage": "Comparing the inserted Markdown after cancel saves the image to the global directory, line 127.",
+      "signature": {
+        "assertion": "expect(inserted).toContain(globalImages)",
+        "expected": "Raw Windows fixture path ending in \\global",
+        "received": "Markdown image target with doubled backslashes and the same global path followed by 490e9f0db52061ac4ea992923d48fd714a70c3ed.png"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamWindowsFixtures"
+      }
+    },
+    {
+      "id": "windows-image-drop-global-native-cancel",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-2561-image-drop-save.spec.ts",
+      "test": "relative-directory image drop: native-cancel",
+      "stage": "Comparing the inserted Markdown after cancel saves the image to the global directory, line 127.",
+      "signature": {
+        "assertion": "expect(inserted).toContain(globalImages)",
+        "expected": "Raw Windows fixture path ending in \\global",
+        "received": "Markdown image target with doubled backslashes and the same global path followed by 490e9f0db52061ac4ea992923d48fd714a70c3ed.png"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamWindowsFixtures"
+      }
+    },
+    {
+      "id": "windows-image-drop-saved-saved-crlf",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-2561-image-drop-save.spec.ts",
+      "test": "relative-directory image drop: saved",
+      "stage": "Reading saved Markdown at line 122.",
+      "signature": {
+        "assertion": "expect(readFileSync(document, 'utf8')).toBe(original)",
+        "expected": "Draft\n",
+        "received": "Draft\r\n"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamWindowsFixtures"
+      }
+    },
+    {
+      "id": "windows-image-drop-copy-failed-saved-crlf",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-2561-image-drop-save.spec.ts",
+      "test": "relative-directory image drop: copy-failed",
+      "stage": "Reading saved Markdown at line 116.",
+      "signature": {
+        "assertion": "expect(readFileSync(document, 'utf8')).toBe(original)",
+        "expected": "Draft\n",
+        "received": "Draft\r\n"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamWindowsFixtures"
+      }
+    },
+    {
+      "id": "windows-second-instance-cmd-launch",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-3020-second-instance-args.spec.ts",
+      "test": "a second instance started with --user-data-dir opens its file in the running instance",
+      "stage": "Node tries to spawn the Windows Electron command wrapper at line 74, before a second instance sends arguments.",
+      "signature": {
+        "message": "Error: spawn EINVAL",
+        "target": "getElectronPath() returns electron.cmd on Windows"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamWindowsFixtures"
+      },
+      "limit": "The packed Windows executable separately passed document handoff into an existing test window. The failing wrapper test did not reach handoff."
+    },
+    {
+      "id": "windows-sidebar-trash-basename",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-3148-sidebar-delete-key.spec.ts",
+      "test": "Delete trashes the tree selection only after the confirmation is accepted",
+      "stage": "Line 103, after the test observes one trash operation on accept, while checking the confirmation text.",
+      "signature": {
+        "assertion": "toContain(String(pathname).split('/').pop())",
+        "expected": "Full drive-qualified Windows fixture path ending in \\note.md",
+        "received": "确定要将“note.md”移到回收站吗？"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamWindowsFixtures"
+      }
+    },
+    {
+      "id": "windows-sidebar-delete-remount-click",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-3148-sidebar-delete-key.spec.ts",
+      "test": "one Delete opens one confirmation after the editor page remounts",
+      "stage": "After visiting Preferences and returning to the editor, line 116 waits to click the sidebar row for note.md before the Delete key is sent.",
+      "signature": {
+        "locator": ".side-bar-file[title$=\".md\"] first()",
+        "observed": "The locator resolves to note.md and Playwright repeatedly reports that the element is not visible.",
+        "timeoutMs": 30000,
+        "candidateMessage": "Test timeout of 30000ms exceeded. The locator then reports that the target page, context or browser has been closed.",
+        "upstreamMessage": "TimeoutError: locator.click: Timeout 30000ms exceeded."
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateSidebarRemount",
+        "upstream": "upstreamWindowsFixtures"
+      },
+      "firstRun": {
+        "evidence": "candidateFull",
+        "reportedError": "locator.click: Target page, context or browser has been closed",
+        "detail": "The first full run ended before the 30-second timeout and showed the same row detaching and failing visibility. A closure alone is outside this baseline."
+      }
+    },
+    {
+      "id": "windows-untitled-close-save-crlf",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/issue-5596-unsaved-close.spec.ts",
+      "test": "restoreAll: save when closing an untitled draft",
+      "stage": "Reading the saved Markdown at line 141 after accepting Save, before restoring tabs.",
+      "signature": {
+        "assertion": "expect(readFileSync(savePath, 'utf8')).toBe(expectedMarkdown)",
+        "expected": "Unsaved changes for issue 5596\n",
+        "received": "Unsaved changes for issue 5596\r\n"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamClipboardAndDraft"
+      }
+    },
+    {
+      "id": "windows-workspace-simulated-kill-close",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/multi-folder-sidebar.spec.ts",
+      "test": "multi-folder sidebar completes add, search, remove and restore (#2222)",
+      "stage": "Waiting for the Electron close event at line 126 after requesting SIGKILL, before relaunch. Adding and removing roots, search, and checkpoint assertions already ran.",
+      "signature": {
+        "message": "TimeoutError: electronApplication.waitForEvent: Timeout 30000ms exceeded while waiting for event \"close\""
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamMultiFolder"
+      }
+    },
+    {
+      "id": "windows-sidebar-auto-reveal-deep-row",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/sidebar-auto-reveal-528.spec.ts",
+      "test": "switching to a tab re-expands its folders and scrolls the row into view",
+      "stage": "Opening the deep fixture at line 95 before switching tabs.",
+      "signature": {
+        "message": "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "locator": "CSS .tree-wrapper .side-bar-file with a raw drive-qualified Windows title ending in \\z-target\\deep.md"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamSidebarReveal"
+      }
+    },
+    {
+      "id": "windows-sidebar-auto-reveal-visible-row",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/sidebar-auto-reveal-528.spec.ts",
+      "test": "leaves the scroll position alone when the row is already visible",
+      "stage": "Opening the first file at line 95 before comparing its scroll position.",
+      "signature": {
+        "message": "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "locator": "CSS .tree-wrapper .side-bar-file with a raw drive-qualified Windows title ending in \\a-bulk\\f-10.md"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamSidebarReveal"
+      }
+    },
+    {
+      "id": "windows-sidebar-auto-reveal-disabled-setup",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/sidebar-auto-reveal-528.spec.ts",
+      "test": "switching tabs does not touch the tree",
+      "stage": "The beforeAll hook at line 190 tries to click the deep fixture at line 95, before the test starts.",
+      "signature": {
+        "message": "\"beforeAll\" hook timeout of 30000ms exceeded.",
+        "locator": "CSS .tree-wrapper .side-bar-file with a raw drive-qualified Windows title ending in \\z-target\\deep.md",
+        "afterTimeout": "locator.click: Target page, context or browser has been closed"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamSidebarReveal"
+      }
+    },
+    {
+      "id": "windows-sidebar-auto-reveal-watcher-setup",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/sidebar-auto-reveal-528.spec.ts",
+      "test": "reveals the file once the watcher delivers its folder",
+      "stage": "Waiting for the test fixture's tab to be visible at line 249 in beforeAll, before the watcher assertion.",
+      "signature": {
+        "message": "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.",
+        "locator": "CSS .editor-tabs .tabs-container li with a raw drive-qualified Windows title ending in \\z-target\\deep.md"
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateFull",
+        "upstream": "upstreamSidebarReveal"
+      }
+    },
+    {
+      "id": "windows-text-drag-native-blur",
+      "scope": "win32",
+      "file": "packages/desktop/test/e2e/text-drag-scenarios.spec.ts",
+      "test": "A09 cancels on blur",
+      "stage": "Counting the drag preview at line 246 after Electron BrowserWindow.blur().",
+      "signature": {
+        "locator": ".mu-text-drag-preview",
+        "assertion": "toHaveCount",
+        "expected": 0,
+        "received": 1,
+        "timeoutMs": 5000
+      },
+      "evidence": {
+        "comparison": "windowsE2E20261116",
+        "candidate": "candidateDragBlur",
+        "upstream": "upstreamDragBlur"
+      }
+    },
+    {
       "id": "windows-search-selection-trailing-space",
       "scope": "win32",
       "file": "packages/desktop/test/e2e/search-prefill-from-selection.spec.ts",
@@ -156,6 +421,71 @@
       "attribution": "The complete CSS lint command fails with the same 7 errors and 6 warnings on both pure upstream revisions; also reproduced on the previous TextPack head 8b648d57."
     }
   ],
+  "windowsE2E20261116": {
+    "acceptedOn": "2026-11-16",
+    "scope": "The Windows 10 x64 environment above (build 19045, Node 24.21.0, Electron 45.0.0, pnpm 10.33.4, Playwright 1.64.1). Both sides used the same Electron binary, one worker and zero Playwright retries.",
+    "candidateCommit": "53a66fb2428bfde2f0a3bf13e8a5175da8af4540",
+    "mergeCommit": "64e36d9f84e38f77dda3cd29527a7778b95d61d2",
+    "upstreamCommit": "10363a3af3f934ad068fa356628d9ca1bb802e17",
+    "upstreamBuild": "Clean detached checkout; pnpm install --frozen-lockfile --offline and pnpm run build:unpack both succeeded.",
+    "candidateFullRun": {
+      "passed": 701,
+      "failed": 21,
+      "skipped": 7,
+      "didNotRun": 1,
+      "matchedPriorBaseline": 2,
+      "passedOnTargetedRerun": 4
+    },
+    "evidenceDirectory": ".agent/tb-sync-20261116",
+    "evidence": [
+      {
+        "name": "candidateFull",
+        "path": "logs/final-desktop-e2e.json",
+        "sha256": "f5ea48e23688f220d92e4cfbd3dd8a5eeb4215bda2b13c93ec8c0eef0f4c3843"
+      },
+      {
+        "name": "candidateBlockCopy",
+        "path": "logs/final-clipboard-rerun.json",
+        "sha256": "da28553a1b17eb2182fcce0dcf8e891c30c8904c756deafce40e587c9fc23b29"
+      },
+      {
+        "name": "candidateSidebarRemount",
+        "path": "logs/final-sidebar-remount-rerun.json",
+        "sha256": "5fd5090541457fe63f1f613651f4f9349645b77da11a7437bc56c7a9512ed3ce"
+      },
+      {
+        "name": "candidateDragBlur",
+        "path": "logs/final-drag-blur-rerun.json",
+        "sha256": "3553602e9b428a283d4642d1887ae5e5d9efeb03ff161036e5fd3045b741040b"
+      },
+      {
+        "name": "upstreamClipboardAndDraft",
+        "path": "../tb-upstream-control-20261116/logs/upstream-clipboard-and-untitled-rerun.json",
+        "sha256": "1087d882ed16321e61cc5e6aa8ef7554118ee24cf11a68db0ccf242081e9e770"
+      },
+      {
+        "name": "upstreamWindowsFixtures",
+        "path": "../tb-upstream-control-20261116/logs/upstream-windows-fixtures.json",
+        "sha256": "c29f557ccaf2b84d929f7cc0849f5fbe88cc2e63ff7bf19eba576549bcc9582b"
+      },
+      {
+        "name": "upstreamMultiFolder",
+        "path": "../tb-upstream-control-20261116/logs/upstream-multi-folder.json",
+        "sha256": "d5a325d8aa64bf1a186a3ba382869b78f068110d7feb0d2a08b165a8ed394725"
+      },
+      {
+        "name": "upstreamSidebarReveal",
+        "path": "../tb-upstream-control-20261116/logs/upstream-sidebar-reveal.json",
+        "sha256": "ff30ab9fa15135f89ec00c6786b8b0fac0dfb221685441278813da1c6fd8166c"
+      },
+      {
+        "name": "upstreamDragBlur",
+        "path": "../tb-upstream-control-20261116/logs/upstream-drag-blur.json",
+        "sha256": "4b62d2e8f0ce409ec7c1fe26b9d35052ce3c1d6e7d2366047f75842cf9472c5d"
+      }
+    ],
+    "limit": "Only the named stage and the recorded failure signature in this environment are accepted. The first-run and rerun distinctions are material. A matched timeout does not establish a root cause or validate the behavior after the failing step. New errors, early failures, changed signatures and broader impact require investigation."
+  },
   "acceptedEnvironmentLimitations": [
     {
       "id": "windows-next-standalone-symlinks",

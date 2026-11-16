@@ -9,7 +9,9 @@
 **把 Markdown 正文和本地图片保存成一个可继续编辑的文件。** 移动、分享或同步
 图文笔记时，不必同时携带图片文件夹；重新打开 `.textpack` 后仍可继续所见即所得
 编辑。支持粘贴、拖入图片，以及 Markdown 与 TextPack 之间的另存为转换。
-HTTP/HTTPS 图片保留远程引用，当前不支持 `.textbundle` 目录。
+HTTP/HTTPS 图片保留远程引用。 `textpack` 分支的开发版支持打开和保存
+`.textbundle` 目录，也可以在 TextBundle 和 TextPack 间转换。当前可下载的
+v0.23.0 稳定安装包支持 TextPack。
 
 **[下载 TextPack 版（Windows · macOS · Linux）](https://github.com/slePPyMe/marktext-textpack/releases/latest)**
 · [项目介绍](https://sleppyme.github.io/marktext-textpack/)
