@@ -172,6 +172,13 @@ export default function(
           click(_menuItem, browserWindow) {
             actions.exportFile(browserWindow as BrowserWindow | undefined, 'pdf')
           }
+        },
+        {
+          label: t('menu.file.exportTextPack'),
+          click(_menuItem, browserWindow) {
+            const win = browserWindow as BrowserWindow | undefined
+            win?.webContents.send('mt::editor-ask-export-textpack')
+          }
         }
       ]
     },

@@ -3,9 +3,12 @@ import fsPromises from 'fs/promises'
 import log from 'electron-log'
 import chokidar, { type FSWatcher } from 'chokidar'
 import { exists } from 'common/filesystem'
-import { hasDocumentExtension, checkPathExcludePattern } from 'common/filesystem/paths'
+import {
+  hasDocumentExtension, checkPathExcludePattern, hasTextBundleExtension, getEnclosingTextBundle, isBundleTextName
+} from 'common/filesystem/paths'
 import { getUniqueId } from '../utils'
 import { inspectDocumentFile } from '../filesystem/document'
+import { getBundleTextPath } from './textbundle'
 import { isLinux, isOsx } from '../config'
 import type { BrowserWindow } from 'electron'
 import type { LineEnding } from '@shared/types/files'
@@ -73,7 +76,8 @@ const add = async(
   const stats = await fsPromises.stat(pathname)
   const birthTime = stats.birthtime
   const mtimeMs = stats.mtimeMs
-  const isMarkdown = hasDocumentExtension(pathname)
+  const bundle = type === 'dir' && hasTextBundleExtension(pathname)
+  const isMarkdown = bundle || hasDocumentExtension(pathname)
   const file: {
     pathname: string
     name: string
@@ -95,14 +99,15 @@ const add = async(
   if (isMarkdown) {
     // HACK: But this should be removed completely in #1034/#1035.
     try {
-      const data = await inspectDocumentFile(
-        pathname,
-        endOfLine,
-        autoGuessEncoding,
-        trimTrailingNewline,
-        autoNormalizeLineEndings
-      )
-      file.data = data
+      if (!bundle) {
+        file.data = await inspectDocumentFile(
+          pathname,
+          endOfLine,
+          autoGuessEncoding,
+          trimTrailingNewline,
+          autoNormalizeLineEndings
+        )
+      }
     } catch (err) {
       // Only notify user about opened files.
       if (type === 'file') {
@@ -155,7 +160,7 @@ const change = async(
     return
   }
 
-  const isMarkdown = hasDocumentExtension(pathname)
+  const isMarkdown = hasDocumentExtension(pathname) || hasTextBundleExtension(pathname)
   if (isMarkdown) {
     try {
       const [data, stats] = await Promise.all([
@@ -169,7 +174,7 @@ const change = async(
         ),
         fsPromises.stat(pathname)
       ])
-      const file = { pathname, data, mtimeMs: stats.mtimeMs }
+      const file = { pathname, data, mtimeMs: data.rawBaseline?.exists ? data.rawBaseline.mtimeMs : stats.mtimeMs }
       if (!isLatestRead(win, pathname, type, sequence)) return
       win.webContents.send('mt::update-file', {
         type: 'change',
@@ -233,9 +238,19 @@ class Watcher {
       isOsx || isUncPath(watchPath) ? true : this._preferences.getItem<boolean>('watcherUsePolling')
 
     const id = getUniqueId()
+    const watchingBundle = type === 'file' && hasTextBundleExtension(watchPath)
+    const isBundleBody = (pathname: string): boolean =>
+      path.dirname(path.relative(watchPath, pathname)) === '.' && isBundleTextName(path.basename(pathname))
 
     const watcher = chokidar.watch(watchPath, {
       ignored: (pathname: string, fileInfo?: { isDirectory: () => boolean }) => {
+        if (watchingBundle) return path.relative(watchPath, pathname) !== '' && !isBundleBody(pathname)
+        if (type === 'dir') {
+          const relative = path.relative(watchPath, pathname)
+          const bundle = getEnclosingTextBundle(relative)
+          if (bundle) return true
+          if (/(?:^|[/\\])\.marktext-bundle-[\w-]+(?:[/\\]|$)/.test(relative)) return true
+        }
         if (!fileInfo) {
           return /(?:^|[/\\])(?:node_modules|(?:.+\.asar))/.test(pathname)
         }
@@ -261,7 +276,7 @@ class Watcher {
       persistent: true,
       ignorePermissionErrors: true,
 
-      depth: type === 'file' ? (isOsx ? 1 : 0) : undefined,
+      depth: type === 'file' ? (watchingBundle || isOsx ? 1 : 0) : undefined,
 
       // Defer events until writes settle only for the file watcher, which
       // reloads file CONTENT on change and would otherwise read a partial file
@@ -285,58 +300,78 @@ class Watcher {
     let disposed = false
     let enospcReached = false
     let renameTimer: NodeJS.Timeout | null = null
+    let bundleDeletionTimer: NodeJS.Timeout | null = null
+    const reportBundleMissing = () => {
+      if (bundleDeletionTimer) clearTimeout(bundleDeletionTimer)
+      bundleDeletionTimer = null
+      if (!disposed) unlink(win, watchPath, type)
+    }
 
+    const handleFileEvent = async(pathname: string, event: 'add' | 'change'): Promise<void> => {
+      if (disposed || await this._shouldIgnoreEvent(win.id, pathname, type, usePolling)) return
+      const { autoGuessEncoding = true, trimTrailingNewline = 2, autoNormalizeLineEndings = false } =
+        this._preferences.getAll()
+      await (event === 'add' ? add : change)(
+        win, pathname, type, this._preferences.getPreferredEol() as LineEnding,
+        autoGuessEncoding, trimTrailingNewline, autoNormalizeLineEndings
+      )
+    }
+    const read = (operation: Promise<void>): void => {
+      void operation.catch(error => {
+        if (!disposed) log.error('Error while processing filesystem change:', error)
+      })
+    }
+    const onFileEvent = (pathname: string, event: 'add' | 'change'): void => {
+      if (!watchingBundle) {
+        read(handleFileEvent(pathname, event))
+      } else if (isBundleBody(pathname)) {
+        if (bundleDeletionTimer) clearTimeout(bundleDeletionTimer)
+        bundleDeletionTimer = null
+        read(handleFileEvent(watchPath, 'change'))
+      }
+    }
+    const checkReplacedBundleBody = async(): Promise<void> => {
+      if (disposed) return
+      try {
+        await getBundleTextPath(watchPath)
+      } catch {
+        reportBundleMissing()
+        return
+      }
+      await handleFileEvent(watchPath, 'change')
+    }
     watcher
-      .on('add', async(pathname: string) => {
-        if (!(await this._shouldIgnoreEvent(win.id, pathname, type, usePolling))) {
-          const { _preferences } = this
-          const eol = _preferences.getPreferredEol() as LineEnding
-          const {
-            autoGuessEncoding = true,
-            trimTrailingNewline = 2,
-            autoNormalizeLineEndings = false
-          } = _preferences.getAll()
-          add(
-            win,
-            pathname,
-            type,
-            eol,
-            autoGuessEncoding,
-            trimTrailingNewline,
-            autoNormalizeLineEndings
-          )
+      .on('add', (pathname: string) => onFileEvent(pathname, 'add'))
+      .on('change', (pathname: string) => onFileEvent(pathname, 'change'))
+      .on('unlink', (pathname: string) => {
+        if (!watchingBundle) {
+          unlink(win, pathname, type)
+        } else if (isBundleBody(pathname)) {
+          if (bundleDeletionTimer) clearTimeout(bundleDeletionTimer)
+          bundleDeletionTimer = setTimeout(() => {
+            bundleDeletionTimer = null
+            read(checkReplacedBundleBody())
+          }, WATCHER_STABILITY_THRESHOLD + WATCHER_STABILITY_POLL_INTERVAL)
         }
       })
-      .on('change', async(pathname: string) => {
-        if (!(await this._shouldIgnoreEvent(win.id, pathname, type, usePolling))) {
-          const { _preferences } = this
-          const eol = _preferences.getPreferredEol() as LineEnding
-          const {
-            autoGuessEncoding = true,
-            trimTrailingNewline = 2,
-            autoNormalizeLineEndings = false
-          } = _preferences.getAll()
-          change(
-            win,
-            pathname,
-            type,
-            eol,
-            autoGuessEncoding,
-            trimTrailingNewline,
-            autoNormalizeLineEndings
-          )
-        }
+      .on('addDir', (pathname: string) => {
+        if (type === 'dir' && hasTextBundleExtension(pathname) && path.relative(watchPath, pathname) !== '') {
+          read(handleFileEvent(pathname, 'add'))
+        } else addDir(win, pathname, type)
       })
-      .on('unlink', (pathname: string) => unlink(win, pathname, type))
-      .on('addDir', (pathname: string) => addDir(win, pathname, type))
-      .on('unlinkDir', (pathname: string) => unlinkDir(win, pathname, type))
+      .on('unlinkDir', (pathname: string) => {
+        if (watchingBundle && path.relative(watchPath, pathname) === '') reportBundleMissing()
+        else if (type === 'dir' && hasTextBundleExtension(pathname) && path.relative(watchPath, pathname) !== '') {
+          unlink(win, pathname, type)
+        } else unlinkDir(win, pathname, type)
+      })
       .on('raw', (event: string, subpath: string, details: unknown) => {
         if (globalThis.MARKTEXT_DEBUG_VERBOSE >= 3) {
           console.log('watcher: ', event, subpath, details)
         }
 
         // Fix atomic rename on Linux (chokidar#591).
-        if (isLinux && type === 'file' && event === 'rename') {
+        if (isLinux && type === 'file' && !watchingBundle && event === 'rename') {
           if (renameTimer) {
             clearTimeout(renameTimer)
           }
@@ -382,6 +417,7 @@ class Watcher {
         clearTimeout(renameTimer)
         renameTimer = null
       }
+      if (bundleDeletionTimer) clearTimeout(bundleDeletionTimer)
       watcher.close()
     }
 

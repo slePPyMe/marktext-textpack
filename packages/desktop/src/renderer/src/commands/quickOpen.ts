@@ -191,6 +191,7 @@ class QuickOpenCommand {
   }
 
   _getInclusions = (query: string): string[] => {
+    if (/\.textbundle$/i.test(query)) return ['**/*' + query + '/text.*']
     // NOTE: This will fail on `foo.m` because we search for `foo.m.md`.
     if (window.fileUtils.hasMarkdownExtension(query)) {
       return [`*${query}`]
@@ -200,6 +201,7 @@ class QuickOpenCommand {
     for (let i = 0; i < window.fileUtils.MARKDOWN_INCLUSIONS.length; ++i) {
       inclusions[i] = `*${query}` + window.fileUtils.MARKDOWN_INCLUSIONS[i]
     }
+    inclusions.push('**/*' + query + '*.textbundle/text.*')
     return inclusions
   }
 

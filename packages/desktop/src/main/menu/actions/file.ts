@@ -1,5 +1,5 @@
 import { rename as fsRename } from 'fs-extra'
-import { stat } from 'fs/promises'
+import { mkdir, rm, stat } from 'fs/promises'
 import path from 'path'
 import {
   BrowserWindow,
@@ -12,20 +12,21 @@ import {
   type WebContents
 } from 'electron'
 import log from 'electron-log'
-import { isDirectory, isFile, exists } from 'common/filesystem'
+import { exists } from 'common/filesystem'
 import {
   DOCUMENT_EXTENSIONS,
   MARKDOWN_EXTENSIONS,
-  isDangerousExecutableFile,
-  isDocumentFile
+  hasTextBundleExtension,
+  hasTextPackExtension,
+  isDangerousExecutableFile
 } from 'common/filesystem/paths'
 import { checkUpdates, userSetting } from './marktext'
 import { showTabBar } from './view'
 import { COMMANDS } from '../../commands'
 import type { CommandManager } from '../../commands'
 import { EXTENSION_HASN, PANDOC_EXTENSIONS, URL_REG } from '../../config'
-import { normalizeAndResolvePath, resolveLocalLinkTarget, writeFile } from '../../filesystem'
-import { writeDocumentFile } from '../../filesystem/document'
+import { normalizeDocumentPath, resolveLocalLinkTarget, writeFile } from '../../filesystem'
+import { exportDocumentTextPack, writeDocumentFile } from '../../filesystem/document'
 import { moveTextPackSession } from '../../filesystem/textpack'
 import { documentWrites } from '../../filesystem/documentWrites'
 import { getPath, getRecommendTitleFromMarkdownString } from '../../utils'
@@ -283,6 +284,22 @@ const handleResponseForPrint = async(e: IpcMainEvent): Promise<void> => {
   })
 }
 
+const getTextBundleStagingPath = (stagingId?: string): string | undefined => {
+  if (typeof stagingId !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(stagingId)) return
+  return path.join(app.getPath('userData'), 'textbundle-staging', stagingId)
+}
+
+ipcMain.handle('mt::textbundle-image-directory', async(event, tabId: string, stagingId: string) => {
+  registerDocumentOwner(event.sender)
+  if (documentWrites.capture(event.sender.id, tabId) === null) {
+    throw new Error('Cannot add an image to a read-only document')
+  }
+  const directory = getTextBundleStagingPath(stagingId)
+  if (!directory) throw new Error('Invalid TextBundle image staging identifier')
+  await mkdir(directory, { recursive: true })
+  return directory
+})
+
 const handleResponseForSave = async(
   e: IpcMainEvent,
   id: string,
@@ -318,32 +335,42 @@ const handleResponseForSave = async(
   }
 
   let filePath = pathname
+  const newDocumentExtension = options.defaultSaveFormat === 'textbundle' ? '.textbundle' : '.md'
+  const defaultExtension = pathname ? path.extname(pathname) || '.md' : newDocumentExtension
 
   if (saveAs || !filePath) {
+    const filters = [
+      { name: 'Markdown document', extensions: [...MARKDOWN_EXTENSIONS] },
+      { name: 'TextBundle (folder)', extensions: ['textbundle'] },
+      { name: 'TextPack document', extensions: ['textpack'] }
+    ]
+    const preferred = filters.findIndex(filter => filter.extensions.includes(defaultExtension.slice(1).toLowerCase()))
+    if (preferred > 0) filters.unshift(...filters.splice(preferred, 1))
     const { filePath: dialogPath, canceled } = await dialog.showSaveDialog(win, {
       defaultPath:
         saveAs && pathname
           ? pathname
-          : path.join(defaultPath || getPath('documents'), `${recommendFilename}.md`),
+          : path.join(defaultPath || getPath('documents'), recommendFilename + defaultExtension),
       properties: ['showOverwriteConfirmation'],
-      filters: [
-        { name: 'Markdown document', extensions: [...MARKDOWN_EXTENSIONS] },
-        { name: 'TextPack document', extensions: ['textpack'] }
-      ]
+      filters
     })
     if (canceled || !dialogPath) return
     filePath = dialogPath
   }
 
-  const destination = path.resolve(!saveAs && !path.extname(filePath) ? `${filePath}.md` : filePath)
+  const destination = path.resolve(path.extname(filePath) ? filePath : filePath + defaultExtension)
   // SaveOptions is partial on the IPC surface; renderer save requests supply all document options.
   return documentWrites
     .write(e.sender.id, id, writeEpoch, () =>
-      writeDocumentFile(destination, markdown, options, pathname, saveAs ? 'saveAs' : 'save')
+      writeDocumentFile(destination, markdown, options, pathname, saveAs ? 'saveAs' : 'save', {
+        stagedImages: pathname && hasTextBundleExtension(pathname)
+          ? getTextBundleStagingPath(options.textBundleStagingId) : undefined,
+        baseline: options.rawBaseline
+      })
     )
     .then((descriptor) => {
       if (!descriptor) return
-      if (!alreadyExistOnDisk || pathname !== destination || descriptor.documentKind === 'textpack') {
+      if (!alreadyExistOnDisk || pathname !== destination || descriptor.documentKind !== 'markdown') {
         if (pathname && pathname !== destination) {
           ipcMain.emit('window-change-file-path', win.id, destination, pathname)
         } else if (!alreadyExistOnDisk) {
@@ -551,6 +578,28 @@ ipcMain.on('mt::close-window-confirm', async(e, unsavedFiles: UnsavedFile[]) => 
 
 ipcMain.on('mt::response-file-save', handleResponseForSave as Parameters<typeof ipcMain.on>[1])
 
+ipcMain.handle('mt::export-document-textpack', async(event, document: UnsavedFile) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return
+  const name = getRecommendTitleFromMarkdownString(document.markdown) ||
+    path.basename(document.filename || 'Untitled', path.extname(document.filename || 'Untitled'))
+  const source = document.pathname
+  const fileName = name + (source && hasTextPackExtension(source) ? '-copy.textpack' : '.textpack')
+  const answer = await dialog.showSaveDialog(win, {
+    defaultPath: path.join(source ? path.dirname(source) : getPath('documents'), fileName),
+    filters: [{ name: 'TextPack document', extensions: ['textpack'] }],
+    properties: ['showOverwriteConfirmation']
+  })
+  if (answer.canceled || !answer.filePath) return
+  const destination = hasTextPackExtension(answer.filePath) ? answer.filePath : answer.filePath + '.textpack'
+  await assertExportDestination(source, destination)
+  await exportDocumentTextPack(
+    destination, document.markdown, document.options, source,
+    source && hasTextBundleExtension(source) ? getTextBundleStagingPath(document.options.textBundleStagingId) : undefined
+  )
+  win.webContents.send('mt::export-success', { filePath: destination })
+})
+
 ipcMain.on('mt::response-export', handleResponseForExport as Parameters<typeof ipcMain.on>[1])
 
 ipcMain.on('mt::response-pandoc-export', handlePandocExport as Parameters<typeof ipcMain.on>[1])
@@ -563,7 +612,7 @@ ipcMain.on('mt::window::drop', async(e, fileList: string[]) => {
     return
   }
   for (const file of fileList) {
-    if (isDocumentFile(file)) {
+    if (normalizeDocumentPath(file)?.isDir === false) {
       openFileOrFolder(win, file)
       continue
     }
@@ -670,8 +719,9 @@ ipcMain.on('mt::ask-for-open-project-in-sidebar', async(e) => {
   })
 
   if (filePaths && filePaths[0]) {
-    const resolvedPath = normalizeAndResolvePath(filePaths[0])
-    ipcMain.emit('app-open-directory-by-id', win.id, resolvedPath, true)
+    const selected = normalizeDocumentPath(filePaths[0])
+    if (selected?.isDir) ipcMain.emit('app-open-directory-by-id', win.id, selected.path, true)
+    else if (selected) openFileOrFolder(win, selected.path)
   }
 })
 
@@ -713,7 +763,7 @@ ipcMain.on('mt::format-link-click', async(e, { data, dirname, readOnly }: Format
 
   const { pathname, anchor } = resolveLocalLinkTarget(urlCandidate, dirname ?? '')
   if (pathname) {
-    if (isDocumentFile(pathname)) {
+    if (normalizeDocumentPath(pathname)?.isDir === false) {
       const innerWin = BrowserWindow.fromWebContents(e.sender)
       if (innerWin) {
         openFileOrFolder(innerWin, pathname, { anchor, readOnly })
@@ -853,13 +903,13 @@ export const openFileOrFolder = (
   pathname: string,
   options: TabOptions = {}
 ): void => {
-  const resolvedPath = normalizeAndResolvePath(pathname)
-  if (isFile(resolvedPath)) {
-    ipcMain.emit('app-open-file-by-id', win.id, resolvedPath, options)
-  } else if (isDirectory(resolvedPath)) {
-    ipcMain.emit('app-open-directory-by-id', win.id, resolvedPath)
+  const document = normalizeDocumentPath(pathname)
+  if (document?.isDir === false) {
+    ipcMain.emit('app-open-file-by-id', win.id, document.path, options)
+  } else if (document?.isDir) {
+    ipcMain.emit('app-open-directory-by-id', win.id, document.path)
   } else {
-    console.error(`[ERROR] Cannot open unknown file: "${resolvedPath}"`)
+    log.warn('Cannot open unknown document or directory:', pathname)
   }
 }
 
@@ -987,7 +1037,12 @@ async function assertExportDestination(
   }
 }
 
-ipcMain.on('mt::forget-document', (event, tabId: string) => {
+ipcMain.on('mt::forget-document', (event, tabId: string, stagingId?: string) => {
   registerDocumentOwner(event.sender)
   documentWrites.forget(event.sender.id, tabId)
+  const directory = getTextBundleStagingPath(stagingId)
+  if (directory) {
+    void rm(directory, { force: true, recursive: true })
+      .catch(error => log.warn('Unable to remove discarded TextBundle images:', error))
+  }
 })

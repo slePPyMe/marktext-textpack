@@ -2,6 +2,9 @@ import { access } from 'fs/promises'
 import { accessSync, constants, lstatSync, readlinkSync, statSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { ensureDirSync as fsExtraEnsureDirSync } from 'fs-extra'
+import { createHash } from 'node:crypto'
+
+export const contentSha256 = (buffer: Buffer): string => createHash('sha256').update(buffer).digest('hex')
 
 export const exists = async(p: string): Promise<boolean> => {
   try {

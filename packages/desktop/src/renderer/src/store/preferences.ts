@@ -1,5 +1,6 @@
 import { useEditorStore } from './editor'
 import { defineStore } from 'pinia'
+import type { NewDocumentFormat } from '@shared/types/files'
 import bus from '../bus'
 import { setLanguage } from '../i18n'
 
@@ -20,6 +21,7 @@ export type FileSortOrder = 'asc' | 'desc'
 export interface PreferencesState {
   autoSave: boolean
   autoSaveDelay: number
+  newDocumentSaveFormat: NewDocumentFormat
   titleBarStyle: TitleBarStyle | string
   openFilesInNewWindow: boolean
   openFolderInNewWindow: boolean
@@ -144,6 +146,7 @@ export const usePreferencesStore = defineStore('preferences', {
   state: (): PreferencesState => ({
     autoSave: false,
     autoSaveDelay: 5000,
+    newDocumentSaveFormat: 'markdown',
     titleBarStyle: 'custom',
     openFilesInNewWindow: false,
     openFolderInNewWindow: false,

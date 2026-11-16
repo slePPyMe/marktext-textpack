@@ -8,8 +8,16 @@ import { getPath } from '../utils'
 const write = (s: string): boolean => process.stdout.write(s)
 const writeLine = (s: string): boolean => write(s + '\n')
 
+export const getPortableUserDataPath = (): string =>
+  path.join(app.getAppPath(), '..', '..', 'marktext-user-data')
+
 const cli = (): ParsedArgs => {
   let argv = process.argv.slice(1)
+  if (process.defaultApp) {
+    // Electron can place debugging switches before the application argument.
+    const appArgument = argv.findIndex((arg) => !arg.startsWith('-') && path.resolve(arg) === app.getAppPath())
+    if (appArgument >= 0) argv.splice(appArgument, 1)
+  }
   if (import.meta.env.DEV) {
     // Don't pass electron development arguments to MarkText and change user data path.
     argv = ['--user-data-dir', path.join(getPath('appData'), 'marktext-dev')]
@@ -47,7 +55,7 @@ const cli = (): ParsedArgs => {
   // Check for portable mode and ensure the user data path is absolute. We assume
   // that the path is writable if not this lead to an application crash.
   if (!args['--user-data-dir']) {
-    const portablePath = path.join(app.getAppPath(), '..', '..', 'marktext-user-data')
+    const portablePath = getPortableUserDataPath()
     if (isDirectory(portablePath)) {
       args['--user-data-dir'] = portablePath
     }

@@ -20,7 +20,7 @@
       @click.stop="noop"
       @keypress.enter="rename"
     >
-    <span v-else>{{ file.name }}</span>
+    <span v-else>{{ file.name.replace(/\.textbundle$/i, '') }}</span>
   </div>
 </template>
 

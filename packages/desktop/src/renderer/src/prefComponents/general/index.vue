@@ -14,10 +14,21 @@
     <compound>
       <template #head>
         <h6 class="title">
-          {{ t('preferences.general.autoSave.title') }}
+          {{ t('preferences.general.saving') }}
         </h6>
       </template>
       <template #children>
+        <cur-select
+          id="setting-newDocumentSaveFormat"
+          :description="t('preferences.general.newDocumentSaveFormat')"
+          :notes="t('preferences.general.newDocumentSaveFormatNote')"
+          :value="newDocumentSaveFormat"
+          :options="[
+            { label: 'Markdown', value: 'markdown' },
+            { label: t('menu.file.textBundleFormat'), value: 'textbundle' }
+          ]"
+          :on-change="(value) => onSelectChange('newDocumentSaveFormat', value)"
+        />
         <bool
           :description="t('preferences.general.autoSave.description')"
           :bool="autoSave"
@@ -262,6 +273,7 @@ const {
   defaultOpenMode,
   autoSave,
   autoSaveDelay,
+  newDocumentSaveFormat,
   titleBarStyle,
   defaultDirectoryToOpen,
   openFilesInNewWindow,

@@ -433,6 +433,7 @@ export const useProjectStore = defineStore('project', () => {
     CLEAR_NAME_INPUT_STATE()
     // An empty name would move the node onto its parent directory.
     if (!name) return
+    if (/\.textbundle$/i.test(src) && !/\.textbundle$/i.test(name)) name += '.textbundle'
     const dirname = window.path.dirname(src)
     const dest = dirname + PATH_SEPARATOR + name
     if (window.path.normalize(dest) === window.path.normalize(src)) return

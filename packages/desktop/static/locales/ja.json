@@ -11,6 +11,10 @@
       "documentSelection": "文書 / 選択範囲"
     },
     "file": {
+      "exportTextPack": "TextPack としてエクスポート…",
+      "markdownFormat": "Markdown 文書",
+      "textBundleFormat": "TextBundle（フォルダー）",
+      "textPackFormat": "TextPack（単一ファイル）",
       "file": "ファイル",
       "newTab": "新しいタブ",
       "newWindow": "新しいウィンドウ",
@@ -474,6 +478,9 @@
       "keybindings": "キーバインド"
     },
     "general": {
+      "saving": "保存",
+      "newDocumentSaveFormat": "新規文書の既定の保存形式",
+      "newDocumentSaveFormatNote": "初回の保存に適用されます。「名前を付けて保存」では現在の形式が選択されます。",
       "title": "全般",
       "autoSave": {
         "title": "自動保存",

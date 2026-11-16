@@ -56,6 +56,9 @@ describe('file menu document links after upstream sync', () => {
     for (const name of ['notes.md', 'notes.textpack', 'my notes.textpack', 'C#.textpack', 'literal%23.textpack', 'run.cmd']) {
       fs.writeFileSync(path.join(dir, name), '')
     }
+    fs.mkdirSync(path.join(dir, 'C#.textbundle'))
+    fs.writeFileSync(path.join(dir, 'C#.textbundle', 'text.md'), '')
+    fs.writeFileSync(path.join(dir, 'C#.textbundle', 'info.json'), '{"version":2}')
   })
 
   afterAll(() => {
@@ -72,6 +75,8 @@ describe('file menu document links after upstream sync', () => {
     ['notes.textpack', 'notes.textpack', ''],
     ['my%20notes.textpack#%E4%B8%AD%E6%96%87', 'my notes.textpack', '%E4%B8%AD%E6%96%87'],
     ['C#.textpack', 'C#.textpack', ''],
+    ['C#.textbundle', 'C#.textbundle', ''],
+    ['C%23.textbundle/text.md#intro', 'C#.textbundle', 'intro'],
     ['literal%2523.textpack#intro', 'literal%23.textpack', 'intro']
   ])('opens %s inside the editor with its anchor', async(href, filename, anchor) => {
     const emit = vi.spyOn(ipcMain, 'emit')

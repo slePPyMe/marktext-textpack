@@ -11,6 +11,10 @@
       "documentSelection": "Belge / Seçim"
     },
     "file": {
+      "exportTextPack": "TextPack olarak dışa aktar…",
+      "markdownFormat": "Markdown belgesi",
+      "textBundleFormat": "TextBundle (klasör)",
+      "textPackFormat": "TextPack (tek dosya)",
       "file": "Dosya",
       "newTab": "Yeni Sekme",
       "newWindow": "Yeni Pencere",
@@ -474,6 +478,9 @@
       "keybindings": "Kısayol Tuşları"
     },
     "general": {
+      "saving": "Kaydetme",
+      "newDocumentSaveFormat": "Yeni belgeler için varsayılan kaydetme biçimi",
+      "newDocumentSaveFormatNote": "İlk kaydetmede geçerlidir. “Farklı Kaydet” penceresinde geçerli biçim seçilir.",
       "title": "Genel",
       "autoSave": {
         "title": "Otomatik Kaydet",

@@ -1,24 +1,19 @@
 import path from 'path'
-import { isDirectory2 } from 'common/filesystem'
-import { hasTextPackExtension, isDocumentFile } from 'common/filesystem/paths'
-import type { LineEnding, MarkdownDocument, SaveIntent, SaveOptions } from '@shared/types/files'
-import { normalizeAndResolvePath } from '.'
+import { readFile, stat } from 'fs/promises'
+import { contentSha256 } from 'common/filesystem'
+import { hasTextBundleExtension, hasTextPackExtension, isSamePathSync } from 'common/filesystem/paths'
+import type { DiskBaseline, DocumentKind, LineEnding, MarkdownDocument, SaveIntent, SaveOptions } from '@shared/types/files'
 import { loadCliMarkdownFile, loadMarkdownFile, writeMarkdownFile } from './markdown'
 import {
+  exportPackageToMarkdown,
   exportTextPackToMarkdown,
+  getOpenTextPackDirectory,
   loadTextPackFile,
   prepareTextPackReload,
+  writeTextPackFromDirectory,
   writeTextPackFile
 } from './textpack'
-
-export const normalizeDocumentPath = (
-  pathname: string
-): { isDir: boolean; path: string } | null => {
-  const isDir = isDirectory2(pathname)
-  if (!isDir && !isDocumentFile(pathname)) return null
-  const resolved = normalizeAndResolvePath(pathname)
-  return resolved ? { isDir, path: resolved } : null
-}
+import { createTextBundle, getBundleTextPath, loadTextBundle, saveTextBundle, withPreparedPackage } from './textbundle'
 
 export const loadDocumentFile = async(
   pathname: string,
@@ -27,6 +22,9 @@ export const loadDocumentFile = async(
   trimTrailingNewline = 2,
   autoNormalizeLineEndings = false
 ): Promise<MarkdownDocument> => {
+  if (hasTextBundleExtension(pathname)) {
+    return loadTextBundle(pathname, preferredEol, trimTrailingNewline, autoNormalizeLineEndings)
+  }
   if (hasTextPackExtension(pathname)) {
     return loadTextPackFile(
       pathname,
@@ -54,6 +52,10 @@ export const loadDocumentFile = async(
 export const loadCliDocumentFile = async(
   ...args: Parameters<typeof loadCliMarkdownFile>
 ): Promise<MarkdownDocument> => {
+  if (hasTextPackExtension(args[0]) || hasTextBundleExtension(args[0])) {
+    const [pathname, , preferredEol, autoGuessEncoding, trimTrailingNewline, autoNormalizeLineEndings] = args
+    return loadDocumentFile(pathname, preferredEol, autoGuessEncoding, trimTrailingNewline, autoNormalizeLineEndings)
+  }
   const doc = await loadCliMarkdownFile(...args)
   return {
     ...doc,
@@ -103,12 +105,38 @@ export const writeDocumentFile = async(
   markdown: string,
   options: SaveOptions,
   sourcePath?: string,
-  intent: SaveIntent = 'save'
+  intent: SaveIntent = 'save',
+  bundle: { stagedImages?: string; baseline?: DiskBaseline } = {}
 ): Promise<{
-  documentKind: 'markdown' | 'textpack'
+  documentKind: DocumentKind
   resourcePath: string
   markdown?: string
+  rawBaseline?: DiskBaseline
 }> => {
+  const sourceBundle = sourcePath && hasTextBundleExtension(sourcePath) ? sourcePath : undefined
+  if (hasTextBundleExtension(pathname)) {
+    if (sourceBundle && isSamePathSync(pathname, sourceBundle)) {
+      return saveTextBundle(pathname, markdown, options, bundle.stagedImages, bundle.baseline)
+    }
+    return createTextBundle(pathname, {
+      markdown, options, stagedImages: bundle.stagedImages,
+      sourcePackage: await getPackageDirectory(sourcePath),
+      sourceDirectory: sourcePath && path.dirname(sourcePath)
+    })
+  }
+  if (sourceBundle) {
+    return withPreparedPackage({
+      markdown, options, sourcePackage: sourceBundle, stagedImages: bundle.stagedImages
+    }, async(root, preparedMarkdown) => {
+      if (hasTextPackExtension(pathname)) {
+        await writeTextPackFromDirectory(root, pathname)
+        const { resourcePath } = await loadTextPackFile(pathname, 'lf', false)
+        if (!resourcePath) throw new Error('Unable to open the new TextPack for editing.')
+        return { documentKind: 'textpack', resourcePath, markdown: preparedMarkdown }
+      }
+      return exportPackageToMarkdown(root, pathname, preparedMarkdown, options)
+    })
+  }
   if (hasTextPackExtension(pathname)) {
     return writeTextPackFile(pathname, markdown, options, sourcePath, undefined, intent)
   }
@@ -121,4 +149,35 @@ export const writeDocumentFile = async(
   // is safe at this seam.
   await writeMarkdownFile(pathname, markdown, options as Parameters<typeof writeMarkdownFile>[2])
   return { documentKind: 'markdown', resourcePath: path.dirname(pathname) }
+}
+
+const getPackageDirectory = async(source?: string): Promise<string | undefined> => {
+  if (source && hasTextBundleExtension(source)) return source
+  if (source && hasTextPackExtension(source)) return getOpenTextPackDirectory(source)
+}
+
+export const exportDocumentTextPack = async(
+  destination: string, markdown: string, options: SaveOptions, source?: string, stagedImages?: string
+): Promise<void> => {
+  await withPreparedPackage({
+    markdown, options, sourcePackage: await getPackageDirectory(source),
+    sourceDirectory: source && path.dirname(source), stagedImages
+  }, root => writeTextPackFromDirectory(root, destination))
+}
+
+export const readDocumentBaseline = async(pathname: string): Promise<DiskBaseline> => {
+  try {
+    const textPath = hasTextBundleExtension(pathname) ? await getBundleTextPath(pathname) : pathname
+    const bytes = await readFile(textPath)
+    const info = await stat(textPath)
+    return {
+      exists: true,
+      rawSha256: contentSha256(bytes),
+      sizeBytes: bytes.byteLength,
+      mtimeMs: info.mtimeMs
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { exists: false }
+    throw error
+  }
 }

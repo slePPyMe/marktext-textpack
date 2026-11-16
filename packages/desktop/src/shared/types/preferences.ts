@@ -1,7 +1,9 @@
 // Renderer-facing preference shape; the canonical schema lives in main/preferences/schema.json.
+import type { NewDocumentFormat } from './files'
 
 export interface IUserPreferences {
   defaultOpenMode?: 'edit' | 'read'
+  newDocumentSaveFormat: NewDocumentFormat
   autoSave?: boolean
   autoSaveDelay?: number
   titleBarStyle?: 'custom' | 'native'

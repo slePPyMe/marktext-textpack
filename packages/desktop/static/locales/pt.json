@@ -11,6 +11,10 @@
       "documentSelection": "Documento / Seleção"
     },
     "file": {
+      "exportTextPack": "Exportar como TextPack…",
+      "markdownFormat": "Documento Markdown",
+      "textBundleFormat": "TextBundle (pasta)",
+      "textPackFormat": "TextPack (ficheiro único)",
       "file": "Arquivo",
       "newTab": "Nova Aba",
       "newWindow": "Nova Janela",
@@ -474,6 +478,9 @@
       "keybindings": "Atalhos de Teclado"
     },
     "general": {
+      "saving": "Gravação",
+      "newDocumentSaveFormat": "Formato de gravação predefinido para novos documentos",
+      "newDocumentSaveFormatNote": "Aplica-se à primeira gravação. «Guardar como» sugere o formato atual.",
       "title": "Geral",
       "autoSave": {
         "title": "Salvamento Automático",

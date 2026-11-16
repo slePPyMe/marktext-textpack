@@ -1,7 +1,6 @@
-import type { IFileState } from '@shared/types/files'
+import type { IFileState, NewDocumentFormat } from '@shared/types/files'
 import { wordCount as getWordCount } from '@muyajs/core'
 import { getUniqueId, deepClone } from '../util'
-
 
 export type IDocumentState = IFileState
 
@@ -48,13 +47,17 @@ const defaultFileStateWithoutId = {
 export const defaultFileState: Omit<IFileState, 'id'> = defaultFileStateWithoutId
 
 export const getOptionsFromState = (
-  file: IFileState
+  file: IFileState,
+  defaultSaveFormat?: NewDocumentFormat
 ): {
   encoding: IFileState['encoding']
   lineEnding: IFileState['lineEnding']
   adjustLineEndingOnSave: boolean
   trimTrailingNewline: number
   isPendingCreation?: boolean
+  rawBaseline?: IFileState['rawBaseline']
+  textBundleStagingId?: string
+  defaultSaveFormat?: NewDocumentFormat
 } => {
   const { encoding, lineEnding, adjustLineEndingOnSave, trimTrailingNewline } = file
   return {
@@ -62,7 +65,10 @@ export const getOptionsFromState = (
     lineEnding,
     adjustLineEndingOnSave,
     trimTrailingNewline,
-    isPendingCreation: file.isPendingCreation
+    isPendingCreation: file.isPendingCreation,
+    rawBaseline: file.rawBaseline,
+    textBundleStagingId: file.textBundleStagingId,
+    defaultSaveFormat: file.pathname ? undefined : defaultSaveFormat
   }
 }
 
@@ -77,6 +83,8 @@ const documentStateKeys = [
   'markdown',
   'documentKind',
   'resourcePath',
+  'rawBaseline',
+  'textBundleStagingId',
   'encoding',
   'lineEnding',
   'trimTrailingNewline',

@@ -4,12 +4,12 @@ import path from 'path'
 import log from 'electron-log'
 import iconv from 'iconv-lite'
 import { LINE_ENDING_REG, LF_LINE_ENDING_REG, CRLF_LINE_ENDING_REG } from '../config'
-import { isDirectory2 } from 'common/filesystem'
+import { contentSha256, isDirectory2 } from 'common/filesystem'
 import { hasMarkdownExtension, isMarkdownFile } from 'common/filesystem/paths'
 import { normalizeAndResolvePath, writeFile } from '../filesystem'
 import { guessEncoding } from './encoding'
 import type { Encoding } from 'common/encoding'
-import type { LineEnding } from '@shared/types/files'
+import type { DiskBaseline, LineEnding } from '@shared/types/files'
 
 interface MarkdownDocumentOptions {
   adjustLineEndingOnSave: boolean
@@ -18,6 +18,7 @@ interface MarkdownDocumentOptions {
 }
 
 interface MarkdownDocumentRaw {
+  rawBaseline?: DiskBaseline
   isPendingCreation?: boolean
   markdown: string
   filename: string
@@ -109,35 +110,36 @@ export const loadCliMarkdownFile = async(
   }
 }
 
-export const writeMarkdownFile = (
-  pathname: string,
+export const encodeMarkdown = (
   content: string,
   options: MarkdownDocumentOptions
-): Promise<void> => {
+): Buffer => {
   const { adjustLineEndingOnSave, lineEnding } = options
   const { encoding, isBom } = options.encoding
-  const extension = path.extname(pathname) || '.md'
-
   if (adjustLineEndingOnSave) {
     content = convertLineEndings(content, lineEnding)
   }
 
-  const buffer = iconv.encode(content, encoding, { addBOM: isBom })
-
-  return writeFile(pathname, buffer, extension, undefined)
+  return iconv.encode(content, encoding, { addBOM: isBom })
 }
+
+export const writeMarkdownFile = (
+  pathname: string, content: string, options: MarkdownDocumentOptions
+): Promise<void> => writeFile(pathname, encodeMarkdown(content, options), path.extname(pathname) || '.md')
 
 export const loadMarkdownFile = async(
   pathname: string,
   preferredEol: LineEnding,
   autoGuessEncoding: boolean = true,
   trimTrailingNewline: number = 2,
-  autoNormalizeLineEndings: boolean = false
+  autoNormalizeLineEndings: boolean = false,
+  strictUtf8 = false
 ): Promise<MarkdownDocumentRaw> => {
   // TODO: Use streams to not buffer the file multiple times and only guess
   //       encoding on the first 256/512 bytes.
 
   const buffer = await fsPromises.readFile(path.resolve(pathname))
+  if (strictUtf8) new TextDecoder('utf-8', { fatal: true }).decode(buffer)
 
   const encoding = guessEncoding(buffer, autoGuessEncoding)
   const supported = iconv.encodingExists(encoding.encoding)
@@ -185,6 +187,14 @@ export const loadMarkdownFile = async(
   const filename = path.basename(pathname)
 
   return {
+    ...(strictUtf8 ? {
+      rawBaseline: {
+        exists: true as const,
+        rawSha256: contentSha256(buffer),
+        sizeBytes: buffer.byteLength,
+        mtimeMs: (await fsPromises.stat(pathname)).mtimeMs
+      }
+    } : {}),
     markdown,
     filename,
     pathname,

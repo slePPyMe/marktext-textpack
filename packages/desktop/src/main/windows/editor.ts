@@ -3,13 +3,14 @@ import { BrowserWindow, dialog, ipcMain } from 'electron'
 import type { BrowserWindowConstructorOptions } from 'electron'
 import log from 'electron-log'
 import windowStateKeeper from 'electron-window-state'
-import { isChildOfDirectory, isSamePathSync } from 'common/filesystem/paths'
+import { hasTextBundleExtension, isChildOfDirectory, isSamePathSync } from 'common/filesystem/paths'
 import BaseWindow, { WindowLifecycle, WindowType } from './base'
 import type Accessor from '../app/accessor'
 import { ensureWindowPosition, zoomIn, zoomOut } from './utils'
 import { TITLE_BAR_HEIGHT, editorWinOptions, isLinux, isOsx } from '../config'
 import { showEditorContextMenu } from '../contextMenu/editor'
 import { loadCliDocumentFile, loadDocumentFile } from '../filesystem/document'
+import { normalizeDocumentPath } from '../filesystem'
 import { switchLanguage } from '../spellchecker'
 import type { TabOptions } from '@shared/types/files'
 import fs from 'fs'
@@ -41,6 +42,7 @@ interface RestoredTab {
   filename?: string
   markdown?: string
   isSaved?: boolean
+  rawBaseline?: RawMarkdownDocument['rawBaseline']
   [key: string]: unknown
 }
 
@@ -326,7 +328,10 @@ class EditorWindow extends BaseWindow {
     const { autoGuessEncoding, trimTrailingNewline, autoNormalizeLineEndings } =
       preferences.getAll()
 
-    for (const { filePath, options, selected } of fileList) {
+    for (const { filePath: requestedPath, options, selected } of fileList) {
+      const filePath = hasTextBundleExtension(path.dirname(requestedPath))
+        ? normalizeDocumentPath(requestedPath)?.path ?? requestedPath
+        : requestedPath
       const isPreview = options.preview === true && typeof options.requestId === 'number'
       const previewRequestId = isPreview ? (options.requestId as number) : null
       if (previewRequestId !== null) {
@@ -433,7 +438,8 @@ class EditorWindow extends BaseWindow {
 
   addToOpenedFiles(filePath: string): void {
     const { _openedFiles, browserWindow } = this
-    if (!_openedFiles!.includes(filePath)) _openedFiles!.push(filePath)
+    if (!_openedFiles || _openedFiles.includes(filePath)) return
+    _openedFiles.push(filePath)
     ipcMain.emit('watcher-watch-file', browserWindow, filePath)
   }
 
@@ -624,11 +630,15 @@ class EditorWindow extends BaseWindow {
               if (tab.isSaved) tab.isPendingCreation = false
               tab.documentKind = rawDocument.documentKind
               tab.resourcePath = rawDocument.resourcePath
+              if (tab.isSaved) tab.rawBaseline = rawDocument.rawBaseline
               if (rawDocument.markdown !== tab.markdown) {
                 // File has changed since it was last opened, if it is not saved, we should NOT override the buffer
                 if (tab.isSaved) {
                   Object.assign(tab, rawDocument)
                   tab.diskMissing = false
+                } else if (rawDocument.documentKind === 'textbundle' &&
+                  tab.rawBaseline?.exists && rawDocument.rawBaseline?.exists) {
+                  tab.diskConflict = tab.rawBaseline.rawSha256 !== rawDocument.rawBaseline.rawSha256
                 } else {
                   tab.diskConflict = true
                 }

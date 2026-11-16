@@ -5,6 +5,8 @@
 
 import type { IKeyboardLayoutInfo, IKeyboardMapping } from 'native-keymap'
 import type {
+  DiskBaseline,
+  DocumentKind,
   MarkdownDocument,
   TabOptions,
   SidebarOpenOptions,
@@ -35,6 +37,8 @@ export type PlantumlFetchResult =
 export interface IpcInvokeChannels {
   'mt::clipboard::write-text': { args: [text: string]; ret: boolean }
   'mt::set-document-read-only': { args: [tabId: string, readOnly: boolean]; ret: void }
+  'mt::textbundle-image-directory': { args: [tabId: string, stagingId: string]; ret: string }
+  'mt::export-document-textpack': { args: [document: UnsavedFile]; ret: void }
   'mt::ask-for-image-path': { args: []; ret: string[] }
   'mt::boot-info-async': { args: []; ret: BootInfo }
   'mt::clipboard::guess-file-path': { args: []; ret: string | null }
@@ -97,7 +101,7 @@ export interface IpcInvokeChannels {
 
 
 export interface IpcSendChannels {
-  'mt::forget-document': [tabId: string]
+  'mt::forget-document': [tabId: string, stagingId?: string]
   'mt::update-document-mode': [readOnly: boolean, hasDocument?: boolean]
   'app-create-editor-window': [config?: unknown]
   'app-create-settings-window': []
@@ -241,6 +245,7 @@ export interface IpcMainEventChannels {
   'mt::current-language': [language: string]
   'mt::editor-ask-file-save': []
   'mt::editor-ask-file-save-as': []
+  'mt::editor-ask-export-textpack': []
   'mt::editor-close-tab': [tabId?: string]
   'mt::editor-edit-action': [action: string]
   'mt::editor-format-action': [payload: { type: string }]
@@ -279,9 +284,10 @@ export interface IpcMainEventChannels {
       pathname: string
       filename: string
       savedMarkdown?: string
-      documentKind?: 'markdown' | 'textpack'
+      documentKind?: DocumentKind
       resourcePath?: string
       markdown?: string
+      rawBaseline?: DiskBaseline
     }
   ]
   'mt::set-view-layout': [layout: unknown]

@@ -5,7 +5,7 @@ import { getUniqueId, deepClone } from '../util'
 import listToTree, { type ListItem, type TreeNode } from '../util/listToTree'
 import {
   createDocumentState,
-  getOptionsFromState,
+  getOptionsFromState as getDocumentSaveOptions,
   getBlankFileState,
   defaultFileState
 } from './help'
@@ -34,6 +34,16 @@ import type {
   TabOptions
 } from '@shared/types/files'
 
+const getOptionsFromState = (file: IFileState) =>
+  getDocumentSaveOptions(file, usePreferencesStore().newDocumentSaveFormat)
+
+const forgetDocument = (id: string, stagingId?: string): void => {
+  if (stagingId) {
+    window.electron.ipcRenderer.send('mt::forget-document', id, stagingId)
+  } else {
+    window.electron.ipcRenderer.send('mt::forget-document', id)
+  }
+}
 
 interface TocItem extends ListItem {
   slug?: string
@@ -75,6 +85,7 @@ interface FileChangePayload {
     filename: string
     documentKind?: IFileState['documentKind']
     resourcePath?: string
+    rawBaseline?: IFileState['rawBaseline']
     reloadToken?: string
   }
 }
@@ -460,7 +471,8 @@ export const useEditorStore = defineStore('editor', {
         markdown,
         filename,
         documentKind,
-        resourcePath
+        resourcePath,
+        rawBaseline
       } = data
       const newFileState = createDocumentState({
         markdown,
@@ -471,7 +483,8 @@ export const useEditorStore = defineStore('editor', {
         adjustLineEndingOnSave,
         trimTrailingNewline,
         documentKind,
-        resourcePath
+        resourcePath,
+        rawBaseline
       })
 
       const tab = tabs.find((t) => window.fileUtils.isSamePathSync(t.pathname, pathname))
@@ -748,12 +761,16 @@ export const useEditorStore = defineStore('editor', {
           this.CLOSE_TAB(existingTab)
         }
 
-        const { filename, documentKind, resourcePath, markdown } = fileInfo
+        const { filename, documentKind, resourcePath, markdown, rawBaseline } = fileInfo
         if (tab) {
           const matchesSavedSnapshot = 'savedMarkdown' in fileInfo && fileInfo.savedMarkdown === tab.markdown
           Object.assign(tab, { filename, pathname, isPendingCreation: false })
-          if (documentKind) tab.documentKind = documentKind
+          if (documentKind) {
+            tab.documentKind = documentKind
+            tab.rawBaseline = rawBaseline
+          }
           if (resourcePath !== undefined) tab.resourcePath = resourcePath
+          else if (tab.documentKind === 'textbundle') tab.resourcePath = pathname
           else if (tab.documentKind !== 'textpack') tab.resourcePath = window.path.dirname(pathname)
           if (matchesSavedSnapshot) {
             if (typeof markdown === 'string') tab.markdown = markdown
@@ -1002,6 +1019,7 @@ export const useEditorStore = defineStore('editor', {
           tab.pathname = dest
           tab.filename = window.path.basename(dest)
           if (tab.documentKind === 'markdown') tab.resourcePath = window.path.dirname(dest)
+          if (tab.documentKind === 'textbundle') tab.resourcePath = dest
         }
       })
       // Keep DIRNAME in sync when the active tab is the one being renamed,
@@ -1189,7 +1207,7 @@ export const useEditorStore = defineStore('editor', {
     },
 
     FORCE_CLOSE_TAB(file: IFileState): void {
-      window.electron.ipcRenderer.send('mt::forget-document', file.id)
+      forgetDocument(file.id, file.textBundleStagingId)
       const { tabs, currentFile } = this
       const index = tabs.findIndex((t) => t.id === file.id)
       if (index > -1) {
@@ -1276,11 +1294,11 @@ export const useEditorStore = defineStore('editor', {
 
       let tabIndex = 0
       tabIdList.forEach((id) => {
-        window.electron.ipcRenderer.send('mt::forget-document', id)
         const index = this.tabs.findIndex((f) => f.id === id)
+        const closed = this.tabs[index]
+        forgetDocument(id, closed?.textBundleStagingId)
         if (index === -1) return
 
-        const closed = this.tabs[index]
         const { pathname } = closed ?? { pathname: '' }
 
         if (pathname) {
@@ -1648,7 +1666,7 @@ export const useEditorStore = defineStore('editor', {
             clearTimeout(autoSaveTimers.get(previousPreview.id))
             autoSaveTimers.delete(previousPreview.id)
           }
-          window.electron.ipcRenderer.send('mt::forget-document', previousPreview.id)
+          forgetDocument(previousPreview.id, previousPreview.textBundleStagingId)
           if (previousPreview.pathname) {
             window.electron.ipcRenderer.send('mt::window-tab-closed', previousPreview.pathname)
           }
@@ -1962,6 +1980,22 @@ export const useEditorStore = defineStore('editor', {
     },
 
     LISTEN_FOR_EXPORT_SUCCESS(): void {
+      window.electron.ipcRenderer.on('mt::editor-ask-export-textpack', () => {
+        const file = this.currentFile
+        if (!file?.id) return
+        this.flushActiveEditor()
+        const { id, filename, pathname, markdown } = file
+        void window.electron.ipcRenderer.invoke('mt::export-document-textpack', {
+          id, filename, pathname, markdown, options: deepClone(getOptionsFromState(file))
+        }).catch(error => {
+          void notice.notify({
+            title: t('editor.export.failed', { type: 'TextPack' }),
+            message: error instanceof Error ? error.message : String(error),
+            type: 'error',
+            showConfirm: false
+          })
+        })
+      })
       window.electron.ipcRenderer.on('mt::export-success', (_, payload) => {
         const filePath = payload?.filePath ?? ''
         const name = window.path.basename(filePath)
@@ -2070,9 +2104,9 @@ export const useEditorStore = defineStore('editor', {
               // Only the file's metadata changed on disk (e.g. a git checkout
               // that left the content byte-identical) — there is nothing to
               // reload and no reason to warn the user (#1861).
-              const newMarkdown = (change as unknown as FileChangePayload).data?.markdown
-              const reloadToken = (change as unknown as FileChangePayload).data?.reloadToken
+              const { markdown: newMarkdown, reloadToken, rawBaseline } = (change as unknown as FileChangePayload).data
               if (typeof newMarkdown === 'string' && newMarkdown === tab.markdown && !reloadToken) {
+                if (rawBaseline) tab.rawBaseline = rawBaseline
                 if (wasMissing)
                   tab.notifications = tab.notifications.filter(
                     (item) => item.exclusiveType !== 'file_changed'
@@ -2380,6 +2414,8 @@ interface BufferedTabState {
   pathname: string
   documentKind: IFileState['documentKind']
   resourcePath: string
+  rawBaseline?: IFileState['rawBaseline']
+  textBundleStagingId?: string
   filename: string
   markdown: string
   isSaved: boolean
@@ -2404,6 +2440,8 @@ const createBufferedTabState = (tab: Partial<IFileState> & { id: string }): Buff
     // this descriptor while normalizing the incoming mt::load-state payload.
     documentKind: tab.documentKind ?? defaultFileState.documentKind,
     resourcePath: tab.resourcePath ?? defaultFileState.resourcePath,
+    rawBaseline: tab.rawBaseline ? { ...tab.rawBaseline } : undefined,
+    textBundleStagingId: tab.textBundleStagingId,
     filename: tab.filename ?? defaultFileState.filename,
     markdown: typeof tab.markdown === 'string' ? tab.markdown : defaultFileState.markdown,
     isPendingCreation: tab.isPendingCreation,

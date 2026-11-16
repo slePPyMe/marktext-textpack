@@ -11,6 +11,10 @@
       "documentSelection": "Документ / Выделение"
     },
     "file": {
+      "exportTextPack": "Экспортировать как TextPack…",
+      "markdownFormat": "Документ Markdown",
+      "textBundleFormat": "TextBundle (папка)",
+      "textPackFormat": "TextPack (один файл)",
       "file": "Файл",
       "newTab": "Новая вкладка",
       "newWindow": "Новое окно",
@@ -474,6 +478,9 @@
       "keybindings": "Горячие клавиши"
     },
     "general": {
+      "saving": "Сохранение",
+      "newDocumentSaveFormat": "Формат сохранения новых документов по умолчанию",
+      "newDocumentSaveFormatNote": "При первом сохранении. В диалоге «Сохранить как» выбран текущий формат.",
       "title": "Общие",
       "autoSave": {
         "title": "Автосохранение",

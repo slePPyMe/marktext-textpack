@@ -5,7 +5,12 @@
 // imperfect surface than a placeholder that's wrong.
 
 export type LineEnding = 'lf' | 'crlf'
-export type DocumentKind = 'markdown' | 'textpack'
+export type DocumentKind = 'markdown' | 'textpack' | 'textbundle'
+export type NewDocumentFormat = 'markdown' | 'textbundle'
+
+export type DiskBaseline =
+  | { exists: false }
+  | { exists: true; rawSha256: string; sizeBytes: number; mtimeMs: number }
 
 export interface SerializedStat {
   size: number
@@ -29,6 +34,7 @@ export interface MarkdownDocument {
   isMixedLineEndings?: boolean
   documentKind?: DocumentKind
   resourcePath?: string
+  rawBaseline?: DiskBaseline
   /** Opaque main-process token for a staged external TextPack reload. */
   reloadToken?: string
 }
@@ -67,6 +73,8 @@ export interface FileSearchMatches {
 
 /** Canonical per-tab state shared by renderer stores, buffered persistence and IPC. */
 export interface IFileState {
+  rawBaseline?: DiskBaseline
+  textBundleStagingId?: string
   readOnly: boolean
   // Transient navigation state; deliberately excluded from buffered tab state.
   isPreview: boolean
@@ -134,6 +142,9 @@ export interface SidebarOpenOptions extends TabOptions {
 
 export interface SaveOptions {
   isPendingCreation?: boolean
+  rawBaseline?: DiskBaseline
+  textBundleStagingId?: string
+  defaultSaveFormat?: NewDocumentFormat
   // Encoding is the `FileEncoding` object at runtime (`{ encoding, isBom }`).
   // String form is accepted for legacy callers that haven't been updated.
   encoding?: FileEncoding | string
