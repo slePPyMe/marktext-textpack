@@ -11,6 +11,10 @@
       "documentSelection": "Document / Sélection"
     },
     "file": {
+      "exportTextPack": "Exporter au format TextPack…",
+      "markdownFormat": "Document Markdown",
+      "textBundleFormat": "TextBundle (dossier)",
+      "textPackFormat": "TextPack (fichier unique)",
       "file": "Fichier",
       "newTab": "Nouvel onglet",
       "newWindow": "Nouvelle fenêtre",
@@ -428,6 +432,9 @@
       "keybindings": "Raccourcis clavier"
     },
     "general": {
+      "saving": "Enregistrement",
+      "newDocumentSaveFormat": "Format d’enregistrement par défaut des nouveaux documents",
+      "newDocumentSaveFormatNote": "S’applique au premier enregistrement. « Enregistrer sous » propose le format actuel.",
       "title": "Général",
       "autoSave": {
         "title": "Enregistrement automatique",

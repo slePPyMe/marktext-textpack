@@ -133,6 +133,7 @@ import { isMac, animatedScrollTo } from '@/util'
 import { moveImageToFolder, uploadImage } from '@/util/fileSystem'
 import { guessClipboardFilePath, copyImageToClipboard, readImagePng, clipboardImagePath } from '@/util/clipboard'
 import { dataURLToFile } from '@/util/dataURLToFile'
+import { encodeDirnameForUrl, localPathToFileUrl } from '@/util/fileUrl'
 import { getCssForOptions, type PdfCssOptions } from '@/util/pdf'
 import {
   getTocHeadingScrollTop,
@@ -805,6 +806,16 @@ const imageAction = async (
   if (typeof image === 'string' && image.startsWith('data:')) {
     const file = dataURLToFile(image)
     if (file) image = file
+  }
+
+  if (currentFile.value.documentKind === 'textbundle') {
+    const directory = await window.electron.ipcRenderer.invoke('mt::textbundle-image-directory', currentFile.value.id)
+    const result = await moveImageToFolder(window.path.join(currentPathname, 'text.md'), image, directory)
+    const src = result !== image && window.path.isAbsolute(result)
+      ? new URL(localPathToFileUrl(encodeDirnameForUrl(result))).href.replace(/\(/g, '%28').replace(/\)/g, '%29')
+      : result
+    if (id && sourceCode.value) bus.emit('image-action', { id, result: src, alt })
+    return src
   }
 
   if (currentFile.value.documentKind === 'textpack' && currentFile.value.resourcePath) {

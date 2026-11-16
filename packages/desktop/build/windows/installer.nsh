@@ -1,6 +1,7 @@
 ; Windows remembers an "Open with" choice as a UserChoice naming this ProgId,
 ; and that pin outlives any reinstall, so the name must stay as it is.
 !define MT_PROGID "MarkText.Document"
+!define MT_TEXTBUNDLE_VERB "Software\Classes\Directory\shell\MarkText.TextBundle"
 
 ; These must be written on every install and removed only on a real uninstall.
 ; electron-builder runs the previous version's uninstaller silently before it
@@ -56,6 +57,19 @@
   WriteRegStr SHELL_CONTEXT "Software\Classes\TextPack\shell\open\command" \
     "" '"$INSTDIR\marktext.exe" "%1"'
 
+  Push $0
+  System::Call 'kernel32::GetUserDefaultUILanguage() i .r0'
+  ${if} $0 == 2052
+    WriteRegStr SHELL_CONTEXT "${MT_TEXTBUNDLE_VERB}" "" "用 MarkText 打开"
+  ${else}
+    WriteRegStr SHELL_CONTEXT "${MT_TEXTBUNDLE_VERB}" "" "Open with MarkText"
+  ${endIf}
+  Pop $0
+  WriteRegStr SHELL_CONTEXT "${MT_TEXTBUNDLE_VERB}" \
+    "AppliesTo" 'System.ItemNameDisplay:~>".textbundle"'
+  WriteRegStr SHELL_CONTEXT "${MT_TEXTBUNDLE_VERB}" "Icon" '"$INSTDIR\marktext.exe",0'
+  WriteRegStr SHELL_CONTEXT "${MT_TEXTBUNDLE_VERB}\command" "" '"$INSTDIR\marktext.exe" "%1"'
+
   ; Explorer serves file types from a cache that a fresh install otherwise
   ; keeps until the next sign-in.
   System::Call 'shell32::SHChangeNotify(i, i, i, i) v (0x08000000, 0, 0, 0)'
@@ -74,6 +88,7 @@
     !insertmacro mtUnassociateExtension ".mdx"
     !insertmacro mtUnassociateExtension ".textpack"
     DeleteRegKey SHELL_CONTEXT "Software\Classes\${MT_PROGID}"
+    DeleteRegKey SHELL_CONTEXT "${MT_TEXTBUNDLE_VERB}"
   ${endIf}
 
   MessageBox MB_YESNO "Do you want to delete user settings?" /SD IDNO IDNO SkipRemoval

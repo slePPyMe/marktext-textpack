@@ -130,12 +130,10 @@ export const loadCliMarkdownFile = async(
   }
 }
 
-/** Writes the confirmed pathname verbatim; extension defaults belong in the save dialog. */
-export const writeMarkdownFile = (
-  pathname: string,
+export const encodeMarkdown = (
   content: string,
   options: MarkdownDocumentOptions
-): Promise<void> => {
+): Buffer => {
   const { adjustLineEndingOnSave, lineEnding } = options
   const { encoding, isBom } = options.encoding
 
@@ -155,24 +153,31 @@ export const writeMarkdownFile = (
       `Cannot save using "${getEncodingName(options.encoding)}" because some characters${examples} cannot be represented. Open the Command Palette, run "Change Encoding", select UTF-8, and save again.`
     )
     error.name = 'EncodingLossError'
-    return Promise.reject(error)
+    throw error
   }
 
-  return writeFile(pathname, buffer)
+  return buffer
 }
+
+/** Writes the confirmed pathname verbatim; extension defaults belong in the save dialog. */
+export const writeMarkdownFile = async(
+  pathname: string, content: string, options: MarkdownDocumentOptions
+): Promise<void> => writeFile(pathname, encodeMarkdown(content, options))
 
 export const loadMarkdownFile = async(
   pathname: string,
   preferredEol: LineEnding,
   autoGuessEncoding: boolean = true,
   trimTrailingNewline: number = 2,
-  autoNormalizeLineEndings: boolean = false
+  autoNormalizeLineEndings: boolean = false,
+  strictUtf8 = false
 ): Promise<MarkdownDocumentRaw> => {
   // TODO: Use streams to not buffer the file multiple times and only guess
   //       encoding on the first 256/512 bytes.
 
   const buffer = await fsPromises.readFile(path.resolve(pathname))
   const diskStat = await fsPromises.stat(path.resolve(pathname))
+  if (strictUtf8) new TextDecoder('utf-8', { fatal: true }).decode(buffer)
 
   const encoding = guessEncoding(buffer, autoGuessEncoding)
   const supported = iconv.encodingExists(encoding.encoding)

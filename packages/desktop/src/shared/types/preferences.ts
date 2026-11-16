@@ -1,3 +1,5 @@
+import type { NewDocumentFormat } from './files'
+
 /** Stable preference values shared by startup planning and the settings UI. */
 export const StartupAction = {
   RESTORE_ALL: 'restoreAll',
@@ -29,6 +31,7 @@ export type UserPreferencesPatch = Partial<UserPreferences>
 export interface UserPreferences extends RecoveryPreferences {
   autoSave: boolean
   autoSaveDelay: number
+  newDocumentSaveFormat: NewDocumentFormat
   titleBarStyle: 'custom' | 'native'
   openFilesInNewWindow: boolean
   openFolderInNewWindow: boolean

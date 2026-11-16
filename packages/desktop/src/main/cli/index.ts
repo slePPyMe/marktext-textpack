@@ -8,6 +8,9 @@ import { getPath } from '../utils'
 const write = (s: string): boolean => process.stdout.write(s)
 const writeLine = (s: string): boolean => write(s + '\n')
 
+export const getPortableUserDataPath = (): string =>
+  path.join(app.getAppPath(), '..', '..', 'marktext-user-data')
+
 const cli = (): ParsedArgs => {
   let argv = userArguments(process.argv, !!process.defaultApp, app.getAppPath())
   if (import.meta.env.DEV) {
@@ -47,7 +50,7 @@ const cli = (): ParsedArgs => {
   // Check for portable mode and ensure the user data path is absolute. We assume
   // that the path is writable if not this lead to an application crash.
   if (!args['--user-data-dir']) {
-    const portablePath = path.join(app.getAppPath(), '..', '..', 'marktext-user-data')
+    const portablePath = getPortableUserDataPath()
     if (isDirectory(portablePath)) {
       args['--user-data-dir'] = portablePath
     }

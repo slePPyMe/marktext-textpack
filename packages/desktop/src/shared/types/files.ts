@@ -1,7 +1,8 @@
 // Core file/tab/document shapes shared between main and renderer.
 
 export type LineEnding = 'lf' | 'crlf'
-export type DocumentKind = 'markdown' | 'textpack'
+export type DocumentKind = 'markdown' | 'textpack' | 'textbundle'
+export type NewDocumentFormat = 'markdown' | 'textbundle'
 
 export interface SerializedStat {
   size: number

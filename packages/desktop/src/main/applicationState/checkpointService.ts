@@ -85,6 +85,10 @@ export class CheckpointService {
     return this._documents.get(id)
   }
 
+  getDocumentText(id: string): string {
+    return this._documents.text(id)
+  }
+
   hasPendingSave(documentId: string): boolean {
     return this._saveQueues.has(documentId)
   }

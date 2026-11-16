@@ -8,6 +8,7 @@ import { pipeline } from 'stream/promises'
 import yauzl, { type Entry, type ZipFile } from 'yauzl'
 import yazl from 'yazl'
 import type { LineEnding, MarkdownDocument, SaveIntent, SaveOptions } from '@shared/types/files'
+import { isBundleTextName } from 'common/filesystem/paths'
 import { loadMarkdownFile, writeMarkdownFile } from './markdown'
 
 const archiveBaseline = async(pathname: string) => {
@@ -237,7 +238,7 @@ export const findMarkdownDestinations = (markdown: string): MarkdownDestination[
   )
 }
 
-const rewriteDestinations = async(
+export const rewriteDestinations = async(
   markdown: string,
   rewrite: (value: string, destination: MarkdownDestination) => Promise<string | null>
 ): Promise<string> => {
@@ -255,7 +256,7 @@ const rewriteDestinations = async(
 const isExternalDestination = (value: string): boolean =>
   !value || value.startsWith('#') || /^[a-z][a-z\d+.-]*:/i.test(value) || value.startsWith('//')
 
-const packageLocalResources = async(
+export const packageLocalResources = async(
   markdown: string,
   sourceDirectory: string | undefined,
   workspacePath: string
@@ -500,7 +501,7 @@ const extractArchive = async(archivePath: string, workspacePath: string): Promis
           if (name.toLowerCase() === 'info.json') {
             if (entry.uncompressedSize > TEXTPACK_LIMITS.infoBytes) { throw new Error('TextPack info.json is too large.') }
             infoEntry = name
-          } else if (!name.includes('/') && /^text\.[^./]+$/i.test(name)) {
+          } else if (!name.includes('/') && isBundleTextName(name)) {
             if (entry.uncompressedSize > TEXTPACK_LIMITS.textBytes) { throw new Error('TextPack document text is too large.') }
             rootTextEntries.push(name)
           }
@@ -529,21 +530,33 @@ const extractArchive = async(archivePath: string, workspacePath: string): Promis
   if (!infoEntry || infoEntry !== 'info.json') { throw new Error('TextPack must contain lowercase info.json at its root.') }
   if (rootTextEntries.length !== 1) { throw new Error('TextPack must contain exactly one text.* file at its root.') }
 
-  const metadataText = await fsPromises.readFile(path.join(workspacePath, infoEntry), 'utf8')
+  await validatePackageMetadata(path.join(workspacePath, infoEntry), 'TextPack')
+  const textBytes = await fsPromises.readFile(path.join(workspacePath, rootTextEntries[0]))
+  new TextDecoder('utf-8', { fatal: true }).decode(textBytes)
+  return rootTextEntries[0]
+}
+
+export const validatePackageMetadata = async(
+  pathname: string,
+  format: 'TextPack' | 'TextBundle'
+): Promise<void> => {
+  const metadataText = await fsPromises.readFile(pathname, 'utf8')
   let metadata: unknown
   try {
     metadata = JSON.parse(metadataText.replace(/^\uFEFF/, ''))
   } catch {
-    throw new Error('TextPack info.json is not valid JSON.')
+    throw new Error(format + ' info.json is not valid JSON.')
   }
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) { throw new Error('TextPack info.json must contain an object.') }
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    throw new Error(format + ' info.json must contain an object.')
+  }
   const info = metadata as Record<string, unknown>
-  if (info.version !== 1 && info.version !== 2) { throw new Error(`Unsupported TextPack version: ${String(info.version)}.`) }
-  if (info.type !== undefined && info.type !== MARKDOWN_TYPE) { throw new Error(`Unsupported TextPack document type: ${String(info.type)}.`) }
-
-  const textBytes = await fsPromises.readFile(path.join(workspacePath, rootTextEntries[0]))
-  new TextDecoder('utf-8', { fatal: true }).decode(textBytes)
-  return rootTextEntries[0]
+  if (info.version !== 1 && info.version !== 2) {
+    throw new Error('Unsupported ' + format + ' version: ' + String(info.version) + '.')
+  }
+  if (info.type !== undefined && info.type !== MARKDOWN_TYPE) {
+    throw new Error('Unsupported ' + format + ' document type: ' + String(info.type) + '.')
+  }
 }
 
 const removeWorkspace = async(workspacePath: string): Promise<void> => {
@@ -797,12 +810,15 @@ export const loadTextPackFile = async(
   }
 }
 
-const listWorkspaceFiles = async(root: string, current = root): Promise<string[]> => {
+const listWorkspaceFiles = async(root: string, current = root, includeDirectories = false): Promise<string[]> => {
   const files: string[] = []
   for (const item of await fsPromises.readdir(current, { withFileTypes: true })) {
     const absolute = path.join(current, item.name)
     if (item.isSymbolicLink()) throw new Error(`TextPack workspace contains a link: ${item.name}.`)
-    if (item.isDirectory()) files.push(...(await listWorkspaceFiles(root, absolute)))
+    if (item.isDirectory()) {
+      if (includeDirectories) files.push(path.relative(root, absolute).split(path.sep).join('/') + '/')
+      files.push(...(await listWorkspaceFiles(root, absolute, includeDirectories)))
+    }
     else if (item.isFile()) files.push(path.relative(root, absolute).split(path.sep).join('/'))
   }
   return files.sort()
@@ -811,7 +827,8 @@ const listWorkspaceFiles = async(root: string, current = root): Promise<string[]
 const buildArchive = async(workspacePath: string, outputPath: string, files: string[]): Promise<void> => {
   const zipfile = new yazl.ZipFile()
   for (const relative of files) {
-    zipfile.addFile(path.join(workspacePath, ...relative.split('/')), relative, { compress: true })
+    if (relative.endsWith('/')) zipfile.addEmptyDirectory(relative)
+    else zipfile.addFile(path.join(workspacePath, ...relative.split('/')), relative, { compress: true })
   }
   const output = fs.createWriteStream(outputPath, { flags: 'wx' })
   zipfile.once('error', (error) => output.destroy(error))
@@ -825,8 +842,7 @@ const buildArchive = async(workspacePath: string, outputPath: string, files: str
   }
 }
 
-const createTextPackSession = async(targetPath: string): Promise<TextPackSession> => {
-  const workspacePath = path.join(SESSION_ROOT, randomUUID(), 'content')
+export const initializePackageDirectory = async(workspacePath: string): Promise<void> => {
   await fsPromises.mkdir(path.join(workspacePath, 'assets'), { recursive: true })
   await fsPromises.writeFile(
     path.join(workspacePath, 'info.json'),
@@ -842,6 +858,11 @@ const createTextPackSession = async(targetPath: string): Promise<TextPackSession
     ) + '\n',
     'utf8'
   )
+}
+
+const createTextPackSession = async(targetPath: string): Promise<TextPackSession> => {
+  const workspacePath = path.join(SESSION_ROOT, randomUUID(), 'content')
+  await initializePackageDirectory(workspacePath)
   return {
     physicalPath: path.resolve(targetPath),
     workspacePath,
@@ -875,6 +896,40 @@ const readArchiveRevision = async(pathname: string): Promise<TextPackSession['so
   }
 }
 
+const writeValidatedArchive = async(
+  workspace: string,
+  destination: string,
+  files: string[],
+  targetRevision: TextPackSession['sourceRevision']
+): Promise<void> => {
+  const tempPath = path.join(path.dirname(destination), '.' + path.basename(destination) + '.' + randomUUID() + '.tmp')
+  try {
+    await buildArchive(workspace, tempPath, files)
+    const validationPath = path.join(SESSION_ROOT, randomUUID(), 'content')
+    await fsPromises.mkdir(validationPath, { recursive: true })
+    try {
+      await extractArchive(tempPath, validationPath)
+    } finally {
+      await removeWorkspace(validationPath)
+    }
+    const currentRevision = await readArchiveRevision(destination)
+    if ((targetRevision || currentRevision) && !revisionsMatch(targetRevision, currentRevision)) {
+      throw new Error('The TextPack destination changed while saving. Use Save As again to confirm the destination.')
+    }
+    await replaceArchive(tempPath, destination)
+  } finally {
+    await fsPromises.rm(tempPath, { force: true })
+  }
+}
+
+export const writeTextPackFromDirectory = async(workspace: string, target: string): Promise<void> => {
+  const destination = path.resolve(target)
+  await queueSave(sessionKey(destination), async() => {
+    const revision = await readArchiveRevision(destination)
+    await writeValidatedArchive(workspace, destination, await listWorkspaceFiles(workspace, workspace, true), revision)
+  })
+}
+
 const validateWorkspaceFiles = async(session: TextPackSession): Promise<string[]> => {
   let files: string[]
   try {
@@ -891,6 +946,13 @@ const validateWorkspaceFiles = async(session: TextPackSession): Promise<string[]
     throw new Error(`TextPack workspace resources are missing: ${missing.join(', ')}. The destination was not replaced.`)
   }
   return files
+}
+
+export const getOpenTextPackDirectory = async(pathname: string): Promise<string> => {
+  const session = sessions.get(sessionKey(pathname))
+  if (!session) throw new Error('Reopen the TextPack before converting it.')
+  await validateWorkspaceFiles(session)
+  return session.workspacePath
 }
 
 export const writeTextPackFile = async(
@@ -947,35 +1009,11 @@ export const writeTextPackFile = async(
       'utf8'
     )
     if (!workspaceFiles.includes(session!.textEntryName)) workspaceFiles.push(session!.textEntryName)
-    const tempPath = path.join(
-      path.dirname(resolvedTarget),
-      `.${path.basename(resolvedTarget)}.${randomUUID()}.tmp`
-    )
-    try {
-      await buildArchive(session!.workspacePath, tempPath, workspaceFiles)
-      const validationPath = path.join(SESSION_ROOT, randomUUID(), 'content')
-      await fsPromises.mkdir(validationPath, { recursive: true })
-      try {
-        await extractArchive(tempPath, validationPath)
-      } finally {
-        await removeWorkspace(validationPath)
-      }
-      // Do not overwrite a file created or changed while the archive was built.
-      const currentRevision = await readArchiveRevision(resolvedTarget)
-      if (targetRevision || currentRevision) {
-        if (!revisionsMatch(targetRevision, currentRevision)) {
-          throw new Error('The TextPack destination changed while saving. Use Save As again to confirm the destination.')
-        }
-      }
-      await replaceArchive(tempPath, resolvedTarget)
-      const stat = await fsPromises.stat(resolvedTarget)
-      session!.sourceRevision = { size: stat.size, mtimeMs: stat.mtimeMs }
-      session!.dirtyResources = false
-      session!.workspaceFiles = workspaceFiles
-      await writeManifest(session!)
-    } finally {
-      await fsPromises.rm(tempPath, { force: true })
-    }
+    await writeValidatedArchive(session!.workspacePath, resolvedTarget, workspaceFiles, targetRevision)
+    session!.sourceRevision = await readArchiveRevision(resolvedTarget)
+    session!.dirtyResources = false
+    session!.workspaceFiles = workspaceFiles
+    await writeManifest(session!)
   })
 
   if (sourceKey !== targetKey) sessions.delete(sourceKey)
@@ -991,17 +1029,19 @@ export const exportTextPackToMarkdown = async(
   markdown: string,
   options: SaveOptions
 ): Promise<{ documentKind: 'markdown'; resourcePath: string; markdown: string }> => {
-  const session = sessions.get(sessionKey(sourcePath))
-  if (!session) {
-    throw new Error(
-      'The TextPack session is no longer available. Reopen the document and try again.'
-    )
-  }
-  await validateWorkspaceFiles(session)
+  return exportPackageToMarkdown(await getOpenTextPackDirectory(sourcePath), targetPath, markdown, options)
+}
+
+export const exportPackageToMarkdown = async(
+  directory: string,
+  targetPath: string,
+  markdown: string,
+  options: SaveOptions
+): Promise<{ documentKind: 'markdown'; resourcePath: string; markdown: string }> => {
   const targetDirectory = path.dirname(targetPath)
   const assetFolderName = `${path.basename(targetPath, path.extname(targetPath))}.assets`
   const targetAssets = path.join(targetDirectory, assetFolderName)
-  const sourceAssets = path.join(session.workspacePath, 'assets')
+  const sourceAssets = path.join(directory, 'assets')
   let exportedAssets = false
   try {
     const sourceStat = await fsPromises.stat(sourceAssets).catch(() => null)

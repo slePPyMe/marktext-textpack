@@ -12,18 +12,15 @@ import {
   type WebContents
 } from 'electron'
 import log from 'electron-log'
-import { isDirectory, isFile } from 'common/filesystem'
 import {
   DOCUMENT_EXTENSIONS,
-  MARKDOWN_EXTENSIONS,
-  isDangerousExecutableFile,
-  isDocumentFile
+  isDangerousExecutableFile
 } from 'common/filesystem/paths'
 import { checkUpdates, userSetting } from './marktext'
 import { COMMANDS } from '../../commands'
 import type { CommandManager } from '../../commands'
 import { EXTENSION_HASN, PANDOC_EXTENSIONS, URL_REG } from '../../config'
-import { normalizeAndResolvePath, resolveLocalLinkTarget, writeFile } from '../../filesystem'
+import { normalizeDocumentPath, resolveLocalLinkTarget, writeFile } from '../../filesystem'
 
 import { documentWrites } from '../../filesystem/documentWrites'
 import { getPath } from '../../utils'
@@ -320,7 +317,7 @@ ipcMain.on('mt::window::drop', async(e, fileList: string[]) => {
     return
   }
   for (const file of fileList) {
-    if (isDocumentFile(file)) {
+    if (normalizeDocumentPath(file)?.isDir === false) {
       openFileOrFolder(win, file)
       continue
     }
@@ -399,7 +396,7 @@ ipcMain.on('mt::format-link-click', async(e, { data, dirname, readOnly }: Format
 
   const { pathname, anchor } = resolveLocalLinkTarget(urlCandidate, dirname ?? '')
   if (pathname) {
-    if (isDocumentFile(pathname)) {
+    if (normalizeDocumentPath(pathname)?.isDir === false) {
       const innerWin = BrowserWindow.fromWebContents(e.sender)
       if (innerWin) {
         openFileOrFolder(innerWin, pathname, { anchor, readOnly })
@@ -530,7 +527,9 @@ export const addFolder = async(win: Win): Promise<void> => {
       properties: ['openDirectory', 'createDirectory']
     })
     if (!win.isDestroyed() && filePaths?.[0]) {
-      ipcMain.emit('app-add-directory-by-id', win.id, filePaths[0])
+      if (normalizeDocumentPath(filePaths[0])?.isDir === false) {
+        openFileOrFolder(win, filePaths[0])
+      } else ipcMain.emit('app-add-directory-by-id', win.id, filePaths[0])
     }
   } catch (error) {
     log.error('Unable to choose a project folder:', error)
@@ -560,13 +559,13 @@ export const openFileOrFolder = (
   pathname: string,
   options: TabOptions = {}
 ): void => {
-  const resolvedPath = normalizeAndResolvePath(pathname)
-  if (isFile(resolvedPath)) {
-    ipcMain.emit('app-open-file-by-id', win.id, resolvedPath, options)
-  } else if (isDirectory(resolvedPath)) {
-    ipcMain.emit('app-open-directory-by-id', win.id, resolvedPath)
+  const document = normalizeDocumentPath(pathname)
+  if (document?.isDir === false) {
+    ipcMain.emit('app-open-file-by-id', win.id, document.path, options)
+  } else if (document?.isDir) {
+    ipcMain.emit('app-open-directory-by-id', win.id, document.path)
   } else {
-    console.error(`[ERROR] Cannot open unknown file: "${resolvedPath}"`)
+    log.warn('Cannot open unknown document or directory:', pathname)
   }
 }
 

@@ -678,6 +678,7 @@ export const useEditorStore = defineStore('editor', {
           tab.pathname = dest
           tab.filename = window.path.basename(dest)
           if (tab.documentKind === 'markdown') tab.resourcePath = window.path.dirname(dest)
+          if (tab.documentKind === 'textbundle') tab.resourcePath = dest
         }
       })
       // Keep DIRNAME in sync when the active tab is the one being renamed,

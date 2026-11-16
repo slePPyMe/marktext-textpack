@@ -275,7 +275,8 @@ class EditorWindow extends BaseWindow {
 
   addToOpenedFiles(filePath: string): void {
     const { _openedFiles, browserWindow } = this
-    if (!_openedFiles.includes(filePath)) _openedFiles.push(filePath)
+    if (_openedFiles.includes(filePath)) return
+    _openedFiles.push(filePath)
     ipcMain.emit('watcher-watch-file', browserWindow, filePath)
   }
 

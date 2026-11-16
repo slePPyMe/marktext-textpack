@@ -4,7 +4,7 @@ import { app, dialog, crashReporter } from 'electron'
 import log from 'electron-log'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 
-import cli from './cli'
+import cli, { getPortableUserDataPath } from './cli'
 import setupExceptionHandler, { initExceptionLogger } from './exceptionHandler'
 import setupEnvironment from './app/env'
 import type { AppEnvironment } from './app/env'
@@ -15,6 +15,7 @@ import { t } from './i18n'
 import { registerSandboxIpcHandlers } from './ipc'
 import { setPlantumlServerSource } from './ipc/diagram'
 import { cleanupStaleTextPackSessions } from './filesystem/textpack'
+import { isSamePathSync } from 'common/filesystem/paths'
 
 process.env.MARKTEXT_VERSION = MARKTEXT_VERSION
 process.env.MARKTEXT_VERSION_STRING = MARKTEXT_VERSION_STRING
@@ -92,7 +93,10 @@ registerSandboxIpcHandlers({
   }
 })
 
-electronApp.setAppUserModelId('com.electron.marktext')
+// Keep the portable TextBundle app's taskbar and Jump List separate from MarkText installations.
+const portableWindows = process.platform === 'win32' &&
+  isSamePathSync(appEnvironment.paths.electronUserDataPath, getPortableUserDataPath())
+electronApp.setAppUserModelId(portableWindows ? 'com.sleppy.marktext.textbundle.portable' : 'com.electron.marktext')
 
 app.on('browser-window-created', (_, window) => {
   optimizer.watchWindowShortcuts(window)

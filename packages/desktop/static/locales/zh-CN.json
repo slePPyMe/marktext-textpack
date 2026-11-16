@@ -27,6 +27,10 @@
       "export": "导出",
       "exportHtml": "导出为 HTML",
       "exportPdf": "导出为 PDF",
+      "exportTextPack": "导出为 TextPack…",
+      "markdownFormat": "Markdown 文档",
+      "textBundleFormat": "TextBundle（目录）",
+      "textPackFormat": "TextPack（单文件）",
       "convertWithPandoc": "使用 Pandoc 转换",
       "import": "导入",
       "print": "打印",
@@ -429,6 +433,9 @@
     },
     "general": {
       "title": "通用",
+      "saving": "保存",
+      "newDocumentSaveFormat": "新文档默认保存格式",
+      "newDocumentSaveFormatNote": "用于首次保存。另存为默认选择当前文档的格式。",
       "autoSave": {
         "title": "自动保存",
         "description": "自动保存",

@@ -22,6 +22,7 @@ export const MARKDOWN_INCLUSIONS: readonly string[] = Object.freeze(
 )
 
 export const TEXTPACK_EXTENSION = 'textpack'
+export const TEXTBUNDLE_EXTENSION = 'textbundle'
 export const DOCUMENT_EXTENSIONS: readonly string[] = Object.freeze([
   ...MARKDOWN_EXTENSIONS,
   TEXTPACK_EXTENSION
@@ -114,6 +115,20 @@ export const hasMarkdownExtension = (filename: string): boolean => {
 
 export const hasTextPackExtension = (filename: string): boolean =>
   typeof filename === 'string' && filename.toLowerCase().endsWith(`.${TEXTPACK_EXTENSION}`)
+
+export const hasTextBundleExtension = (filename: string): boolean =>
+  typeof filename === 'string' && filename.toLowerCase().endsWith(`.${TEXTBUNDLE_EXTENSION}`)
+
+export const isBundleTextName = (filename: string): boolean => /^text\.[^./\\]+$/i.test(filename)
+
+export const getEnclosingTextBundle = (pathname: string): string | undefined => {
+  let bundle: string | undefined
+  for (let parent = path.dirname(pathname); parent !== pathname; parent = path.dirname(parent)) {
+    if (hasTextBundleExtension(path.basename(parent))) bundle = parent
+    pathname = parent
+  }
+  return bundle
+}
 
 export const hasDocumentExtension = (filename: string): boolean =>
   hasMarkdownExtension(filename) || hasTextPackExtension(filename)

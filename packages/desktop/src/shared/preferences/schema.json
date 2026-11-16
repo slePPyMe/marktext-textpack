@@ -10,6 +10,11 @@
     "minimum": 1000,
     "default": 5000
   },
+  "newDocumentSaveFormat": {
+    "description": "General--Format suggested when saving a new document for the first time.",
+    "enum": ["markdown", "textbundle"],
+    "default": "markdown"
+  },
   "titleBarStyle": {
     "description": "General--The title bar style (Windows and Linux system only).",
     "enum": ["custom", "native"],

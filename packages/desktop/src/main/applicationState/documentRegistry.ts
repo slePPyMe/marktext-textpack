@@ -288,9 +288,10 @@ export class DocumentRegistry {
     if (entry.snapshot.resource.kind !== 'file')
       throw new Error('Cannot relocate an untitled document')
     const resource = { ...entry.snapshot.resource, location: structuredClone(location) }
-    entry.snapshot = checkedDocument({ ...entry.snapshot, resource, title })
+    const resourcePath = entry.snapshot.documentKind === 'textbundle' ? location.path : entry.snapshot.resourcePath
+    entry.snapshot = checkedDocument({ ...entry.snapshot, resource, title, resourcePath })
     if (entry.saved)
-      entry.saved.snapshot = checkedDocument({ ...entry.saved.snapshot, resource, title })
+      entry.saved.snapshot = checkedDocument({ ...entry.saved.snapshot, resource, title, resourcePath })
     entry.pending =
       entry.snapshot.content.kind === 'recovery'
         ? RecoveryStatus.DIRTY

@@ -1,5 +1,9 @@
 <template>
-  <div class="editor-tabs">
+  <div
+    class="editor-tabs"
+    @dragover="onFileDragOver"
+    @drop="onFileDrop"
+  >
     <div
       ref="tabContainer"
       class="scrollable-tabs"
@@ -13,7 +17,7 @@
           :key="file.id"
           :title="file.pathname"
           :aria-label="
-            file.isPreview ? t('editor.tabs.preview', { name: file.filename }) : file.filename
+            file.isPreview ? t('editor.tabs.preview', { name: tabName(file) }) : tabName(file)
           "
           :class="{
             active: currentFile?.id === file.id,
@@ -33,12 +37,12 @@
           >
             <Lock />
           </el-icon>
-          <span>{{ file.filename }}</span>
+          <span>{{ tabName(file) }}</span>
           <span class="unsaved-dot" />
           <button
             type="button"
             class="plain-button close-icon"
-            :aria-label="t('editor.tabs.close', { name: file.filename })"
+            :aria-label="t('editor.tabs.close', { name: tabName(file) })"
             @click.stop="removeFileInTab(file)"
           >
             <el-icon :size="12">
@@ -78,6 +82,21 @@ const { t } = useI18n()
 const editorStore = useEditorStore()
 
 const { currentFile, tabs } = storeToRefs(editorStore)
+
+const tabName = (file: IFileState): string =>
+  file.documentKind === 'textbundle' ? file.filename.replace(/\.textbundle$/i, '') : file.filename
+
+const onFileDragOver = (event: DragEvent): void => {
+  if (event.dataTransfer?.types.includes('Files')) event.preventDefault()
+}
+
+const onFileDrop = (event: DragEvent): void => {
+  const files = event.dataTransfer?.files
+  if (!files?.length) return
+  event.preventDefault()
+  const paths = [...files].map(file => window.electron.webUtils.getPathForFile(file)).filter(Boolean)
+  if (paths.length) window.electron.ipcRenderer.send('mt::window::drop', paths)
+}
 
 const tabContainer = ref<HTMLElement | null>(null)
 const tabDropContainer = ref<HTMLElement | null>(null)

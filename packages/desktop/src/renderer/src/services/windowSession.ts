@@ -503,11 +503,11 @@ class WindowSession {
     file.pathname = document.resource.kind === 'file' ? document.resource.location.path : ''
     file.filename = document.title
     file.documentKind = document.documentKind ?? 'markdown'
-    file.resourcePath = file.documentKind === 'textpack'
+    file.resourcePath = file.documentKind === 'textbundle' ? file.pathname : file.documentKind === 'textpack'
       ? document.resourcePath ?? file.resourcePath : (file.pathname ? window.path.dirname(file.pathname) : '')
     file.isPendingCreation = document.resource.kind === 'file' && document.resource.pendingCreation
     if (this._editor.currentFile?.id === file.id)
-      window.DIRNAME = file.documentKind === 'textpack' ? file.resourcePath : (file.pathname ? window.path.dirname(file.pathname) : '')
+      window.DIRNAME = file.resourcePath
   }
 
   private _saved(result: Extract<ManagedSaveResult, { status: 'saved' }>): void {

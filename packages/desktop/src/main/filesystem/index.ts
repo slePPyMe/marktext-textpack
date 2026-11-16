@@ -5,7 +5,8 @@ import path from 'path'
 import { Transform } from 'stream'
 import { pipeline } from 'stream/promises'
 import writeFileAtomic from 'write-file-atomic'
-import { isDirectory, isFile, isSymbolicLink } from 'common/filesystem'
+import { isDirectory, isDirectory2, isFile, isFile2, isSymbolicLink } from 'common/filesystem'
+import { hasTextBundleExtension, isBundleTextName, isDocumentFile } from 'common/filesystem/paths'
 
 /**
  * Normalize the path into an absolute path and resolves the link target if needed.
@@ -24,6 +25,21 @@ export const normalizeAndResolvePath = (pathname: string): string => {
     return ''
   }
   return path.resolve(pathname)
+}
+
+export const normalizeDocumentPath = (
+  pathname: string
+): { isDir: boolean; path: string } | null => {
+  const isDir = isDirectory2(pathname)
+  const parent = path.dirname(pathname)
+  if (!isDir && hasTextBundleExtension(parent) && isBundleTextName(path.basename(pathname)) &&
+    isFile2(pathname) && isFile2(path.join(parent, 'info.json'))) {
+    const bundle = normalizeAndResolvePath(parent)
+    return bundle && hasTextBundleExtension(bundle) ? { isDir: false, path: bundle } : null
+  }
+  if (!isDir && !isDocumentFile(pathname)) return null
+  const resolved = normalizeAndResolvePath(pathname)
+  return resolved ? { isDir: isDir && !hasTextBundleExtension(resolved), path: resolved } : null
 }
 
 /**
@@ -56,7 +72,7 @@ export const resolveLocalLinkTarget = (
 
   const pathname = toPathname(link)
   const hashIndex = link.indexOf('#')
-  if (hashIndex <= 0 || isFile(pathname)) {
+  if (hashIndex <= 0 || isFile(pathname) || isDirectory(pathname)) {
     return { pathname, anchor: '' }
   }
   return { pathname: toPathname(link.slice(0, hashIndex)), anchor: link.slice(hashIndex + 1) }
@@ -150,7 +166,7 @@ const RENAME_RACE_CODES = new Set(['EPERM', 'EACCES', 'EBUSY'])
 // is strictly worse: the last two land on the failing phase again.
 const RENAME_RETRY_DELAYS_MS = [50, 75, 50]
 
-const writeFileAtomicWithRetry = async(
+export const writeFileAtomicWithRetry = async(
   pathname: string,
   content: string | Buffer,
   options: BufferEncoding | undefined

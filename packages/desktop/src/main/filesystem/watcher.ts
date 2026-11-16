@@ -3,9 +3,12 @@ import fsPromises from 'fs/promises'
 import log from 'electron-log'
 import chokidar, { type FSWatcher } from 'chokidar'
 import { exists } from 'common/filesystem'
-import { hasDocumentExtension, checkPathExcludePattern } from 'common/filesystem/paths'
+import {
+  hasDocumentExtension, checkPathExcludePattern, hasTextBundleExtension, getEnclosingTextBundle, isBundleTextName
+} from 'common/filesystem/paths'
 import { getUniqueId } from '../utils'
 import { inspectDocumentFile } from '../filesystem/document'
+import { getBundleTextPath } from './textbundle'
 import { isLinux, isOsx } from '../config'
 import type { BrowserWindow } from 'electron'
 import type { LineEnding } from '@shared/types/files'
@@ -82,7 +85,8 @@ const add = async(
   const stats = await fsPromises.stat(pathname)
   const birthTime = stats.birthtime
   const mtimeMs = stats.mtimeMs
-  const isMarkdown = hasDocumentExtension(pathname)
+  const bundle = type === 'dir' && hasTextBundleExtension(pathname)
+  const isMarkdown = bundle || hasDocumentExtension(pathname)
   const file: {
     pathname: string
     name: string
@@ -104,14 +108,15 @@ const add = async(
   if (isMarkdown) {
     // HACK: But this should be removed completely in #1034/#1035.
     try {
-      const data = await inspectDocumentFile(
-        pathname,
-        endOfLine,
-        autoGuessEncoding,
-        trimTrailingNewline,
-        autoNormalizeLineEndings
-      )
-      file.data = data
+      if (!bundle) {
+        file.data = await inspectDocumentFile(
+          pathname,
+          endOfLine,
+          autoGuessEncoding,
+          trimTrailingNewline,
+          autoNormalizeLineEndings
+        )
+      }
     } catch (err) {
       // Only notify user about opened files.
       if (type === 'file') {
@@ -165,7 +170,7 @@ const change = async(
     return
   }
 
-  const isMarkdown = hasDocumentExtension(pathname)
+  const isMarkdown = hasDocumentExtension(pathname) || hasTextBundleExtension(pathname)
   if (isMarkdown) {
     try {
       const [data, stats] = await Promise.all([
@@ -179,7 +184,7 @@ const change = async(
         ),
         fsPromises.stat(pathname)
       ])
-      const file = { pathname, data, mtimeMs: stats.mtimeMs }
+      const file = { pathname, data, mtimeMs: data.rawBaseline?.exists ? data.rawBaseline.mtimeMs : stats.mtimeMs }
       if (!isLatestRead(win, pathname, type, sequence)) return
       emit('mt::update-file', {
         type: 'change',
@@ -281,9 +286,19 @@ class Watcher {
       isOsx || isUncPath(watchPath) ? true : this._preferences.getItem<boolean>('watcherUsePolling')
 
     const id = getUniqueId()
+    const watchingBundle = type === 'file' && hasTextBundleExtension(watchPath)
+    const isBundleBody = (pathname: string): boolean =>
+      path.dirname(path.relative(watchPath, pathname)) === '.' && isBundleTextName(path.basename(pathname))
 
     const watcher = chokidar.watch(watchPath, {
       ignored: (pathname: string, fileInfo?: { isDirectory: () => boolean }) => {
+        if (watchingBundle) return path.relative(watchPath, pathname) !== '' && !isBundleBody(pathname)
+        if (type === 'dir') {
+          const relative = path.relative(watchPath, pathname)
+          const bundle = getEnclosingTextBundle(relative)
+          if (bundle) return true
+          if (/(?:^|[/\\])\.marktext-bundle-[\w-]+(?:[/\\]|$)/.test(relative)) return true
+        }
         if (!fileInfo) {
           return /(?:^|[/\\])(?:node_modules|(?:.+\.asar))/.test(pathname)
         }
@@ -358,6 +373,12 @@ class Watcher {
     }
     let enospcReached = false
     let renameTimer: NodeJS.Timeout | null = null
+    let bundleDeletionTimer: NodeJS.Timeout | null = null
+    const reportBundleMissing = () => {
+      if (bundleDeletionTimer) clearTimeout(bundleDeletionTimer)
+      bundleDeletionTimer = null
+      if (!disposed) unlink(win, watchPath, type, emit)
+    }
 
     const handleFileEvent = async(pathname: string, event: 'add' | 'change'): Promise<void> => {
       if (disposed || await this._shouldIgnoreEvent(win.id, pathname, type, usePolling)) return
@@ -366,13 +387,35 @@ class Watcher {
         this._preferences.getPreferredEol() as LineEnding,
         autoGuessEncoding, trimTrailingNewline, autoNormalizeLineEndings, emit)
     }
+    const onFileEvent = (pathname: string, event: 'add' | 'change'): void => {
+      if (watchingBundle) {
+        if (isBundleBody(pathname)) read(handleFileEvent(watchPath, 'change'))
+      } else read(handleFileEvent(pathname, event))
+    }
     watcher
-      .on('add', (pathname: string) => read(handleFileEvent(pathname, 'add')))
-      .on('change', (pathname: string) => read(handleFileEvent(pathname, 'change')))
-      .on('unlink', (pathname: string) => unlink(win, pathname, type, emit))
-      .on('addDir', (pathname: string) => addDir(win, pathname, type, emit))
+      .on('add', (pathname: string) => onFileEvent(pathname, 'add'))
+      .on('change', (pathname: string) => onFileEvent(pathname, 'change'))
+      .on('unlink', (pathname: string) => {
+        if (!watchingBundle) {
+          unlink(win, pathname, type, emit)
+        } else if (isBundleBody(pathname)) {
+          if (bundleDeletionTimer) clearTimeout(bundleDeletionTimer)
+          bundleDeletionTimer = setTimeout(async() => {
+            const available = await getBundleTextPath(watchPath).catch(() => undefined)
+            if (!available) reportBundleMissing()
+          }, WATCHER_STABILITY_THRESHOLD + WATCHER_STABILITY_POLL_INTERVAL)
+        }
+      })
+      .on('addDir', (pathname: string) => {
+        if (type === 'dir' && hasTextBundleExtension(pathname) && path.relative(watchPath, pathname) !== '') {
+          read(handleFileEvent(pathname, 'add'))
+        } else addDir(win, pathname, type, emit)
+      })
       .on('unlinkDir', (pathname: string) => {
-        unlinkDir(win, pathname, type, emit)
+        if (watchingBundle && path.relative(watchPath, pathname) === '') reportBundleMissing()
+        else if (type === 'dir' && hasTextBundleExtension(pathname) && path.relative(watchPath, pathname) !== '') {
+          unlink(win, pathname, type, emit)
+        } else unlinkDir(win, pathname, type, emit)
         if (!disposed && pathname === watchPath) {
           failed = true
           context?.onStatus('unavailable')
@@ -390,7 +433,7 @@ class Watcher {
         }
 
         // Fix atomic rename on Linux (chokidar#591).
-        if (isLinux && type === 'file' && event === 'rename') {
+        if (isLinux && type === 'file' && !watchingBundle && event === 'rename') {
           if (renameTimer) {
             clearTimeout(renameTimer)
           }
@@ -439,6 +482,7 @@ class Watcher {
         clearTimeout(renameTimer)
         renameTimer = null
       }
+      if (bundleDeletionTimer) clearTimeout(bundleDeletionTimer)
       watcher.close()
     }
 

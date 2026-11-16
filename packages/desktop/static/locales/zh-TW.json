@@ -27,6 +27,10 @@
       "export": "匯出",
       "exportHtml": "匯出為 HTML",
       "exportPdf": "匯出為 PDF",
+      "exportTextPack": "匯出為 TextPack…",
+      "markdownFormat": "Markdown 文件",
+      "textBundleFormat": "TextBundle（資料夾）",
+      "textPackFormat": "TextPack（單一檔案）",
       "convertWithPandoc": "使用 Pandoc 轉換",
       "import": "匯入",
       "print": "列印",
@@ -429,6 +433,9 @@
     },
     "general": {
       "title": "一般",
+      "saving": "儲存",
+      "newDocumentSaveFormat": "新文件預設儲存格式",
+      "newDocumentSaveFormatNote": "用於首次儲存。另存新檔預設選擇目前文件的格式。",
       "autoSave": {
         "title": "自動儲存",
         "description": "自動儲存",

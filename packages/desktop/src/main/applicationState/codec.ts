@@ -252,7 +252,7 @@ export const parseDocument = (value: unknown): DocumentSnapshot | null => {
   return {
     id: value.id,
     title: value.title,
-    ...(value.documentKind === 'textpack' || value.documentKind === 'markdown'
+    ...(value.documentKind === 'textpack' || value.documentKind === 'textbundle' || value.documentKind === 'markdown'
       ? { documentKind: value.documentKind } : {}),
     ...(typeof value.resourcePath === 'string' ? { resourcePath: value.resourcePath } : {}),
     resource,

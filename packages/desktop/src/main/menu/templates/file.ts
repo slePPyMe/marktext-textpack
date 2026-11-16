@@ -1,4 +1,4 @@
-import { app, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
+import { app, ipcMain, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 import * as actions from '../actions/file'
 import { userSetting } from '../actions/marktext'
 import { isOsx } from '../../config'
@@ -173,6 +173,12 @@ export default function(
           accelerator: keybindings.getAccelerator('file.export-file.pdf') ?? undefined,
           click(_menuItem, browserWindow) {
             actions.exportFile(browserWindow as BrowserWindow | undefined, 'pdf')
+          }
+        },
+        {
+          label: t('menu.file.exportTextPack'),
+          click(_menuItem, browserWindow) {
+            if (browserWindow) ipcMain.emit('app-export-textpack', null, browserWindow)
           }
         }
       ]

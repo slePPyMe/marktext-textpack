@@ -3,6 +3,7 @@ import path from 'path'
 import { ipcMain, type WebContents } from 'electron'
 import log from 'electron-log'
 import { rgPath as bundledRgPath } from '@vscode/ripgrep'
+import { getEnclosingTextBundle, isBundleTextName } from 'common/filesystem/paths'
 
 const resolveRgPath = (): string => {
   if (process.env.MARKTEXT_RIPGREP_PATH) return process.env.MARKTEXT_RIPGREP_PATH
@@ -50,6 +51,15 @@ const getText = (input: TextInput): string =>
   'text' in input && input.text !== undefined
     ? input.text
     : Buffer.from(input.bytes ?? '', 'base64').toString()
+
+const documentSearchPath = (root: string, pathname: string): string | null => {
+  const relative = path.relative(root, path.resolve(root, pathname))
+  const bundle = getEnclosingTextBundle(relative)
+  if (!bundle) return pathname
+  return path.dirname(relative) === bundle && isBundleTextName(path.basename(pathname))
+    ? path.join(root, bundle)
+    : null
+}
 
 const cleanResultLine = (lineText: TextInput): string => {
   const text = getText(lineText)
@@ -244,6 +254,7 @@ const startTextSearch = (
     if (options.leadingContextLineCount) { args.push('--before-context', String(options.leadingContextLineCount)) }
     if (options.trailingContextLineCount) { args.push('--after-context', String(options.trailingContextLineCount)) }
     for (const inclusion of prepareGlobs(options.inclusions, directoryPath)) { args.push('--iglob', inclusion) }
+    if (options.inclusions?.length) args.push('--iglob', '**/*.textbundle/text.*')
     for (const exclusion of prepareGlobs(options.exclusions, directoryPath)) { args.push('--iglob', '!' + exclusion) }
     args.push('--')
     if (textPattern) args.push(textPattern)
@@ -304,7 +315,8 @@ const startTextSearch = (
         try {
           const message = JSON.parse(line)
           if (message.type === 'begin') {
-            pendingEvent = { filePath: getText(message.data.path), matches: [] }
+            const filePath = documentSearchPath(directoryPath, getText(message.data.path))
+            pendingEvent = filePath ? { filePath, matches: [] } : null
             pendingLeadingContext = []
             pendingTrailingContexts = new Set()
           } else if (message.type === 'match') {
@@ -325,7 +337,7 @@ const startTextSearch = (
                 trailingContextLines
               })
             }
-          } else if (message.type === 'end') {
+          } else if (message.type === 'end' && pendingEvent) {
             pendingPaths++
             sendIfAlive(sender, 'mt::rg::progress', { searchId, num: pendingPaths })
             sendIfAlive(sender, 'mt::rg::match', { searchId, payload: pendingEvent })
@@ -352,6 +364,7 @@ const startFileSearch = (
   let pendingDirs = directories.length
   let finished = false
   const errors: string[] = []
+  const seen = new Set<string>()
 
   const finishIfDone = (err?: unknown): void => {
     if (finished) return
@@ -429,9 +442,12 @@ const startFileSearch = (
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
       for (const line of lines) {
+        const pathname = line && documentSearchPath(directoryPath, line)
+        if (!pathname || seen.has(pathname)) continue
+        seen.add(pathname)
         pendingPaths++
         sendIfAlive(sender, 'mt::rg::progress', { searchId, num: pendingPaths })
-        sendIfAlive(sender, 'mt::rg::match', { searchId, payload: line })
+        sendIfAlive(sender, 'mt::rg::match', { searchId, payload: pathname })
       }
     })
   }

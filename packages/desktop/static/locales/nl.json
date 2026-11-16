@@ -11,6 +11,10 @@
       "documentSelection": "Document / Selectie"
     },
     "file": {
+      "exportTextPack": "Exporteren als TextPack…",
+      "markdownFormat": "Markdown-document",
+      "textBundleFormat": "TextBundle (map)",
+      "textPackFormat": "TextPack (één bestand)",
       "file": "Bestand",
       "newTab": "Nieuw tabblad",
       "newWindow": "Nieuw venster",
@@ -428,6 +432,9 @@
       "keybindings": "Sneltoetsen"
     },
     "general": {
+      "saving": "Opslaan",
+      "newDocumentSaveFormat": "Standaard opslagformaat voor nieuwe documenten",
+      "newDocumentSaveFormatNote": "Geldt bij de eerste keer opslaan. ‘Opslaan als’ stelt het huidige formaat voor.",
       "title": "Algemeen",
       "autoSave": {
         "title": "Automatisch opslaan",

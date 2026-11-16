@@ -1,8 +1,16 @@
-# TextPack documents
+# TextBundle and TextPack documents
 
-MarkText can open and edit compressed TextBundle documents with the `.textpack` extension. A TextPack remains one portable file while its Markdown text, images, other resources, and metadata are stored in an open ZIP-based layout.
+MarkText edits directory documents (`.textbundle`) and compressed documents (`.textpack`). A TextBundle keeps its Markdown and assets directly accessible on disk. A TextPack stores the same contents in one ZIP-based file for exchange.
 
-## Use
+## TextBundle
+
+- On Windows, right-click a `.textbundle` directory and choose **Open with MarkText** after installing MarkText. Double-click the directory to browse its contents. On Windows 11, the command is in the classic menu under **Show more options**.
+- In MarkText, select a bundle with **File → Open Folder**, drag it onto the tab bar, or open the parent directory and select the bundle in the sidebar. Quick Open and folder search show the bundle as one document. Opening its root Markdown body in MarkText selects the same document.
+- In the first **Save** dialog, select **TextBundle (folder)** and enter a name in the parent directory. **Settings → Files → Default save format for new documents** starts at **Markdown** and can be set to **TextBundle**. **Save As** starts with the current document's format.
+- **Save** updates the document in place. Newly pasted or dropped local images join the bundle's `assets/` when the edit is saved. Closing and discarding the edit discards the pending images as well.
+- Use **Save As** to convert an open document between TextBundle and TextPack and continue editing the new copy. Use **File → Export → Export as TextPack** for a shareable snapshot of the current text and assets while you continue editing the original. Package conversions preserve other files and metadata, including assets the Markdown does not currently reference.
+
+## TextPack
 
 - Open a `.textpack` from **File → Open**, the recent-files menu, the command line, a file association, or by dropping it on MarkText.
 - Edit it like any other Markdown document. Relative `assets/...` images resolve inside the bundle.
@@ -23,8 +31,7 @@ Archives containing traversal/absolute paths, backslashes, platform device names
 
 - The ZIP must place `info.json` and `text.*` directly at its root. Archives
   containing an enclosing `.textbundle` folder are currently rejected, including
-  the wrapped-layout example distributed by TextBundle.org. Directory-form
-  `.textbundle` documents are also unsupported.
+  the wrapped-layout TextPack example distributed by TextBundle.org.
 - Relative resources in an untitled document have no known source directory. Save the Markdown beside its resources first; TextPack conversion deliberately does not guess a directory. Base64, absolute paths, and file URLs do not need a source directory.
 - HTTP/HTTPS and protocol-relative images remain remote links. The conversion implementation has an internal `remoteImages: 'preserve' | 'embed'` option, defaulting to `preserve`. `embed` is reserved and explicitly fails as unimplemented. No MarkText preference, settings UI, or package metadata field is added.
 - The source-position scanner is not a full CommonMark parser. Complex nested block syntax and HTML `srcset`/CSS images are not currently supported. Embedded image data must use a supported Base64 image MIME type; invalid or unsupported image data fails conversion explicitly.

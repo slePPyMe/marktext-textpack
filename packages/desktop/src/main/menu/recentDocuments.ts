@@ -4,6 +4,7 @@ import log from 'electron-log'
 import { ensureDirSync, isDirectory2, isFile2 } from 'common/filesystem'
 import type { RecentDocument } from '@shared/types/ipc'
 import { relocateResourcePath, type ResourceMove } from 'common/filesystem/resourceMove'
+import { hasTextBundleExtension } from 'common/filesystem/paths'
 
 export type { RecentDocument }
 
@@ -42,7 +43,7 @@ export class RecentDocumentsStore {
       return [{ pathname, isDirectory: false }, ...documents.filter((document) => document.pathname !== pathname)]
     }
     if (isDirectory2(pathname)) {
-      return [{ pathname, isDirectory: true }, ...documents.filter((document) => document.pathname !== pathname)]
+      return [{ pathname, isDirectory: !hasTextBundleExtension(pathname) }, ...documents.filter((document) => document.pathname !== pathname)]
     }
     return documents
   }
@@ -83,7 +84,7 @@ export class RecentDocumentsStore {
         documents.push({ pathname, isDirectory: false })
         keptPaths.push(pathname)
       } else if (isDirectory2(pathname)) {
-        documents.push({ pathname, isDirectory: true })
+        documents.push({ pathname, isDirectory: !hasTextBundleExtension(pathname) })
         keptPaths.push(pathname)
       } else if (!isDirectory2(path.dirname(pathname)) || isVolumeRootPath(pathname)) {
         keptPaths.push(pathname)

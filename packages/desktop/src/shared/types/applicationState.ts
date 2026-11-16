@@ -1,7 +1,7 @@
 import type { ProjectRootsSnapshot } from './project'
 
 import type { PreferenceUpdateResult, UserPreferences, UserPreferencesPatch } from './preferences'
-import type { DocumentViewState, DiskBaseline, SaveFormatState } from './files'
+import type { DocumentKind, DocumentViewState, DiskBaseline, SaveFormatState } from './files'
 /** UUID of a native editor window; independent of Electron process IDs. */
 export type WindowStateId = string
 /** UUID shared by windows belonging to one application launch. */
@@ -92,7 +92,7 @@ export type DocumentContentState =
 
 /** Serializable document metadata; the main process owns resource and content truth. */
 export interface DocumentSnapshot {
-  documentKind?: 'markdown' | 'textpack'
+  documentKind?: DocumentKind
   // Main recreates this private workspace before restoring TextPack contents.
   resourcePath?: string
   id: DocumentId
@@ -327,6 +327,7 @@ export interface StateIpcInvokeChannels {
   }
   'mt::preferences::choose-directory': { args: []; ret: string | null }
   'mt::state::save-document': { args: [contextToken: string, documentId: string, saveAs: boolean]; ret: ManagedSaveResult }
+  'mt::textbundle-image-directory': { args: [documentId: string]; ret: string }
   'mt::state::close-documents': { args: [contextToken: string, documentIds: string[]]; ret: { status: 'closed' | 'canceled' | 'failed' } }
 }
 

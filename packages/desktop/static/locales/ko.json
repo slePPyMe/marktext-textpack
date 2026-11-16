@@ -11,6 +11,10 @@
       "documentSelection": "문서 / 선택 영역"
     },
     "file": {
+      "exportTextPack": "TextPack으로 내보내기…",
+      "markdownFormat": "Markdown 문서",
+      "textBundleFormat": "TextBundle (폴더)",
+      "textPackFormat": "TextPack (단일 파일)",
       "file": "파일",
       "newTab": "새 탭",
       "newWindow": "새 창",
@@ -428,6 +432,9 @@
       "keybindings": "키보드 단축키"
     },
     "general": {
+      "saving": "저장",
+      "newDocumentSaveFormat": "새 문서의 기본 저장 형식",
+      "newDocumentSaveFormatNote": "처음 저장할 때 적용됩니다. ‘다른 이름으로 저장’에서는 현재 형식이 기본입니다.",
       "title": "일반",
       "autoSave": {
         "title": "자동 저장",

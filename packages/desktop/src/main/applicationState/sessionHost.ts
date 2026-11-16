@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, screen, type WebContents } from 'electron'
-import { readFile, stat, rename, readdir } from 'node:fs/promises'
+import { stat, rename, readdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import log from 'electron-log'
 import debounce from 'lodash/debounce'
@@ -8,9 +8,16 @@ import type AppMenu from '../menu'
 import type EditorWindow from '../windows/editor'
 import type WindowManager from '../app/windowManager'
 import type { FileOpenOptions } from '../windows/editor'
-import { loadDocumentFile, loadCliDocumentFile, writeDocumentFile } from '../filesystem/document'
+import {
+  exportDocumentTextPack,
+  loadDocumentFile,
+  loadCliDocumentFile,
+  readDocumentBaseline,
+  writeDocumentFile
+} from '../filesystem/document'
+import { normalizeDocumentPath } from '../filesystem'
 import { moveTextPackSession, resolveTextPackReload, closeTextPackSession } from '../filesystem/textpack'
-import { MARKDOWN_EXTENSIONS } from 'common/filesystem/paths'
+import { MARKDOWN_EXTENSIONS, hasTextBundleExtension, hasTextPackExtension } from 'common/filesystem/paths'
 import { t } from '../i18n'
 import { documentWrites } from '../filesystem/documentWrites'
 import { createDefaultLayout } from '@shared/applicationState/defaults'
@@ -689,6 +696,8 @@ export class SessionHost {
     options: FileOpenOptions,
     selected: boolean
   ): Promise<void> {
+    const normalized = normalizeDocumentPath(pathname)
+    if (normalized && !normalized.isDir) pathname = normalized.path
     const id = editor.sessionStateId
     if (!id) return Promise.resolve()
     if (typeof options.requestId === 'number') this._previewRequests.set(id, options.requestId)
@@ -936,19 +945,45 @@ export class SessionHost {
     return 'cancel'
   }
 
-  private async _diskBaseline(pathname: string): Promise<DiskBaseline> {
+  private _stagedImages(id: string): string {
+    return path.join(app.getPath('userData'), 'textbundle-images', contentSha256(id))
+  }
+
+  private async _exportTextPack(windowId: string): Promise<void> {
+    const native = this._native(windowId)
     try {
-      const bytes = await readFile(pathname)
-      const info = await stat(pathname)
-      return {
-        exists: true,
-        rawSha256: contentSha256(bytes),
-        sizeBytes: bytes.byteLength,
-        mtimeMs: info.mtimeMs
-      }
+      const snapshot = await this._requestCheckpoint(windowId)
+      const document = snapshot.documents.find(item => item.id === snapshot.activeDocumentId)
+      if (!document) return
+      const markdown = this._owner().getDocumentText(document.id)
+      const source = document.resource.kind === 'file' ? document.resource.location.path : undefined
+      const title = source
+        ? path.basename(source, path.extname(source))
+        : document.title.replace(/[<>:"/\\|?*]/g, '-')
+      const choice = await dialog.showSaveDialog(native, {
+        properties: ['showOverwriteConfirmation'],
+        defaultPath: path.join(
+          source ? path.dirname(source) : app.getPath('documents'),
+          title + (source && hasTextPackExtension(source) ? ' - copy' : '') + '.textpack'
+        ),
+        filters: [{ name: t('menu.file.textPackFormat'), extensions: ['textpack'] }]
+      })
+      if (choice.canceled || !choice.filePath || native.isDestroyed()) return
+      if (!hasTextPackExtension(choice.filePath)) throw new Error('Choose a .textpack filename.')
+      if (source && createFileLocation(source).key === createFileLocation(choice.filePath).key)
+        throw new Error(t('readingMode.exportSource'))
+      await exportDocumentTextPack(
+        choice.filePath, markdown, document.saveFormat, source,
+        document.documentKind === 'textbundle' ? this._stagedImages(document.id) : undefined
+      )
+      if (!native.isDestroyed()) native.webContents.send('mt::show-notification', {
+        title: t('menu.file.exportTextPack'), type: 'success', message: choice.filePath
+      })
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { exists: false }
-      throw error
+      if (!native.isDestroyed()) native.webContents.send('mt::show-notification', {
+        title: t('menu.file.exportTextPack'), type: 'error',
+        message: error instanceof Error ? error.message : String(error)
+      })
     }
   }
 
@@ -979,20 +1014,31 @@ export class SessionHost {
         // A preceding queued Save As may have rebound the resource since the request arrived.
         previousPath = resource.kind === 'file' ? resource.location.path : ''
         let destination = resource.kind === 'file' ? resource.location.path : ''
+        let bundleBaseline: DiskBaseline | undefined
         if (saveAs || !destination) {
+          const preferred = destination
+            ? hasTextBundleExtension(destination) ? 'textbundle'
+              : hasTextPackExtension(destination) ? 'textpack' : 'markdown'
+            : this._accessor.preferences.getAll().newDocumentSaveFormat ?? 'markdown'
+          const formats = {
+            markdown: { name: t('menu.file.markdownFormat'), extensions: [...MARKDOWN_EXTENSIONS] },
+            textbundle: { name: t('menu.file.textBundleFormat'), extensions: ['textbundle'] },
+            textpack: { name: t('menu.file.textPackFormat'), extensions: ['textpack'] }
+          }
+          const suggestedPath = preferred === 'textbundle' && destination
+            ? path.join(path.dirname(destination), path.basename(destination, path.extname(destination)) + ' - copy.textbundle')
+            : destination || path.join(app.getPath('documents'), capture.snapshot.title +
+              (preferred === 'textbundle' ? '.textbundle' : '.md'))
           const choice = await dialog.showSaveDialog(native, {
             properties: ['showOverwriteConfirmation'],
-            defaultPath:
-              destination || path.join(app.getPath('documents'), `${capture.snapshot.title}.md`),
-            filters: [
-              { name: 'Markdown document', extensions: [...MARKDOWN_EXTENSIONS] },
-              { name: 'TextPack document', extensions: ['textpack'] }
-            ]
+            defaultPath: suggestedPath,
+            filters: [formats[preferred], ...Object.values(formats).filter(format => format !== formats[preferred])]
           })
           if (choice.canceled || !choice.filePath) return null
           destination = choice.filePath
         } else {
-          const current = await this._diskBaseline(destination)
+          const current = await readDocumentBaseline(destination)
+          if (hasTextBundleExtension(destination)) bundleBaseline = current
           const baseline = capture.baseline
           const changed = baseline?.exists
             ? current.exists &&
@@ -1013,16 +1059,23 @@ export class SessionHost {
         }
         const written = await documentWrites.write(sender.id, documentId, epoch, async() => {
           return writeDocumentFile(destination, capture.markdown, capture.snapshot.saveFormat,
-            previousPath || undefined, saveAs ? 'saveAs' : 'save')
+            previousPath || undefined, saveAs ? 'saveAs' : 'save', {
+              stagedImages: capture.snapshot.documentKind === 'textbundle'
+                ? this._stagedImages(documentId) : undefined,
+              baseline: bundleBaseline
+            })
         })
         if (!written) throw new Error('Document became read-only before the save completed')
         sourceMarkdown = capture.markdown
         sourceFormat = capture.snapshot.saveFormat
         savedMarkdown = written.markdown ?? capture.markdown
-        savedFormat = written.documentKind === 'textpack'
-          ? { ...capture.snapshot.saveFormat, encoding: { encoding: 'utf8', isBom: false } }
-          : capture.snapshot.saveFormat
-        const baseline = await this._diskBaseline(destination)
+        const baseline = await readDocumentBaseline(destination)
+        savedFormat = written.documentKind === 'markdown'
+          ? capture.snapshot.saveFormat
+          : { ...capture.snapshot.saveFormat, encoding: {
+            encoding: 'utf8',
+            isBom: written.documentKind === 'textbundle' && capture.snapshot.saveFormat.encoding.isBom
+          } }
         const snapshot: DocumentSnapshot = {
           ...capture.snapshot,
           title: path.basename(destination),
@@ -1044,6 +1097,10 @@ export class SessionHost {
         if (result.reason !== 'storage-unavailable') return { status: 'failed' }
       }
       const saved = this._owner().getDocument(documentId)
+      if (previousPath && hasTextPackExtension(previousPath) && saved.documentKind !== 'textpack') {
+        await closeTextPackSession(previousPath).catch(error =>
+          log.warn('Unable to clean up a converted TextPack session', error))
+      }
       this._statuses.set(
         windowId,
         (this._statuses.get(windowId) ?? []).filter((status) => status.documentId !== documentId)
@@ -1198,10 +1255,16 @@ export class SessionHost {
     )
       return
     const source = document.resource.location.path
-    const target = path.resolve(destination)
+    const target = path.resolve(
+      hasTextBundleExtension(source) && !hasTextBundleExtension(destination)
+        ? destination + '.textbundle' : destination
+    )
     if (source === target) return
-    const existing = await this._diskBaseline(target)
-    if (existing.exists) {
+    const existing = await stat(target).catch(error => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+      throw error
+    })
+    if (existing) {
       const choice = await dialog.showMessageBox(this._native(windowId), {
         type: 'warning',
         buttons: [t('dialog.replace'), t('dialog.cancel')],
@@ -1248,6 +1311,8 @@ export class SessionHost {
         await closeTextPackSession(document.resource.location.path).catch(error =>
           log.warn('Unable to clean up a closed TextPack session', error))
       }
+      await rm(this._stagedImages(document.id), { recursive: true, force: true }).catch(error =>
+        log.warn('Unable to clean up staged TextBundle images', error))
     }
     if (notify) this._native(windowId).webContents.send('mt::state::documents-ended', [...ids])
     return result
@@ -1374,6 +1439,17 @@ export class SessionHost {
       if (!editor) throw new Error('Unrecognized editor window')
       return editor
     }
+    ipcMain.on('app-export-textpack', (_event, native: BrowserWindow) => {
+      const editor = [...this._editors.values()].find(item => item.browserWindow === native)
+      if (editor?.sessionStateId) void this._exportTextPack(editor.sessionStateId)
+    })
+    ipcMain.handle('mt::textbundle-image-directory', (event, id: string) => {
+      const editor = editorFor(event.sender)
+      const document = this._owner().getWindow(editor.sessionStateId)?.documents.find(item => item.id === id)
+      if (document?.documentKind !== 'textbundle' || document.readOnly)
+        throw new Error('Unknown or read-only TextBundle')
+      return this._stagedImages(id)
+    })
     ipcMain.handle('mt::resolve-textpack-reload', async(event, pathname: string, token: string, accept: boolean) => {
       const editor = editorFor(event.sender)
       const owned = this._owner().getWindow(editor.sessionStateId)?.documents.some(document =>

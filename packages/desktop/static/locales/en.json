@@ -27,6 +27,10 @@
       "export": "Export",
       "exportHtml": "Export as HTML",
       "exportPdf": "Export as PDF",
+      "exportTextPack": "Export as TextPack…",
+      "markdownFormat": "Markdown document",
+      "textBundleFormat": "TextBundle (folder)",
+      "textPackFormat": "TextPack (single file)",
       "convertWithPandoc": "Convert with Pandoc",
       "import": "Import",
       "print": "Print",
@@ -429,6 +433,9 @@
     },
     "general": {
       "title": "General",
+      "saving": "Saving",
+      "newDocumentSaveFormat": "Default save format for new documents",
+      "newDocumentSaveFormatNote": "Applies to the first save. Save As starts with the current format.",
       "autoSave": {
         "title": "Auto Save",
         "description": "Auto save",

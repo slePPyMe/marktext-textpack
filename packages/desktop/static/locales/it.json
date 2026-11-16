@@ -11,6 +11,10 @@
       "documentSelection": "Documento/Selezione"
     },
     "file": {
+      "exportTextPack": "Esporta come TextPack…",
+      "markdownFormat": "Documento Markdown",
+      "textBundleFormat": "TextBundle (cartella)",
+      "textPackFormat": "TextPack (file singolo)",
       "file": "File",
       "newTab": "Nuova scheda",
       "newWindow": "Nuova finestra",
@@ -428,6 +432,9 @@
       "keybindings": "Scorciatoie da tastiera"
     },
     "general": {
+      "saving": "Salvataggio",
+      "newDocumentSaveFormat": "Formato di salvataggio predefinito per i nuovi documenti",
+      "newDocumentSaveFormatNote": "Si applica al primo salvataggio. «Salva con nome» propone il formato attuale.",
       "title": "Generali",
       "autoSave": {
         "title": "Salvataggio automatico",
