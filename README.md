@@ -27,6 +27,9 @@ unofficial fork, and the official MarkText downloads do not include these change
 ### Features
 
 - Open, edit, save, and restore `.textpack` documents.
+- Open and save `.textbundle` directories and convert between TextBundle and TextPack.
+  The first stable build with TextBundle support is based on upstream v0.23.0.
+  [0.23.1-textpack.1 release](https://github.com/slePPyMe/marktext-textpack/releases/tag/textpack-v0.23.1-textpack.1)
 - Store pasted and dropped images in the package's `assets/` directory.
 - Convert Markdown documents to TextPack while embedding Base64 and local resources.
 - Export TextPack documents back to Markdown with their assets.
@@ -35,9 +38,6 @@ unofficial fork, and the official MarkText downloads do not include these change
 
 ### Current scope
 
-- Development builds from `textpack` open and save `.textbundle` directories and
-  convert between TextBundle and TextPack. The published v0.23.0 installers
-  support TextPack only.
 - No generic attachment insertion UI is added.
 - Remote HTTP/HTTPS resources remain remote.
 - Development follows upstream `develop`; downloads follow upstream stable release tags.
@@ -213,8 +213,7 @@ Only active, public GitHub sponsors are listed here. Thank you to our private sp
 ## Download and Installation
 
 Download from **[this fork's Releases](https://github.com/slePPyMe/marktext-textpack/releases/latest)**.
-The v0.23.0 installers use the upstream v0.23.0 stable release. Choose the
-package for your platform and architecture.
+Choose the package for your platform and architecture.
 
 | Platform | Architecture            | Packages                     |
 | -------- | ----------------------- | ---------------------------- |

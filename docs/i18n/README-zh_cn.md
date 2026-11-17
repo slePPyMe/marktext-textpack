@@ -9,9 +9,9 @@
 **把 Markdown 正文和本地图片保存成一个可继续编辑的文件。** 移动、分享或同步
 图文笔记时，不必同时携带图片文件夹；重新打开 `.textpack` 后仍可继续所见即所得
 编辑。支持粘贴、拖入图片，以及 Markdown 与 TextPack 之间的另存为转换。
-HTTP/HTTPS 图片保留远程引用。 `textpack` 分支的开发版支持打开和保存
-`.textbundle` 目录，也可以在 TextBundle 和 TextPack 间转换。当前可下载的
-v0.23.0 稳定安装包支持 TextPack。
+HTTP/HTTPS 图片保留远程引用。支持打开和保存 `.textbundle` 目录，以及在
+TextBundle 和 TextPack 间转换。首个支持 TextBundle 的稳定版基于上游 v0.23.0。
+[0.23.1-textpack.1](https://github.com/slePPyMe/marktext-textpack/releases/tag/textpack-v0.23.1-textpack.1)
 
 **[下载 TextPack 版（Windows · macOS · Linux）](https://github.com/slePPyMe/marktext-textpack/releases/latest)**
 · [项目介绍](https://sleppyme.github.io/marktext-textpack/)
@@ -151,18 +151,17 @@ MarkText 是一款由社区支持驱动的开源 Markdown 编辑器。如果 Mar
 
 ## 下载与安装
 
-请从 **[本分支 Releases](https://github.com/slePPyMe/marktext-textpack/releases/latest)** 下载，
-版本号跟随上游正式 Release，当前提供 Windows x64 构建：
+请从 **[本分支 Releases](https://github.com/slePPyMe/marktext-textpack/releases/latest)** 下载对应平台和架构的文件。
 
-| 文件                                         | 用途                      |
-| -------------------------------------------- | ------------------------- |
-| `marktext-textpack-win-x64-<版本>-setup.exe` | Windows 安装包            |
-| `marktext-textpack-win-x64-<版本>.zip`       | 解压后运行 `marktext.exe` |
-| `SHA256SUMS.txt`                             | 下载文件的 SHA-256 校验和 |
+| 平台    | 架构                 | 下载格式                   |
+| ------- | -------------------- | -------------------------- |
+| Windows | x64、ARM64           | 安装包 EXE、ZIP            |
+| macOS   | Intel、Apple Silicon | DMG、ZIP                   |
+| Linux   | x64、ARM64           | AppImage、DEB、RPM、tar.gz |
+| Linux   | x64                  | Snap                       |
 
-构建未签名，沿用 MarkText 的应用标识与设置目录。官方 MarkText 发布页以及
-Homebrew、Winget、Chocolatey 的官方包不包含此分支功能；当前 TextPack 工作流
-尚未发布 Linux、macOS 或 ARM64 安装包。
+构建未签名，沿用 MarkText 的应用标识与设置目录。Windows ZIP 解压后运行
+`marktext.exe`。下载文件的 SHA-256 校验和见 `SHA256SUMS.txt`。
 
 打开 Markdown 文档后，选择「文件 → 另存为」，使用 `.textpack` 扩展名，即可将
 正文和引用的本地图片打包。具体兼容范围见[格式说明](../textpack.md)，
