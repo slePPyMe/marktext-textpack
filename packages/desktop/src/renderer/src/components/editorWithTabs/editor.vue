@@ -850,7 +850,7 @@ const imageAction = async (
     const replacement = isTabSavedOnDisk
       ? filename.replace(/\.[^/.]+$/, '')
       : ''
-    return imagePath.replace(/\${filename}/g, replacement)
+    return imagePath.replace(/\${filename}/g, () => replacement)
   }
 
   const resolvedGlobalImageFolderPath = getResolvedImagePath(imageFolderPath.value)

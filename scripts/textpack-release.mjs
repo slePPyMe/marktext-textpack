@@ -80,8 +80,9 @@ export const findForkRelease = async (request, upstreamTag, version) => {
 }
 
 const prepareForkRelease = (buildCommit) => {
-  if (!/^[0-9a-f]{40}$/.test(buildCommit))
+  if (!/^[0-9a-f]{40}$/.test(buildCommit)) {
     throw new Error('Specify the full fork source commit SHA')
+  }
   const { UPSTREAM_TAG: upstreamTag, RELEASE_VERSION: version } = process.env
   const workflowCommit = git('rev-parse', 'HEAD')
   git('fetch', '--no-tags', 'origin', `refs/heads/${stableBranch}`)
@@ -254,15 +255,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     const release = forkSource
       ? await findForkRelease(
-          requestGitHub,
-          process.env.REQUESTED_TAG || '',
-          process.env.FORK_VERSION
-        )
+        requestGitHub,
+        process.env.REQUESTED_TAG || '',
+        process.env.FORK_VERSION
+      )
       : await findRelease(
-          requestGitHub,
-          process.env.REQUESTED_TAG || '',
-          process.env.COMPLETE_EXISTING === 'true'
-        )
+        requestGitHub,
+        process.env.REQUESTED_TAG || '',
+        process.env.COMPLETE_EXISTING === 'true'
+      )
     writeOutputs(release)
     console.log(
       release.needed
